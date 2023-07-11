@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pymesh
 from pytorch_lightning import seed_everything
-
+import sys
+sys.path.append('./')
 from src.utils.data_generation import (get_fourier, get_output_dir,
                                        mesh_to_graph)
 from src.utils.eigenvectors import align_eigenvectors_kl

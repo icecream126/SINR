@@ -29,9 +29,12 @@ args = parser.parse_args()
 
 # Data
 dataset = GraphDataset(**vars(args))
+# print('dataset[0][input] ; ',dataset[0]['inputs'])
 loader = DataLoader(
     dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
 )
+# print('dataset[0][target] ; ',dataset[0]['index']) # 0
+
 
 # Model
 input_dim = dataset.n_fourier + (1 if dataset.time else 0)
@@ -44,20 +47,22 @@ checkpoint_cb = ModelCheckpoint(
 )
 earlystopping_cb = EarlyStopping(monitor="loss", patience=args.patience)
 lrmonitor_cb = LearningRateMonitor(logging_interval="step")
-logger = WandbLogger(project="GINR", save_dir="lightning_logs")
+logger = WandbLogger(project="GINR", save_dir="lightning_logs", name = 'spherical/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample))
 logger.experiment.log(
     {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}
 )
 trainer = pl.Trainer.from_argparse_args(
     args,
-    max_epochs=-1,
+    max_epochs=5000,
     log_every_n_steps=1,
     callbacks=[checkpoint_cb, earlystopping_cb, lrmonitor_cb],
     logger=logger,
     gpus=torch.cuda.device_count(),
     strategy="ddp" if torch.cuda.device_count() > 1 else None,
+    # profiler='simple'
 )
 trainer.fit(model, loader)
+
 model.load_from_checkpoint(checkpoint_cb.best_model_path)
 
 try:

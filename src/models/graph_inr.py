@@ -6,6 +6,9 @@ import torchmetrics as tm
 from src.models.core import MLP, parse_t_f
 from torch import nn
 from torch.optim import lr_scheduler
+from scipy.special import sph_harm
+
+
 
 
 class GraphINR(pl.LightningModule):
@@ -68,7 +71,7 @@ class GraphINR(pl.LightningModule):
         self.geometric_init = geometric_init
         self.beta = beta
         self.sine = sine
-        self.all_sine = all_sine
+        self.all_sine = True
         self.skip = skip
         self.bn = bn
         self.dropout = dropout
@@ -146,6 +149,12 @@ class GraphINR(pl.LightningModule):
 
     def training_step(self, data):
         inputs, target, indices = data["inputs"], data["target"], data["index"]
+        # print('inputs shape : ',inputs.shape) # torch.Size([5, 5000, 35])
+        # print('inputs : ',inputs)
+        # print('target shape : ',target.shape) # torch.Size([5, 5000, 1])
+        # print('target : ',target)
+        # print('index shape : ',indices.shape)
+        # print('index : ',index)
 
         # Add latent codes
         if self.use_latents:

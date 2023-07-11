@@ -10,6 +10,9 @@ import pymesh
 from pytorch_lightning import seed_everything
 from scipy.spatial import ConvexHull
 
+import sys
+sys.path.append('./')
+
 from src.utils.data_generation import (get_fourier, get_output_dir,
                                        mesh_to_graph, sphere_to_cartesian)
 
@@ -43,6 +46,8 @@ print("Triangulation")
 hull = ConvexHull(xyz.reshape(-1, 3))
 mesh = pymesh.form_mesh(hull.points, hull.simplices)
 points, adj = mesh_to_graph(mesh)
+# print('points : ',points)
+# exit(0)
 
 # Get Fourier features
 print(f"Computing embeddings, size=({adj.shape})")

@@ -4,9 +4,12 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
+import sys
+sys.path.append("/home/khm/GINR/")
 from src.plotting import figures
 from src.utils.data_generation import (get_fourier, get_output_dir, load_mesh,
                                        mesh_to_graph, normalized_laplacian)
+
 
 # Load data
 mesh = load_mesh("./data_generation/bunny/reconstruction/bun_zipper.ply")
@@ -31,7 +34,7 @@ for i in tqdm(range(n_iter)):
 rot = R.from_euler("xyz", [90, 00, 145], degrees=True).as_matrix()
 fig = figures.draw_mesh(mesh, v, rot=rot, colorscale="Reds")
 fig.show()
-
+'''
 # Get Fourier features
 u = get_fourier(adj)
 
@@ -43,3 +46,4 @@ np.savez(
     target=v[:, None],
     faces=mesh.faces,
 )
+'''

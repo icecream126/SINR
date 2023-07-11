@@ -3,7 +3,70 @@ import torch
 from src.models import initializers as init
 from src.modules.sine import Sine
 from torch import nn
+from scipy.special import sph_harm
 
+class SphericalHarmonicsEmbedding(nn.Module):
+    def __init__(self, order):
+        super(SphericalHarmonicsEmbedding, self).__init__()
+        self.order = order
+        # Combine Real Image
+        self.coefficients = nn.Parameter(torch.randn(order, 2*order+1 ))# , device='cpu')
+        
+        # Reduce waste of param
+        # self.coefficients = nn.Parameter(torch.randn(order*(order+2))) 
+
+        # Split Real Image
+        # self.coefficients_sin = nn.Parameter(torch.randn(order, 2*order+1 ))# , device='cpu')
+        # self.coefficients_cos = nn.Parameter(torch.randn(order, 2*order+1 ))# , device='cpu')
+        
+
+    def forward(self, x):
+        '''
+            x : [batch, node_num, 2] # 2 = (theta, phi)
+        '''
+        list_y_stack_batch = []
+        batch_size = x.shape[0]
+
+        for i in range(batch_size):
+            time_i = x[i,:,2]
+            y = torch.zeros(x.shape[1], dtype=torch.cfloat).cuda() # torch.Size([5000]) # theta, phi를 하나의 scalar로 embedding 하는 거니까.
+            list_y_stack_order = []    
+            # index=0   
+
+            for l in range(self.order):
+                for m in range(-l, l+1):
+                    theta = x[i,:,0].detach().cpu().numpy()
+                    phi = x[i,:,1].detach().cpu().numpy()
+
+                    # Combine Real, Image
+                    #1# sph_harm_emb_real = torch.Tensor(sph_harm(m,l,theta,phi).real).cuda()
+                    sph_harm_emb = torch.from_numpy(sph_harm(m,l,theta,phi)).cuda()
+                    
+
+                    # Split Real, Image
+                    # sph_harm_emb_real = torch.Tensor(sph_harm(m,l,theta,phi).real).cuda()
+                    # sph_harm_emb_imag = torch.Tensor(sph_harm(m,l,theta,phi).imag).cuda() # doesn't work due to dtype problem
+                    
+
+                    #-----------------------------------------------------------------------------------------------------#
+                    # Only use real
+                    y += self.coefficients[l,m+self.order] * sph_harm_emb# from_numpy(sph_harm(m,l,theta,phi).real)
+
+                    # Reduce waste of coefficient
+                    # y += self.coefficients[index] * sph_harm_emb# from_numpy(sph_harm(m,l,theta,phi).real)
+
+                    # Split Real Image
+                    # y += self.coefficients_sin[l,m+self.order] * sph_harm_emb_real# from_numpy(sph_harm(m,l,theta,phi).real)
+                    # y += self.coefficients_cos[l,m+self.order] * sph_harm_emb_imag# from_numpy(sph_harm(m,l,theta,phi).imag)
+                    
+                    # y += sph_harm_emb
+                list_y_stack_order.append(y) # Making (5000, order) tensor
+            list_y_stack_order.append(time_i)
+            tensor_y_stacked_order = torch.stack(list_y_stack_order, dim=1) # Made (5000, order+1) tensor (order + time)
+            list_y_stack_batch.append(tensor_y_stacked_order) # Making (batch, 5000, order+1) tensor
+
+        embedded_y = torch.stack(list_y_stack_batch, dim=0)
+        return embedded_y
 
 class MLP(nn.Module):
     """
@@ -45,14 +108,23 @@ class MLP(nn.Module):
         self.skip = skip
         self.bn = bn
         self.dropout = dropout
+        self.max_order = input_dim-1 # change this for spherical harmonics embedding max order (input_dim = dataset.n_fourier+1)
+        print('Spherical Embedding order : ',self.max_order)
+        self.spherical_harmonics_embedding = SphericalHarmonicsEmbedding(self.max_order)
 
         # Modules
         self.model = nn.ModuleList()
         in_dim = input_dim
         out_dim = hidden_dim
-        for i in range(n_layers):
+        # print('input dim : ',input_dim) # 35 or 4
+        # print('out_dim : ',out_dim) # 512
+        for i in range(n_layers):   
+
             layer = nn.Linear(in_dim, out_dim)
 
+            # print('geometric_init is ',geometric_init) # default : False
+            # print('all_sine is ',all_sine) # default : False
+            # print('sine is ',sine) # default : False
             # Custom initializations
             if geometric_init:
                 if i == n_layers - 1:
@@ -93,12 +165,17 @@ class MLP(nn.Module):
                 out_dim = output_dim
 
     def forward(self, x):
-        x_in = x
+        # print('input shape before sh embedding : ',x.shape)
+        # x_in = self.spherical_harmonics_embedding(x) # spherical harmonics embedding
+        x = self.spherical_harmonics_embedding(x)
+        x_in=x
+        # print('input1 shape after sh embedding : ',x.shape)
+        # print('input2 shape after sh embedding : ',x_in.shape)
+
         for i, layer in enumerate(self.model):
             if i == self.skip_at:
                 x = torch.cat([x, x_in], dim=-1)
             x = layer(x)
-
         return x
 
 
