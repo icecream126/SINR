@@ -2,19 +2,6 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.spatial.transform import Rotation as R
 
-PLOT_CONFIGS = {
-    "bunny": {
-        "colorscale": "Reds",
-        "rot": R.from_euler("xyz", [90, 00, 145], degrees=True).as_matrix(),
-        "lower_camera": True,
-    },
-    "protein_1AA7_A": {
-        "colorscale": "RdBu",
-        "rot": R.from_euler("xyz", [0, 180, 60], degrees=True).as_matrix(),
-        "lower_camera": False,
-    },
-}
-
 
 def draw_graph(points, adj, color=None):
     x, y, z = points.T
