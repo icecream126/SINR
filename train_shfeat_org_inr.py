@@ -3,21 +3,17 @@
 import os
 from argparse import ArgumentParser
 
-import numpy as np
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
-                                         ModelCheckpoint)
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor, ModelCheckpoint)
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 
 import sys
 sys.path.append('./')
 
-from src.data.graph_dataset import GraphDataset
-from src.models.graph_inr import GraphINR
-from src.plotting.figures import draw_pc
-from src.utils.get_predictions import get_batched_predictions
+from src.data.shfeat_dataset import GraphDataset
+from src.models.shfeat_org_inr import SHFeatINR
 
 if __name__=='__main__':
     pl.seed_everything(1234)
@@ -26,28 +22,21 @@ if __name__=='__main__':
     parser.add_argument("--patience", default=5000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--n_workers", default=0, type=int)
-    parser.add_argument("--plot_3d", action="store_true")
-    parser.add_argument("--plot_heat", action="store_true")
     parser = pl.Trainer.add_argparse_args(parser)
-    parser = GraphINR.add_model_specific_args(parser)
+    parser = SHFeatINR.add_model_specific_args(parser)
     parser = GraphDataset.add_dataset_specific_args(parser)
     args = parser.parse_args()
 
-
-
     # Data
     dataset = GraphDataset(**vars(args))
-    # print('dataset[0][input] ; ',dataset[0]['inputs'])
     loader = DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
     )
-    # print('dataset[0][target] ; ',dataset[0]['index']) # 0
-
 
     # Model
     input_dim = dataset.n_fourier + (1 if dataset.time else 0)
     output_dim = dataset.target_dim
-    model = GraphINR(input_dim, output_dim, len(dataset), **vars(args))
+    model = SHFeatINR(input_dim, output_dim, len(dataset), **vars(args))
 
     # Training
     checkpoint_cb = ModelCheckpoint(
@@ -55,7 +44,12 @@ if __name__=='__main__':
     )
     earlystopping_cb = EarlyStopping(monitor="loss", patience=args.patience)
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
-    logger = WandbLogger(config=args,project="GINR", save_dir="lightning_logs", name = 'spherical/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample))
+    logger = WandbLogger(
+        config=args, 
+        project="SphericalINR", 
+        save_dir="lightning_logs", 
+        name='shfeat_org/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample)
+        )
     logger.experiment.log(
         {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}
     )
@@ -67,19 +61,5 @@ if __name__=='__main__':
         logger=logger,
         gpus=torch.cuda.device_count(),
         strategy="ddp" if torch.cuda.device_count() > 1 else None,
-        # profiler='simple'
     )
     trainer.fit(model, loader)
-
-    model.load_from_checkpoint(checkpoint_cb.best_model_path)
-
-    # try:
-    #     points = dataset.npzs[0]["points"]
-    # except KeyError:
-    #     points = np.load(os.path.join(dataset.dataset_dir, "points.npy"))
-
-    # inputs = dataset.get_inputs(0).cuda()
-    # _, pred = get_batched_predictions(model, inputs, 0)
-    # fig = draw_pc(points, pred[:, 0], colorscale="Reds")
-    # fig.show()
-    # logger.experiment.log({"Scatter": fig})
