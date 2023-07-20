@@ -33,12 +33,12 @@
 # as we did for the transferability experiments. The setting for the INR is also
 # the same (ReLU, 8 layers, higher LR).
 
-for hidden_dim in 128 64 32; do 
+for hidden_dim in 512 256 ; do 
     for lr in 0.0001 0.0005 0.001 0.005; do
         for latent_dim in 512 256 128 64 32; do
             for n_layers in 7 8 9; do
                 for n_fourier in 2 3 4; do
-                    CUDA_VISIBLE_DEVICES=0,1,2,3 python train_ginr.py --dataset_dir dataset/weather_time_gustsfc_cut/ --n_fourier=${n_fourier} --n_nodes_in_sample 5000 --lr=${lr} --n_layers=${n_layers} --latent_dim=${latent_dim} --hidden_dim=${hidden_dim} --skip=True --time=True
+                    CUDA_VISIBLE_DEVICES=4,5,6,7 python train_ginr.py --dataset_dir dataset/weather_time_gustsfc_cut/ --n_fourier=${n_fourier} --n_nodes_in_sample 5000 --lr=${lr} --n_layers=${n_layers} --latent_dim=${latent_dim} --hidden_dim=${hidden_dim} --skip=True --time=True
                 done
             done
         done

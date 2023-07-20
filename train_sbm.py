@@ -15,6 +15,8 @@ from sklearn.metrics import accuracy_score, normalized_mutual_info_score
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+import sys
+sys.path.append('./')
 from src.models.graph_inr import GraphINR
 from src.utils.data_generation import normalized_laplacian
 from src.utils.eigenvectors import align_eigenvectors_kl

@@ -1,72 +1,103 @@
 import numpy as np
 import torch
+
+import sys
+sys.path.append('./')
 from src.models import initializers as init
 from src.modules.sine import Sine
 from torch import nn
-from scipy.special import sph_harm
+import math
 
-class SphericalHarmonicsEmbedding(nn.Module):
-    def __init__(self, order):
-        super(SphericalHarmonicsEmbedding, self).__init__()
-        self.order = order
-        # Combine Real Image
-        self.coefficients = nn.Parameter(torch.randn(order, 2*order+1 ))# , device='cpu')
+
+class SphericalHarmonicsLayer(nn.Module):
+    def __init__(self, max_order,hidden_dim):
+        super(SphericalHarmonicsLayer, self).__init__()
+        self.max_order = max_order
+
+        self.theta_layer = nn.Linear(1, hidden_dim)
+        self.phi_layer = nn.Linear(1, hidden_dim)
+        self.time_layer = nn.Linear(1, hidden_dim)
+
+    def lpmv(l, m, x):
+        """Associated Legendre function including Condon-Shortley phase.
+
+        Args:
+            m: int order 
+            l: int degree
+            x: float argument tensor
+        Returns:
+            tensor of x-shape
+        """
+        # Check memoized versions
+        m_abs = abs(m)
+
+        if m_abs > l:
+            return None
+
+        if l == 0:
+            return torch.ones_like(x)
         
-        # Reduce waste of param
-        # self.coefficients = nn.Parameter(torch.randn(order*(order+2))) 
+        # Check if on boundary else recurse solution down to boundary
+        if m_abs == l:
+            # Compute P_m^m
+            y = (-1)**m_abs * semifactorial(2*m_abs-1)
+            y *= torch.pow(1-x*x, m_abs/2)
+            return negative_lpmv(l, m, y)
 
-        # Split Real Image
-        # self.coefficients_sin = nn.Parameter(torch.randn(order, 2*order+1 ))# , device='cpu')
-        # self.coefficients_cos = nn.Parameter(torch.randn(order, 2*order+1 ))# , device='cpu')
+        # Recursively precompute lower degree harmonics
+        lpmv(l-1, m, x)
+
+        # Compute P_{l}^m from recursion in P_{l-1}^m and P_{l-2}^m
+        # Inplace speedup
+        y = ((2*l-1) / (l-m_abs)) * x * lpmv(l-1, m_abs, x)
+
+        if l - m_abs > 1:
+            y -= ((l+m_abs-1)/(l-m_abs)) * CACHE[(l-2, m_abs)]
         
+        if m < 0:
+            y = self.negative_lpmv(l, m, y)
+        return y
 
+        
     def forward(self, x):
-        '''
-            x : [batch, node_num, 2] # 2 = (theta, phi)
-        '''
-        list_y_stack_batch = []
+
         batch_size = x.shape[0]
+        num_samples = x.shape[1]
 
-        for i in range(batch_size):
-            time_i = x[i,:,2]
-            y = torch.zeros(x.shape[1], dtype=torch.cfloat).cuda() # torch.Size([5000]) # theta, phi를 하나의 scalar로 embedding 하는 거니까.
-            list_y_stack_order = []    
-            # index=0   
+        theta = x[:,:,0].unsqueeze(dim=2) # torch.Size([3,5000,1])
+        phi = x[:,:,1].unsqueeze(dim=2) # torch.Size([3,5000,1])
+        time = x[:,:,2].unsqueeze(dim=2) # torch.Size([3,5000,1])
 
-            for l in range(self.order):
-                for m in range(-l, l+1):
-                    theta = x[i,:,0].detach().cpu().numpy()
-                    phi = x[i,:,1].detach().cpu().numpy()
+        theta = self.theta_layer(theta) # torch.Size([3,5000, k])
+        phi = self.phi_layer(phi) # torch.Size([3,5000, k])
+        time = self.time_layer(time) # torch.Size([3,5000,k]) # 굳이 할 필요는 없지만 나중에 concat 해주기 위해 dimension 맞춰주는 용도
 
-                    # Combine Real, Image
-                    #1# sph_harm_emb_real = torch.Tensor(sph_harm(m,l,theta,phi).real).cuda()
-                    sph_harm_emb = torch.from_numpy(sph_harm(m,l,theta,phi)).cuda()
-                    
+        theta = theta.reshape(batch_size,-1,1) # torch.Size([3,5000*k,1])
+        phi = phi.reshape(batch_size,-1,1) # torch.Size([3,5000*k,1])
+        time = time.reshape(batch_size, -1, 1).cuda() # torch.Size(3, 5000*k,1)
 
-                    # Split Real, Image
-                    # sph_harm_emb_real = torch.Tensor(sph_harm(m,l,theta,phi).real).cuda()
-                    # sph_harm_emb_imag = torch.Tensor(sph_harm(m,l,theta,phi).imag).cuda() # doesn't work due to dtype problem
-                    
+        y = []
+        for l in range(self.max_order + 1):
+            for m in range(-l, l + 1):
+                Klm = math.sqrt((2*l+1) * math.factorial(l-m) / (4*math.pi * math.factorial(l+m)))
+                
+                if m > 0:
+                    Ylm = Klm * math.sqrt(2) * lpmv(m, l, torch.cos(theta)) * torch.cos(m * phi)
+                elif m == 0:
+                    Ylm = Klm * lpmv(0, l, torch.cos(theta))
+                else:
+                    Ylm = Klm * math.sqrt(2) * lpmv(-m, l, torch.cos(theta)) * torch.sin(-m * phi)
+                #  Ylm = torch.Size([3,5000*k,1])
+                y.append(torch.Tensor(Ylm).cuda())
+        y = torch.stack(y, dim=2).squeeze(-1) # torch.Size([3, 5000*k, (order+1)**2])
+        
+        x = torch.cat([y, time], dim=-1) # torch.Size([3,5000*k,(max_order+1)**2+1])
+        x = x.reshape(batch_size, num_samples,-1) # torch.Size([3,5000, ((max_order+1)**2+1)*hidden_dim])
 
-                    #-----------------------------------------------------------------------------------------------------#
-                    # Only use real
-                    y += self.coefficients[l,m+self.order] * sph_harm_emb# from_numpy(sph_harm(m,l,theta,phi).real)
+        return x
 
-                    # Reduce waste of coefficient
-                    # y += self.coefficients[index] * sph_harm_emb# from_numpy(sph_harm(m,l,theta,phi).real)
 
-                    # Split Real Image
-                    # y += self.coefficients_sin[l,m+self.order] * sph_harm_emb_real# from_numpy(sph_harm(m,l,theta,phi).real)
-                    # y += self.coefficients_cos[l,m+self.order] * sph_harm_emb_imag# from_numpy(sph_harm(m,l,theta,phi).imag)
-                    
-                    # y += sph_harm_emb
-                list_y_stack_order.append(y) # Making (5000, order) tensor
-            list_y_stack_order.append(time_i)
-            tensor_y_stacked_order = torch.stack(list_y_stack_order, dim=1) # Made (5000, order+1) tensor (order + time)
-            list_y_stack_batch.append(tensor_y_stacked_order) # Making (batch, 5000, order+1) tensor
 
-        embedded_y = torch.stack(list_y_stack_batch, dim=0)
-        return embedded_y
 
 class MLP(nn.Module):
     """
@@ -110,21 +141,28 @@ class MLP(nn.Module):
         self.dropout = dropout
         self.max_order = input_dim-1 # change this for spherical harmonics embedding max order (input_dim = dataset.n_fourier+1)
         print('Spherical Embedding order : ',self.max_order)
-        self.spherical_harmonics_embedding = SphericalHarmonicsEmbedding(self.max_order)
+        self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order, hidden_dim)
 
         # Modules
         self.model = nn.ModuleList()
+        # hidden_dim = (self.max_order+1)**2
         in_dim = input_dim
+        # in_dim=3
         out_dim = hidden_dim
-        # print('input dim : ',input_dim) # 35 or 4
-        # print('out_dim : ',out_dim) # 512
+        
+        # 앞에서 layer 하나 spherical activation으로 따로 정의해줬으니까 n_layers-1까지만 돌기
         for i in range(n_layers):   
+            
+            if i==0:
+                layer = self.spherical_harmonics_layer
+            elif i==1:
+                layer = nn.Linear(((self.max_order+1)**2+1)*hidden_dim,hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
+            else : 
+                layer = nn.Linear(hidden_dim, out_dim)
+            
+            # layer = nn.Linear(in_dim,out_dim)
 
-            layer = nn.Linear(in_dim, out_dim)
 
-            # print('geometric_init is ',geometric_init) # default : False
-            # print('all_sine is ',all_sine) # default : False
-            # print('sine is ',sine) # default : False
             # Custom initializations
             if geometric_init:
                 if i == n_layers - 1:
@@ -137,44 +175,25 @@ class MLP(nn.Module):
 
             self.model.append(layer)
 
-            # Activation, BN, and dropout
-            if i < n_layers - 1:
-                if sine:
-                    if i == 0:
-                        act = Sine()
-                    else:
-                        act = Sine() if all_sine else nn.Tanh()
-                elif beta > 0:
-                    act = nn.Softplus(beta=beta)  # IGR uses Softplus with beta=100
-                else:
-                    act = nn.ReLU(inplace=True)
+            if i<n_layers-1 and i>0:
+                act = nn.ReLU() # 첫번째 layer 이후 activation은 ReLU
                 self.model.append(act)
+
+            if i<n_layers-1:
                 if bn:
                     self.model.append(nn.LayerNorm(out_dim))
                 if dropout > 0:
                     self.model.append(nn.Dropout(dropout))
 
             in_dim = hidden_dim
-            # Skip connection
-            if i + 1 == int(np.ceil(n_layers / 2)) and skip:
-                self.skip_at = len(self.model)
-                in_dim += input_dim
 
             out_dim = hidden_dim
             if i + 1 == n_layers - 1:
                 out_dim = output_dim
 
     def forward(self, x):
-        # print('input shape before sh embedding : ',x.shape)
-        # x_in = self.spherical_harmonics_embedding(x) # spherical harmonics embedding
-        x = self.spherical_harmonics_embedding(x)
-        x_in=x
-        # print('input1 shape after sh embedding : ',x.shape)
-        # print('input2 shape after sh embedding : ',x_in.shape)
-
+        x_in = x    
         for i, layer in enumerate(self.model):
-            if i == self.skip_at:
-                x = torch.cat([x, x_in], dim=-1)
             x = layer(x)
         return x
 

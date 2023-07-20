@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from pytorch_lightning import seed_everything
 
+import sys
+sys.path.append('./')
 from src.utils.data_generation import get_fourier, get_output_dir
 
 seed_everything(1234)

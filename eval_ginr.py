@@ -16,6 +16,9 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 from plotly import graph_objects as go
 
+import sys
+sys.path.append('./')
+
 from src.data.graph_dataset import GraphDataset
 from src.models.graph_inr import GraphINR
 from src.plotting import traces

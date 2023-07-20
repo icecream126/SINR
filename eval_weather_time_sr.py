@@ -30,6 +30,8 @@ import torch
 from plotly import graph_objects as go
 from tqdm import tqdm
 
+import sys
+sys.path.append('./')
 from src.data.graph_dataset import GraphDataset
 from src.models.graph_inr import GraphINR
 from src.utils.data_generation import cartesian_to_sphere

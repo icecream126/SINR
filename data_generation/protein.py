@@ -4,6 +4,8 @@ import shutil
 import numpy as np
 from pytorch_lightning import seed_everything
 
+import sys
+sys.path.append('./')
 from src.plotting import figures
 from src.plotting.figures import PLOT_CONFIGS
 from src.utils.data_generation import (get_fourier, get_output_dir, load_mesh,

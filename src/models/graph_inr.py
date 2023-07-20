@@ -3,6 +3,9 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 import torch
 import torchmetrics as tm
+
+import sys
+sys.path.append('./')
 from src.models.core import MLP, parse_t_f
 from torch import nn
 from torch.optim import lr_scheduler
@@ -39,7 +42,7 @@ class GraphINR(pl.LightningModule):
         input_dim: int,
         output_dim: int,
         dataset_size: int,
-        hidden_dim: int = 512,
+        hidden_dim: int = 64, # 원래 512
         n_layers: int = 4,
         lr: float = 0.0005,
         lr_patience: int = 500,
@@ -208,7 +211,7 @@ class GraphINR(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
-        parser.add_argument("--hidden_dim", type=int, default=512)
+        parser.add_argument("--hidden_dim", type=int, default=64) # 원래 512
         parser.add_argument("--n_layers", type=int, default=4)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
