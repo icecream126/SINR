@@ -5,5 +5,3 @@ launch.json
 dataset/
 lightning_logs/
 __pycache__
-test_npy.py
-spherical_harm_test.py
