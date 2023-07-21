@@ -4,4 +4,5 @@
 launch.json
 dataset/
 lightning_logs/
+assets/
 __pycache__

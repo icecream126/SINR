@@ -5,9 +5,6 @@ from argparse import ArgumentParser
 import numpy as np
 import torch
 import torch.utils.data as data
-
-import sys
-sys.path.append('./')
 from src.models.core import parse_t_f
 from tqdm import tqdm
 
@@ -24,6 +21,7 @@ class GraphDataset(data.Dataset):
         cut=-1,
         **kwargs,
     ):
+        print(dataset_dir)
         self.dataset_dir = dataset_dir
         self.n_fourier = n_fourier
         self.n_nodes_in_sample = n_nodes_in_sample
@@ -31,7 +29,6 @@ class GraphDataset(data.Dataset):
         self.cache_fourier = cache_fourier
         self._fourier = None
         self._fourier_path = os.path.join(dataset_dir, "fourier.npy")
-        self._points_path = os.path.join(dataset_dir,"spherical_points.npy")
         self.in_memory = in_memory
         self.cut = cut
 
@@ -52,35 +49,17 @@ class GraphDataset(data.Dataset):
 
         return data
 
-    # This is code for getting input as spectral embedding
-    # def get_fourier(self, index):
-    #     if self.cache_fourier and os.path.exists(self._fourier_path):
-    #         if self._fourier is None:
-    #             self._fourier = np.load(self._fourier_path)
-    #             self._fourier = torch.from_numpy(self._fourier).float()
-    #             self._fourier = self._fourier[:, : self.n_fourier]
-    #         return self._fourier
-    #     else:
-    #         arr = self.npzs[index]["fourier"][:, : self.n_fourier]
-    #         return torch.from_numpy(arr).float()
-
-    # This is code for getting input as (x,y,z)
     def get_fourier(self, index):
-        if self.cache_fourier and os.path.exists(self._points_path):
+        if self.cache_fourier and os.path.exists(self._fourier_path):
             if self._fourier is None:
-                self._fourier = np.load(self._points_path)
+                self._fourier = np.load(self._fourier_path)
                 self._fourier = torch.from_numpy(self._fourier).float()
-                # print('self._fourier shape : ',self._fourier.shape)
-                # print('first fourier : ',self._fourier[0])
-                # self._fourier = self._fourier[:, : self.n_fourier]
+                self._fourier = self._fourier[:, : self.n_fourier]
             return self._fourier
         else:
-            arr = self.npzs[index]["points"]
-            # print('not cache fourier')
-            # print('points :',arr)
-
+            arr = self.npzs[index]["fourier"][:, : self.n_fourier]
             return torch.from_numpy(arr).float()
-            
+
     def get_time(self, index):
         arr = self.npzs[index]["time"]
         return torch.from_numpy(arr).float()
@@ -93,12 +72,10 @@ class GraphDataset(data.Dataset):
 
     def get_inputs(self, index):
         arr = self.get_fourier(index)
-        # print('get_inputs arr : ',arr.shape)
-        # print(arr[0])
         if self.time:
             time = self.get_time(index)
             arr = self.add_time(arr, time)
-        # print('time added arr : ',arr.shape)
+
         return arr
 
     def get_target(self, index):
@@ -118,13 +95,8 @@ class GraphDataset(data.Dataset):
         n_points = data["inputs"].shape[0]
         points_idx = self.get_subsampling_idx(n_points, self.n_nodes_in_sample)
         data_out["inputs"] = data["inputs"][points_idx]
-        # print('data_out[inputs ] shape : ',data_out['inputs'].shape)
-        # data_out["inputs"]=data_out["inputs"][:,:2] # (avaialable only for spherical embedding)
         data_out["target"] = data["target"][points_idx]
         data_out["index"] = index
-
-        # print('data_out[inputs] : ',data_out['inputs'].shape)
-        # print(data_out['inputs'][0]) # random subsampled points
 
         return data_out
 
@@ -139,7 +111,7 @@ class GraphDataset(data.Dataset):
     def add_dataset_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
-        parser.add_argument("--dataset_dir", default="data/", type=str)
+        parser.add_argument("--dataset_dir", default="./dataset/", type=str)
         parser.add_argument("--n_fourier", default=5, type=int)
         parser.add_argument("--n_nodes_in_sample", default=1000, type=int)
         parser.add_argument("--time", type=parse_t_f, default=False)

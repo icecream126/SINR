@@ -3,15 +3,111 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 import torch
 import torchmetrics as tm
-
-import sys
-sys.path.append('./')
-from src.models.core import MLP, parse_t_f
+from src.models.core import parse_t_f
 from torch import nn
 from torch.optim import lr_scheduler
-from scipy.special import sph_harm
+
+import numpy as np
+import torch
+from src.models import initializers as init
+from src.modules.sine import Sine
 
 
+class MLP(nn.Module):
+    """
+    Arguments:
+        input_dim: int, size of the inputs
+        output_dim: int, size of the ouputs
+        hidden_dim: int = 512, number of neurons in hidden layers
+        n_layers: int = 4, number of layers (total, including first and last)
+        geometric_init: bool = False, initialize weights so that output is spherical
+        beta: int = 0, if positive, use SoftPlus(beta) instead of ReLU activations
+        sine: bool = False, use SIREN activation in the first layer
+        all_sine: bool = False, use SIREN activations in all other layers
+        skip: bool = True, add a skip connection to the middle layer
+        bn: bool = False, use batch normalization
+        dropout: float = 0.0, dropout rate
+    """
+
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,
+        hidden_dim: int,
+        n_layers: int,
+        geometric_init: bool,
+        beta: int,
+        sine: bool,
+        all_sine: bool,
+        skip: bool,
+        bn: bool,
+        dropout: float,
+    ):
+        super().__init__()
+
+        self.n_layers = n_layers
+        self.geometric_init = geometric_init
+        self.beta = beta
+        self.sine = sine
+        self.all_sine = all_sine
+        self.skip = skip
+        self.bn = bn
+        self.dropout = dropout
+
+        # Modules
+        self.model = nn.ModuleList()
+        in_dim = input_dim
+        out_dim = hidden_dim
+        for i in range(n_layers):
+            layer = nn.Linear(in_dim, out_dim)
+
+            # Custom initializations
+            if geometric_init:
+                if i == n_layers - 1:
+                    init.geometric_initializer(layer, in_dim)
+            elif sine:
+                if i == 0:
+                    init.first_layer_sine_initializer(layer)
+                elif all_sine:
+                    init.sine_initializer(layer)
+
+            self.model.append(layer)
+
+            # Activation, BN, and dropout
+            if i < n_layers - 1:
+                if sine:
+                    if i == 0:
+                        act = Sine()
+                    else:
+                        act = Sine() if all_sine else nn.Tanh()
+                elif beta > 0:
+                    act = nn.Softplus(beta=beta)  # IGR uses Softplus with beta=100
+                else:
+                    act = nn.ReLU(inplace=True)
+                self.model.append(act)
+                if bn:
+                    self.model.append(nn.LayerNorm(out_dim))
+                if dropout > 0:
+                    self.model.append(nn.Dropout(dropout))
+
+            in_dim = hidden_dim
+            # Skip connection
+            if i + 1 == int(np.ceil(n_layers / 2)) and skip:
+                self.skip_at = len(self.model)
+                in_dim += input_dim
+
+            out_dim = hidden_dim
+            if i + 1 == n_layers - 1:
+                out_dim = output_dim
+
+    def forward(self, x):
+        x_in = x
+        for i, layer in enumerate(self.model):
+            if i == self.skip_at:
+                x = torch.cat([x, x_in], dim=-1)
+            x = layer(x)
+
+        return x
 
 
 class GraphINR(pl.LightningModule):
@@ -24,9 +120,6 @@ class GraphINR(pl.LightningModule):
         n_layers: int = 4, number of layers (total, including first and last)
         lr: float = 0.0005, learning rate
         lr_patience: int = 500, learning rate patience (in number of epochs)
-        latents: bool = False, make the model an autodecoder with learnable latents
-        latent_dim: int = 256, size of the latents
-        lambda_latent: float = 0.0001, regularization factor for the latents
         geometric_init: bool = False, initialize weights so that output is spherical
         beta: int = 0, if positive, use SoftPlus(beta) instead of ReLU activations
         sine: bool = False, use SIREN activation in the first layer
@@ -42,13 +135,10 @@ class GraphINR(pl.LightningModule):
         input_dim: int,
         output_dim: int,
         dataset_size: int,
-        hidden_dim: int = 64, # 원래 512
+        hidden_dim: int = 512,
         n_layers: int = 4,
         lr: float = 0.0005,
         lr_patience: int = 500,
-        latents: bool = False,
-        latent_dim: int = 256,
-        lambda_latent: float = 0.0001,
         geometric_init: bool = False,
         beta: int = 0,
         sine: bool = False,
@@ -68,13 +158,10 @@ class GraphINR(pl.LightningModule):
         self.n_layers = n_layers
         self.lr = lr
         self.lr_patience = lr_patience
-        self.use_latents = latents
-        self.latent_dim = latent_dim
-        self.lambda_latent = lambda_latent
         self.geometric_init = geometric_init
         self.beta = beta
         self.sine = sine
-        self.all_sine = True
+        self.all_sine = all_sine
         self.skip = skip
         self.bn = bn
         self.dropout = dropout
@@ -82,14 +169,9 @@ class GraphINR(pl.LightningModule):
 
         self.sync_dist = torch.cuda.device_count() > 1
 
-        # Compute true input dimension
-        input_dim_true = input_dim
-        if latents:
-            input_dim_true += latent_dim
-
         # Modules
         self.model = MLP(
-            input_dim_true,
+            input_dim,
             output_dim,
             hidden_dim,
             n_layers,
@@ -101,10 +183,6 @@ class GraphINR(pl.LightningModule):
             bn,
             dropout,
         )
-
-        # Latent codes
-        if latents:
-            self.latents = nn.Embedding(dataset_size, latent_dim)
 
         # Loss
         if self.classifier:
@@ -119,51 +197,9 @@ class GraphINR(pl.LightningModule):
 
     def forward(self, points):
         return self.model(points)
-
-    def forward_with_preprocessing(self, data):
-        points, indices = data
-        if self.use_latents:
-            latents = self.latents(indices)
-            points = self.add_latent(points, latents)
-        return self.forward(points)
-
-    def add_latent(self, points, latents):
-        n_points = points.shape[1]
-        latents = latents.unsqueeze(1).repeat(1, n_points, 1)
-
-        return torch.cat([latents, points], dim=-1)
-
-    def latent_size_reg(self, indices):
-        latent_loss = self.latents(indices).norm(dim=-1).mean()
-        return latent_loss
-
-    @staticmethod
-    def gradient(inputs, outputs):
-        d_points = torch.ones_like(outputs, requires_grad=False, device=outputs.device)
-        points_grad = torch.autograd.grad(
-            outputs=outputs,
-            inputs=inputs,
-            grad_outputs=d_points,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True,
-        )[0][..., -3:]
-        return points_grad
-
+    
     def training_step(self, data):
-        inputs, target, indices = data["inputs"], data["target"], data["index"]
-        # print('inputs shape : ',inputs.shape) # torch.Size([5, 5000, 35])
-        # print('inputs : ',inputs)
-        # print('target shape : ',target.shape) # torch.Size([5, 5000, 1])
-        # print('target : ',target)
-        # print('index shape : ',indices.shape)
-        # print('index : ',index)
-
-        # Add latent codes
-        if self.use_latents:
-            latents = self.latents(indices)
-            inputs = self.add_latent(inputs, latents)
-
+        inputs, target = data["inputs"], data["target"]
         inputs.requires_grad_()
 
         # Predict signal
@@ -185,14 +221,6 @@ class GraphINR(pl.LightningModule):
                 "r2_score", self.r2_score, prog_bar=True, on_epoch=True, on_step=False
             )
 
-        # Latent size regularization
-        if self.use_latents:
-            latent_loss = self.latent_size_reg(indices)
-            loss += self.lambda_latent * latent_loss
-            self.log(
-                "latent_loss", latent_loss, prog_bar=True, sync_dist=self.sync_dist
-            )
-
         self.log("loss", loss, sync_dist=self.sync_dist)
 
         return loss
@@ -211,12 +239,10 @@ class GraphINR(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
-        parser.add_argument("--hidden_dim", type=int, default=64) # 원래 512
+        parser.add_argument("--hidden_dim", type=int, default=512)
         parser.add_argument("--n_layers", type=int, default=4)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
-        parser.add_argument("--latents", action="store_true")
-        parser.add_argument("--latent_dim", type=int, default=256)
         parser.add_argument("--lambda_latent", type=float, default=0.0001)
         parser.add_argument("--geometric_init", type=parse_t_f, default=False)
         parser.add_argument("--beta", type=int, default=0)
