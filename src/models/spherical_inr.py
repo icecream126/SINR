@@ -13,18 +13,58 @@ import numpy as np
 import torch
 
 from src.models import initializers as init
+from src.models.spherical_harmonics import get_spherical_harmonics, clear_spherical_harmonics_cache
 from scipy.special import lpmv
 import math
 
+def get_spherical_harmonics_by_np(max_order, theta, phi):
+    theta = theta.detach().cpu().numpy()
+    phi = phi.detach().cpu().numpy()
+
+    y = []
+    for l in range(max_order + 1):
+        for m in range(-l, l + 1):
+            Klm = math.sqrt((2*l+1) * math.factorial(l-abs(m)) / (4*math.pi * math.factorial(l+abs(m))))
+            
+            if m > 0:
+                Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
+            elif m == 0:
+                Ylm = Klm * lpmv(0, l, np.cos(theta))
+            else:
+                Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
+
+            y.append(torch.Tensor(Ylm).cuda())
+
+    return y
+
+def get_wrong_spherical_harmonics_by_np(max_order, theta, phi):
+    theta = theta.detach().cpu().numpy()
+    phi = phi.detach().cpu().numpy()
+
+    y = []
+    for l in range(max_order + 1):
+        for m in range(-l, l + 1):
+            Klm = math.sqrt((2*l+1) * math.factorial(l-m) / (4*math.pi * math.factorial(l+m)))
+            
+            if m > 0:
+                Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
+            elif m == 0:
+                Ylm = Klm * lpmv(0, l, np.cos(theta))
+            else:
+                Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
+
+            y.append(torch.Tensor(Ylm).cuda())
+
+    return y
 
 class SphericalHarmonicsLayer(nn.Module):
-    def __init__(self, max_order):
+    def __init__(self, max_order, hidden_dim):
         super(SphericalHarmonicsLayer, self).__init__()
         self.max_order = max_order
 
-        #self.theta_layer = nn.Linear(1, hidden_dim)
-        #self.phi_layer = nn.Linear(1, hidden_dim)
-        #self.time_layer = nn.Linear(1, hidden_dim)
+        self.theta_layer = nn.Linear(1, hidden_dim)
+        self.phi_layer = nn.Linear(1, hidden_dim)
+        self.time_layer = nn.Linear(1, hidden_dim)
         
     def forward(self, x):
 
@@ -35,35 +75,41 @@ class SphericalHarmonicsLayer(nn.Module):
         phi = x[:,:,1].unsqueeze(dim=2) # torch.Size([3,5000,1])
         time = x[:,:,2].unsqueeze(dim=2) # torch.Size([3,5000,1])
 
-        #theta = self.theta_layer(theta) # torch.Size([3,5000, k])
-        #phi = self.phi_layer(phi) # torch.Size([3,5000, k])
-        #time = self.time_layer(time) # torch.Size([3,5000,k]) # 굳이 할 필요는 없지만 나중에 concat 해주기 위해 dimension 맞춰주는 용도
+        theta = self.theta_layer(theta) # torch.Size([3,5000, k])
+        phi = self.phi_layer(phi) # torch.Size([3,5000, k])
+        time = self.time_layer(time) # torch.Size([3,5000,k]) # 굳이 할 필요는 없지만 나중에 concat 해주기 위해 dimension 맞춰주는 용도
 
-        #theta = theta.reshape(batch_size,-1,1) # torch.Size([3,5000*k,1])
-        #phi = phi.reshape(batch_size,-1,1) # torch.Size([3,5000*k,1])
-        #time = time.reshape(batch_size, -1, 1).cuda() # torch.Size(3, 5000*k,1)
+        theta = theta.reshape(batch_size,-1) # torch.Size([3,5000*k,1])
+        phi = phi.reshape(batch_size,-1) # torch.Size([3,5000*k,1])
+        time = time.reshape(batch_size, -1) # torch.Size(3, 5000*k,1)
 
-        theta = theta.detach().cpu().numpy()
-        phi = phi.detach().cpu().numpy()
-
-        y = []
-        for l in range(self.max_order + 1):
-            for m in range(-l, l + 1):
-                Klm = math.sqrt((2*l+1) * math.factorial(l-m) / (4*math.pi * math.factorial(l+m)))
-                
-                if m > 0:
-                    Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
-                elif m == 0:
-                    Ylm = Klm * lpmv(0, l, np.cos(theta))
-                else:
-                    Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
-                #  Ylm = torch.Size([3,5000*k,1])
-                y.append(torch.Tensor(Ylm).cuda())
+        # spherical harmonics using pytorch
+        sh_list = []
+        for l in range(self.max_order+1):
+            sh = get_spherical_harmonics(l, phi, theta)
+            sh_list.append(sh)
         
-        y = torch.stack(y, dim=2).squeeze(-1) # torch.Size([3, 5000*k, (order+1)**2])
-        x = torch.cat([y, time], dim=-1) # torch.Size([3,5000*k,(max_order+1)**2+1])
+        clear_spherical_harmonics_cache()
+        sh = torch.cat(sh_list, dim=-1)
+        
+        """
+        # Previous (wrong) version of spherical harmonics using numpy.
+        sh_list = get_wrong_spherical_harmonics_by_np(self.max_order, theta, phi)
+        sh = torch.stack(sh_list, dim = -1)
+        """
+        
+        """
+        # Correct version of spherical harmonics using numpy.
+        sh_list = get_wrong_spherical_harmonics_by_np(self.max_order, theta, phi)
+        sh = torch.stack(sh_list, dim = -1)
+        """
+        
+        x = torch.cat([sh, time.unsqueeze(2)], dim=2) # torch.Size([3,5000*k,(max_order+1)**2+1])
         x = x.reshape(batch_size, num_samples,-1) # torch.Size([3,5000, ((max_order+1)**2+1)*hidden_dim])
-
+        
+        # currently, without detach, gradient explodes...
+        x = x.detach()
+        
         return x
 
 
@@ -109,7 +155,7 @@ class MLP(nn.Module):
         self.dropout = dropout
         self.max_order = input_dim-1 # change this for spherical harmonics embedding max order (input_dim = dataset.n_fourier+1)
         print('Spherical Embedding order : ',self.max_order)
-        self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order)
+        self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order, hidden_dim)
 
         # Modules
         self.model = nn.ModuleList()
@@ -124,7 +170,7 @@ class MLP(nn.Module):
             if i==0:
                 layer = self.spherical_harmonics_layer
             elif i==1:
-                layer = nn.Linear(((self.max_order+1)**2+1), hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
+                layer = nn.Linear(((self.max_order+1)**2+1)*hidden_dim,hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
             else : 
                 layer = nn.Linear(hidden_dim, out_dim)
             

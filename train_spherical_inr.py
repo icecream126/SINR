@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader
 import sys
 sys.path.append('./')
 
-from src.data.shfeat_dataset import GraphDataset
-from src.models.shfeat_org_inr import SHFeatINR
+from src.data.spherical_dataset import GraphDataset
+from src.models.spherical_inr import SHFeatINR
 
 if __name__=='__main__':
     pl.seed_everything(1234)
