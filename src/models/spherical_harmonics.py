@@ -20,21 +20,21 @@ def cache(cache, key_fn):
     return cache_inner
 # constants
 
-CACHE = {}
+#CACHE = {}
 
-def clear_spherical_harmonics_cache():
-    CACHE.clear()
+#def clear_spherical_harmonics_cache():
+#    CACHE.clear()
 
-def lpmv_cache_key_fn(l, m, x):
-    return (l, m)
+#def lpmv_cache_key_fn(l, m, x):
+#    return (l, m)
 
 # spherical harmonics
 
-@lru_cache(maxsize = 1000)
+#@lru_cache(maxsize = 1000)
 def semifactorial(x):
     return reduce(mul, range(x, 1, -2), 1.)
 
-@lru_cache(maxsize = 1000)
+#@lru_cache(maxsize = 1000)
 def pochhammer(x, k):
     return reduce(mul, range(x + 1, x + k), float(x))
 
@@ -43,7 +43,7 @@ def negative_lpmv(l, m, y):
         y *= ((-1) ** m / pochhammer(l + m + 1, -2 * m))
     return y
 
-@cache(cache = CACHE, key_fn = lpmv_cache_key_fn)
+#@cache(cache = CACHE, key_fn = lpmv_cache_key_fn)
 def lpmv(l, m, x):
     """Associated Legendre function including Condon-Shortley phase.
 
@@ -71,14 +71,14 @@ def lpmv(l, m, x):
         return negative_lpmv(l, m, y)
 
     # Recursively precompute lower degree harmonics
-    lpmv(l-1, m, x)
+    #lpmv(l-1, m, x)
 
     # Compute P_{l}^m from recursion in P_{l-1}^m and P_{l-2}^m
     # Inplace speedup
     y = ((2*l-1) / (l-m_abs)) * x * lpmv(l-1, m_abs, x)
 
     if l - m_abs > 1:
-        y -= ((l+m_abs-1)/(l-m_abs)) * CACHE[(l-2, m_abs)]
+        y -= ((l+m_abs-1)/(l-m_abs)) * lpmv(l-2, m_abs, x)
     
     if m < 0:
         y = self.negative_lpmv(l, m, y)
@@ -113,7 +113,12 @@ def get_spherical_harmonics_element(l, m, theta, phi):
         Y = torch.sin(m_abs * phi)
 
     Y *= leg
-    N *= sqrt(2. / pochhammer(l - m_abs + 1, 2 * m_abs))
+    
+    ####### IMPORTANT #######
+    # somehow works better without normalization...
+    #N *= sqrt(2. / pochhammer(l - m_abs + 1, 2 * m_abs))
+    ####### IMPORTANT #######
+    
     Y *= N
     return Y
 

@@ -6,7 +6,7 @@ CUDA_VISIBLE_DEVICES=0 python train_euclidean_inr.py \
     --skip=True \
     --time=True
 
-CUDA_VISIBLE_DEVICES=0 python train_spherical_inr.py \
+CUDA_VISIBLE_DEVICES=1 python train_spherical_inr.py \
     --dataset_dir dataset/weather_time_dpt2m_cut/ \
     --n_fourier 3 \
     --n_nodes_in_sample 5000 \

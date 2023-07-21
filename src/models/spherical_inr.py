@@ -13,7 +13,7 @@ import numpy as np
 import torch
 
 from src.models import initializers as init
-from src.models.spherical_harmonics import get_spherical_harmonics, clear_spherical_harmonics_cache
+from src.models.spherical_harmonics import get_spherical_harmonics
 from scipy.special import lpmv
 import math
 
@@ -89,7 +89,7 @@ class SphericalHarmonicsLayer(nn.Module):
             sh = get_spherical_harmonics(l, phi, theta)
             sh_list.append(sh)
         
-        clear_spherical_harmonics_cache()
+        #clear_spherical_harmonics_cache()
         sh = torch.cat(sh_list, dim=-1)
         
         """
