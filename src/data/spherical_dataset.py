@@ -22,6 +22,7 @@ class GraphDataset(data.Dataset):
         cache_fourier=True,
         in_memory=True,
         cut=-1,
+        dataset_type = 'train',
         **kwargs,
     ):
         self.dataset_dir = dataset_dir
@@ -31,11 +32,15 @@ class GraphDataset(data.Dataset):
         self.cache_fourier = cache_fourier
         self._fourier = None
         self._fourier_path = os.path.join(dataset_dir, "fourier.npy")
-        self._points_path = os.path.join(dataset_dir,"spherical_points.npy")
         self.in_memory = in_memory
         self.cut = cut
-
-        self.filenames = self.get_filenames(dataset_dir)
+        self.dataset_type = dataset_type
+        if self.dataset_type == 'train':
+            self._points_path = os.path.join(dataset_dir,"train_spherical_points.npy")
+        elif self.dataset_type == 'valid':
+            self._points_path = os.path.join(dataset_dir,"valid_spherical_points.npy")
+        
+        self.filenames = self.get_filenames(dataset_dir, self.dataset_type)
         if cut > 0:
             self.filenames = self.filenames[:cut]
         self.npzs = [np.load(f) for f in self.filenames]
@@ -70,15 +75,9 @@ class GraphDataset(data.Dataset):
             if self._fourier is None:
                 self._fourier = np.load(self._points_path)
                 self._fourier = torch.from_numpy(self._fourier).float()
-                # print('self._fourier shape : ',self._fourier.shape)
-                # print('first fourier : ',self._fourier[0])
-                # self._fourier = self._fourier[:, : self.n_fourier]
             return self._fourier
         else:
             arr = self.npzs[index]["points"]
-            # print('not cache fourier')
-            # print('points :',arr)
-
             return torch.from_numpy(arr).float()
             
     def get_time(self, index):
@@ -93,12 +92,9 @@ class GraphDataset(data.Dataset):
 
     def get_inputs(self, index):
         arr = self.get_fourier(index)
-        # print('get_inputs arr : ',arr.shape)
-        # print(arr[0])
         if self.time:
             time = self.get_time(index)
             arr = self.add_time(arr, time)
-        # print('time added arr : ',arr.shape)
         return arr
 
     def get_target(self, index):
@@ -118,13 +114,8 @@ class GraphDataset(data.Dataset):
         n_points = data["inputs"].shape[0]
         points_idx = self.get_subsampling_idx(n_points, self.n_nodes_in_sample)
         data_out["inputs"] = data["inputs"][points_idx]
-        # print('data_out[inputs ] shape : ',data_out['inputs'].shape)
-        # data_out["inputs"]=data_out["inputs"][:,:2] # (avaialable only for spherical embedding)
         data_out["target"] = data["target"][points_idx]
         data_out["index"] = index
-
-        # print('data_out[inputs] : ',data_out['inputs'].shape)
-        # print(data_out['inputs'][0]) # random subsampled points
 
         return data_out
 
@@ -145,11 +136,12 @@ class GraphDataset(data.Dataset):
         parser.add_argument("--time", type=parse_t_f, default=False)
         parser.add_argument("--in_memory", type=parse_t_f, default=True)
         parser.add_argument("--cut", default=-1, type=int)
+        parser.add_argument("--dataset_type", type=str)
 
         return parser
 
     @staticmethod
-    def get_filenames(dataset_dir, subset=None):
+    def get_filenames(dataset_dir, dataset_type, subset=None):
         if subset is None:
             subset = ["*"]
 
@@ -165,8 +157,15 @@ class GraphDataset(data.Dataset):
 
         npz_dir = os.path.join(dataset_dir, "npz_files")
         npz_filenames = []
-        for f in subset:
-            npz_filenames += glob.glob(os.path.join(npz_dir, f"{f}.npz"))
+        # for f in subset:
+        #     npz_filenames += glob.glob(os.path.join(npz_dir, f"{f}.npz"))
+        if dataset_type == 'train':
+            npz_filenames += glob.glob(os.path.join(npz_dir, r'train_*.npz'))
+        elif dataset_type == 'valid' : 
+            npz_filenames += glob.glob(os.path.join(npz_dir, r'valid_*.npz'))
+        else:
+            print('Invalid subset!')
+            exit(0)
 
         npz_filenames = sorted(npz_filenames, key=lambda s: s.split("/")[-1])
 
