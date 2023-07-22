@@ -19,6 +19,7 @@ if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
+    parser.add_argument("--train_valid_ratio", default=0.8, type=float)
     parser.add_argument("--patience", default=5000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--n_workers", default=0, type=int)
@@ -29,8 +30,12 @@ if __name__=='__main__':
 
     # Data
     dataset = GraphDataset(**vars(args))
-    loader = DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
+    train_dataset, valid_dataset = GraphDataset.get_train_valid_split(dataset, args.n_nodes_in_sample, args.train_valid_ratio)
+    train_loader = DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
+    )
+    valid_loader = DataLoader(
+        valid_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
     )
 
     # Model
@@ -40,15 +45,15 @@ if __name__=='__main__':
 
     # Training
     checkpoint_cb = ModelCheckpoint(
-        monitor="loss", mode="min", save_last=True, filename="best"
+        monitor="valid_loss", mode="min", save_last=True, filename="best"
     )
-    earlystopping_cb = EarlyStopping(monitor="loss", patience=args.patience)
+    earlystopping_cb = EarlyStopping(monitor="valid_loss", patience=args.patience)
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
     logger = WandbLogger(
         config=args, 
         project="SphericalINR", 
         save_dir="lightning_logs", 
-        name='shfeat_org/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample)
+        name='shfeat/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample)
         )
     logger.experiment.log(
         {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}
@@ -62,4 +67,4 @@ if __name__=='__main__':
         gpus=torch.cuda.device_count(),
         strategy="ddp" if torch.cuda.device_count() > 1 else None,
     )
-    trainer.fit(model, loader)
+    trainer.fit(model, train_loader, valid_loader)

@@ -184,3 +184,27 @@ class GraphDataset(data.Dataset):
             )
 
         return idx
+
+    @staticmethod
+    def get_train_valid_split(dataset, n_nodes, train_ratio):
+        ids = torch.randperm(n_nodes)
+        train_size = int(n_nodes * train_ratio)
+        train_idx, valid_idx = ids[:train_size], ids[train_size:]
+
+        train_dataset = [
+            {
+                'inputs': dataset[i]['inputs'][train_idx],
+                'target': dataset[i]['target'][train_idx],
+                'index': dataset[i]['index']
+            }
+            for i in range(24)
+        ]
+        valid_dataset = [
+            {
+                'inputs': dataset[i]['inputs'][valid_idx],
+                'target': dataset[i]['target'][valid_idx],
+                'index': dataset[i]['index']
+            }
+            for i in range(24)
+        ]
+        return train_dataset, valid_dataset

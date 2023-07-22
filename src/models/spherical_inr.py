@@ -313,7 +313,8 @@ class SHFeatINR(pl.LightningModule):
             self.loss_fn = nn.MSELoss()
 
         # Metrics
-        self.r2_score = tm.R2Score(output_dim)
+        self.train_r2_score = tm.R2Score(output_dim)
+        self.valid_r2_score = tm.R2Score(output_dim)
 
         self.save_hyperparameters()
 
@@ -350,7 +351,7 @@ class SHFeatINR(pl.LightningModule):
         )[0][..., -3:]
         return points_grad
 
-    def training_step(self, data):
+    def training_step(self, data, batch_idx):
         inputs, target, indices = data["inputs"], data["target"], data["index"]
         # print('inputs shape : ',inputs.shape) # torch.Size([5, 5000, 35])
         # print('inputs : ',inputs)
@@ -378,11 +379,11 @@ class SHFeatINR(pl.LightningModule):
         loss = main_loss
 
         if not self.classifier:
-            self.r2_score(
+            self.train_r2_score(
                 pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
             )
             self.log(
-                "r2_score", self.r2_score, prog_bar=True, on_epoch=True, on_step=False
+                "r2_score", self.train_r2_score, prog_bar=True, on_epoch=True, on_step=False
             )
 
         # Latent size regularization
@@ -394,6 +395,51 @@ class SHFeatINR(pl.LightningModule):
             )
 
         self.log("loss", loss, sync_dist=self.sync_dist)
+
+        return loss
+    
+    def validation_step(self, data, batch_idx):
+        inputs, target, indices = data["inputs"], data["target"], data["index"]
+        # print('inputs shape : ',inputs.shape) # torch.Size([5, 5000, 35])
+        # print('inputs : ',inputs)
+        # print('target shape : ',target.shape) # torch.Size([5, 5000, 1])
+        # print('target : ',target)
+        # print('index shape : ',indices.shape)
+        # print('index : ',index)
+
+        # Add latent codes
+        if self.use_latents:
+            latents = self.latents(indices)
+            inputs = self.add_latent(inputs, latents)
+
+        # Predict signal
+        pred = self.forward(inputs)
+
+        # Loss
+        if self.classifier:
+            pred = torch.permute(pred, (0, 2, 1))
+
+        main_valid_loss = self.loss_fn(pred, target)
+        self.log("main_valid_loss", main_valid_loss, prog_bar=True, sync_dist=self.sync_dist)
+        loss = main_valid_loss
+
+        if not self.classifier:
+            self.valid_r2_score(
+                pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
+            )
+            self.log(
+                "valid_r2_score", self.valid_r2_score, prog_bar=True, on_epoch=True, on_step=False
+            )
+
+        # Latent size regularization
+        if self.use_latents:
+            latent_loss = self.latent_size_reg(indices)
+            loss += self.lambda_latent * latent_loss
+            self.log(
+                "valid_latent_loss", latent_loss, prog_bar=True, sync_dist=self.sync_dist
+            )
+
+        self.log("valid_loss", loss, sync_dist=self.sync_dist)
 
         return loss
 
