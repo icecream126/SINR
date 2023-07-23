@@ -19,7 +19,6 @@ if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
-    parser.add_argument("--train_valid_ratio", default=0.8, type=float)
     parser.add_argument("--patience", default=5000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--n_workers", default=0, type=int)
@@ -29,8 +28,10 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     # Data
-    dataset = GraphDataset(**vars(args))
-    train_dataset, valid_dataset = GraphDataset.get_train_valid_split(dataset, args.n_nodes_in_sample, args.train_valid_ratio)
+    args.dataset_type = 'train'
+    train_dataset = GraphDataset(**vars(args))
+    args.dataset_type = 'valid'
+    valid_dataset = GraphDataset(**vars(args))
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
     )
@@ -39,9 +40,9 @@ if __name__=='__main__':
     )
 
     # Model
-    input_dim = dataset.n_fourier + (1 if dataset.time else 0)
-    output_dim = dataset.target_dim
-    model = SHFeatINR(input_dim, output_dim, len(dataset), **vars(args))
+    input_dim = train_dataset.n_fourier + (1 if train_dataset.time else 0)
+    output_dim = train_dataset.target_dim
+    model = SHFeatINR(input_dim, output_dim, len(train_dataset), **vars(args))
 
     # Training
     checkpoint_cb = ModelCheckpoint(

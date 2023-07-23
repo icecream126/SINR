@@ -419,9 +419,9 @@ class SHFeatINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
-        main_valid_loss = self.loss_fn(pred, target)
-        self.log("main_valid_loss", main_valid_loss, prog_bar=True, sync_dist=self.sync_dist)
-        loss = main_valid_loss
+        main_loss = self.loss_fn(pred, target)
+        self.log("main_valid_loss", main_loss, prog_bar=True, sync_dist=self.sync_dist)
+        loss = main_loss
 
         if not self.classifier:
             self.valid_r2_score(
