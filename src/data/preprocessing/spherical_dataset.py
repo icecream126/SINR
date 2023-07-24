@@ -8,11 +8,11 @@ import torch.utils.data as data
 
 import sys
 sys.path.append('./')
-from src.models.core import parse_t_f
+from src.utils.core import parse_t_f
 from tqdm import tqdm
 
 
-class GraphDataset(data.Dataset):
+class Dataset(data.Dataset):
     def __init__(
         self,
         dataset_dir,

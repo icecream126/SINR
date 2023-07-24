@@ -3,14 +3,13 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 import torch
 import torchmetrics as tm
-from src.models.core import parse_t_f
 from torch import nn
 from torch.optim import lr_scheduler
 
 import numpy as np
 import torch
-from src.models import initializers as init
-from src.modules.sine import Sine
+from src.utils import initializers as init
+from src.utils.sine import Sine
 
 
 class MLP(nn.Module):

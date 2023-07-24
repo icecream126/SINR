@@ -6,56 +6,13 @@ import torchmetrics as tm
 
 import sys
 sys.path.append('./')
-from src.models.core import parse_t_f
+from src.utils.core import parse_t_f
 from torch import nn
 from torch.optim import lr_scheduler
-import numpy as np
 import torch
 
-from src.models import initializers as init
-from src.models.spherical_harmonics import get_spherical_harmonics
-from scipy.special import lpmv
-import math
-
-def get_spherical_harmonics_by_np(max_order, theta, phi):
-    theta = theta.detach().cpu().numpy()
-    phi = phi.detach().cpu().numpy()
-
-    y = []
-    for l in range(max_order + 1):
-        for m in range(-l, l + 1):
-            Klm = math.sqrt((2*l+1) * math.factorial(l-abs(m)) / (4*math.pi * math.factorial(l+abs(m))))
-            
-            if m > 0:
-                Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
-            elif m == 0:
-                Ylm = Klm * lpmv(0, l, np.cos(theta))
-            else:
-                Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
-
-            y.append(torch.Tensor(Ylm).cuda())
-
-    return y
-
-def get_wrong_spherical_harmonics_by_np(max_order, theta, phi):
-    theta = theta.detach().cpu().numpy()
-    phi = phi.detach().cpu().numpy()
-
-    y = []
-    for l in range(max_order + 1):
-        for m in range(-l, l + 1):
-            Klm = math.sqrt((2*l+1) * math.factorial(l-m) / (4*math.pi * math.factorial(l+m)))
-            
-            if m > 0:
-                Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
-            elif m == 0:
-                Ylm = Klm * lpmv(0, l, np.cos(theta))
-            else:
-                Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
-
-            y.append(torch.Tensor(Ylm).cuda())
-
-    return y
+from src.utils import initializers as init
+from src.utils.spherical_harmonics import get_spherical_harmonics
 
 class SphericalHarmonicsLayer(nn.Module):
     def __init__(self, max_order, hidden_dim):
@@ -214,7 +171,7 @@ class MLP(nn.Module):
 
 
 
-class SHFeatINR(pl.LightningModule):
+class SphericalINR(pl.LightningModule):
     """
     Arguments:
         input_dim: int, size of the inputs
@@ -242,7 +199,7 @@ class SHFeatINR(pl.LightningModule):
         input_dim: int,
         output_dim: int,
         dataset_size: int,
-        hidden_dim: int = 64, # 원래 512
+        hidden_dim: int = 512,
         n_layers: int = 4,
         lr: float = 0.0005,
         lr_patience: int = 500,
