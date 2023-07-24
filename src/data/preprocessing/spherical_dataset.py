@@ -1,15 +1,13 @@
-import glob
 import os
+import glob
+from tqdm import tqdm
 from argparse import ArgumentParser
 
 import numpy as np
 import torch
 import torch.utils.data as data
 
-import sys
-sys.path.append('./')
 from src.utils.core import parse_t_f
-from tqdm import tqdm
 
 
 class SphericalDataset(data.Dataset):
@@ -31,7 +29,6 @@ class SphericalDataset(data.Dataset):
         self.time = time
         self.cache_fourier = cache_fourier
         self._fourier = None
-        self._fourier_path = os.path.join(dataset_dir, "fourier.npy")
         self.in_memory = in_memory
         self.cut = cut
         self.dataset_type = dataset_type
@@ -57,19 +54,6 @@ class SphericalDataset(data.Dataset):
 
         return data
 
-    # This is code for getting input as spectral embedding
-    # def get_fourier(self, index):
-    #     if self.cache_fourier and os.path.exists(self._fourier_path):
-    #         if self._fourier is None:
-    #             self._fourier = np.load(self._fourier_path)
-    #             self._fourier = torch.from_numpy(self._fourier).float()
-    #             self._fourier = self._fourier[:, : self.n_fourier]
-    #         return self._fourier
-    #     else:
-    #         arr = self.npzs[index]["fourier"][:, : self.n_fourier]
-    #         return torch.from_numpy(arr).float()
-
-    # This is code for getting input as (x,y,z)
     def get_fourier(self, index):
         if self.cache_fourier and os.path.exists(self._points_path):
             if self._fourier is None:
@@ -113,8 +97,6 @@ class SphericalDataset(data.Dataset):
 
         n_points = data["inputs"].shape[0]
         points_idx = self.get_subsampling_idx(n_points, self.n_nodes_in_sample)
-        # print(n_points)
-        # print(data['target'].shape)
         data_out["inputs"] = data["inputs"][points_idx]
         data_out["target"] = data["target"][points_idx]
         data_out["index"] = index

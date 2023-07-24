@@ -138,47 +138,47 @@ def get_spherical_harmonics(l, theta, phi):
     Returns:
         tensor of shape [*theta.shape, 2*l+1]
     """
-    return torch.stack([ get_spherical_harmonics_element(l, m, theta, phi) \
+    return torch.cat([ get_spherical_harmonics_element(l, m, theta, phi) \
                          for m in range(-l, l+1) ],
                         dim = -1)
 
 
-def get_spherical_harmonics_by_np(max_order, theta, phi):
-    theta = theta.detach().cpu().numpy()
-    phi = phi.detach().cpu().numpy()
+# def get_spherical_harmonics_by_np(max_order, theta, phi):
+#     theta = theta.detach().cpu().numpy()
+#     phi = phi.detach().cpu().numpy()
 
-    y = []
-    for l in range(max_order + 1):
-        for m in range(-l, l + 1):
-            Klm = math.sqrt((2*l+1) * math.factorial(l-abs(m)) / (4*math.pi * math.factorial(l+abs(m))))
+#     y = []
+#     for l in range(max_order + 1):
+#         for m in range(-l, l + 1):
+#             Klm = math.sqrt((2*l+1) * math.factorial(l-abs(m)) / (4*math.pi * math.factorial(l+abs(m))))
             
-            if m > 0:
-                Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
-            elif m == 0:
-                Ylm = Klm * lpmv(0, l, np.cos(theta))
-            else:
-                Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
+#             if m > 0:
+#                 Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
+#             elif m == 0:
+#                 Ylm = Klm * lpmv(0, l, np.cos(theta))
+#             else:
+#                 Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
 
-            y.append(torch.Tensor(Ylm).cuda())
+#             y.append(torch.Tensor(Ylm).cuda())
 
-    return y
+#     return y
 
-def get_wrong_spherical_harmonics_by_np(max_order, theta, phi):
-    theta = theta.detach().cpu().numpy()
-    phi = phi.detach().cpu().numpy()
+# def get_wrong_spherical_harmonics_by_np(max_order, theta, phi):
+#     theta = theta.detach().cpu().numpy()
+#     phi = phi.detach().cpu().numpy()
 
-    y = []
-    for l in range(max_order + 1):
-        for m in range(-l, l + 1):
-            Klm = math.sqrt((2*l+1) * math.factorial(l-m) / (4*math.pi * math.factorial(l+m)))
+#     y = []
+#     for l in range(max_order + 1):
+#         for m in range(-l, l + 1):
+#             Klm = math.sqrt((2*l+1) * math.factorial(l-m) / (4*math.pi * math.factorial(l+m)))
             
-            if m > 0:
-                Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
-            elif m == 0:
-                Ylm = Klm * lpmv(0, l, np.cos(theta))
-            else:
-                Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
+#             if m > 0:
+#                 Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
+#             elif m == 0:
+#                 Ylm = Klm * lpmv(0, l, np.cos(theta))
+#             else:
+#                 Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
 
-            y.append(torch.Tensor(Ylm).cuda())
+#             y.append(torch.Tensor(Ylm).cuda())
 
-    return y
+#     return y

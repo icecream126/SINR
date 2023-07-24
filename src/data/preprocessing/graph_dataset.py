@@ -1,12 +1,13 @@
-import glob
 import os
+import glob
+from tqdm import tqdm
 from argparse import ArgumentParser
 
 import numpy as np
 import torch
 import torch.utils.data as data
+
 from src.utils.core import parse_t_f
-from tqdm import tqdm
 
 
 class GraphDataset(data.Dataset):
@@ -22,14 +23,12 @@ class GraphDataset(data.Dataset):
         dataset_type = 'train',
         **kwargs,
     ):
-        print(dataset_dir)
         self.dataset_dir = dataset_dir
         self.n_fourier = n_fourier
         self.n_nodes_in_sample = n_nodes_in_sample
         self.time = time
         self.cache_fourier = cache_fourier
         self._fourier = None
-        self._fourier_path = os.path.join(dataset_dir, "fourier.npy")
         self.in_memory = in_memory
         self.cut = cut
         self.dataset_type = dataset_type

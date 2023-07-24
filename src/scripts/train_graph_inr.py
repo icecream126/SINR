@@ -52,7 +52,7 @@ if __name__=='__main__':
     logger = WandbLogger(
         project="SphericalINR", 
         save_dir="lightning_logs",
-        name='graph/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample)
+        name='graph/'+str(args.dataset_dir[8:])
         )
     logger.experiment.log(
         {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}

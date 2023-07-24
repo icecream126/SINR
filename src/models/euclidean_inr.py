@@ -192,15 +192,17 @@ class EuclideanINR(pl.LightningModule):
             self.loss_fn = nn.MSELoss()
 
         # Metrics
-        self.r2_score = tm.R2Score(output_dim)
+        self.train_r2_score = tm.R2Score(output_dim)
+        self.valid_r2_score = tm.R2Score(output_dim)
 
         self.save_hyperparameters()
 
     def forward(self, points):
         return self.model(points)
     
-    def training_step(self, data):
-        inputs, target = data["inputs"], data["target"]
+    def training_step(self, data, batch_idx):
+        inputs, target, indices = data["inputs"], data["target"], data["index"]
+
         inputs.requires_grad_()
 
         # Predict signal
@@ -210,19 +212,39 @@ class EuclideanINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
-        main_loss = self.loss_fn(pred, target)
-        self.log("main_loss", main_loss, prog_bar=True, sync_dist=self.sync_dist)
-        loss = main_loss
+        loss = self.loss_fn(pred, target)
+        self.log("loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
         if not self.classifier:
-            self.r2_score(
+            self.train_r2_score(
                 pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
             )
             self.log(
-                "r2_score", self.r2_score, prog_bar=True, on_epoch=True, on_step=False
+                "r2_score", self.train_r2_score, prog_bar=True, on_epoch=True, on_step=False
             )
 
-        self.log("loss", loss, sync_dist=self.sync_dist)
+        return loss
+    
+    def validation_step(self, data, batch_idx):
+        inputs, target, indices = data["inputs"], data["target"], data["index"]
+
+        # Predict signal
+        pred = self.forward(inputs)
+
+        # Loss
+        if self.classifier:
+            pred = torch.permute(pred, (0, 2, 1))
+
+        loss = self.loss_fn(pred, target)
+        self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+
+        if not self.classifier:
+            self.valid_r2_score(
+                pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
+            )
+            self.log(
+                "valid_r2_score", self.valid_r2_score, prog_bar=True, on_epoch=True, on_step=False
+            )
 
         return loss
 

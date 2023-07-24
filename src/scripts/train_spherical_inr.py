@@ -39,7 +39,7 @@ if __name__=='__main__':
     )
 
     # Model
-    input_dim = train_dataset.n_fourier + (1 if train_dataset.time else 0)
+    input_dim = 2 + (1 if train_dataset.time else 0)
     output_dim = train_dataset.target_dim
     model = SphericalINR(input_dim, output_dim, len(train_dataset), **vars(args))
 
@@ -53,14 +53,14 @@ if __name__=='__main__':
         config=args, 
         project="SphericalINR", 
         save_dir="lightning_logs", 
-        name='spherical/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample)
+        name='spherical/'+str(args.dataset_dir[8:])
         )
     logger.experiment.log(
         {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}
     )
     trainer = pl.Trainer.from_argparse_args(
         args,
-        max_epochs=5000,
+        max_epochs=-1,
         log_every_n_steps=1,
         callbacks=[checkpoint_cb, earlystopping_cb, lrmonitor_cb],
         logger=logger,

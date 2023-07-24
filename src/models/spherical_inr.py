@@ -15,57 +15,45 @@ from src.utils import initializers as init
 from src.utils.spherical_harmonics import get_spherical_harmonics
 
 class SphericalHarmonicsLayer(nn.Module):
-    def __init__(self, max_order, hidden_dim):
+    def __init__(self, max_order):
         super(SphericalHarmonicsLayer, self).__init__()
         self.max_order = max_order
 
-        self.theta_layer = nn.Linear(1, hidden_dim)
-        self.phi_layer = nn.Linear(1, hidden_dim)
-        self.time_layer = nn.Linear(1, hidden_dim)
+        # self.theta_layer = nn.Linear(1, hidden_dim)
+        # self.phi_layer = nn.Linear(1, hidden_dim)
+        # self.time_layer = nn.Linear(1, hidden_dim)
         
     def forward(self, x):
 
-        batch_size = x.shape[0]
-        num_samples = x.shape[1]
+        # batch_size = x.shape[0]
+        # num_samples = x.shape[1]
 
-        theta = x[:,:,0].unsqueeze(dim=2) # torch.Size([3,5000,1])
-        phi = x[:,:,1].unsqueeze(dim=2) # torch.Size([3,5000,1])
-        time = x[:,:,2].unsqueeze(dim=2) # torch.Size([3,5000,1])
+        theta = x[:,:,0].unsqueeze(-1) # torch.Size([3,5000,1])
+        phi = x[:,:,1].unsqueeze(-1) # torch.Size([3,5000,1])
+        time = x[:,:,2].unsqueeze(-1) # torch.Size([3,5000,1])
 
-        theta = self.theta_layer(theta) # torch.Size([3,5000, k])
-        phi = self.phi_layer(phi) # torch.Size([3,5000, k])
-        time = self.time_layer(time) # torch.Size([3,5000,k]) # 굳이 할 필요는 없지만 나중에 concat 해주기 위해 dimension 맞춰주는 용도
+        # theta = self.theta_layer(theta) # torch.Size([3,5000, k])
+        # phi = self.phi_layer(phi) # torch.Size([3,5000, k])
+        # time = self.time_layer(time) # torch.Size([3,5000,k]) # 굳이 할 필요는 없지만 나중에 concat 해주기 위해 dimension 맞춰주는 용도
 
-        theta = theta.reshape(batch_size,-1) # torch.Size([3,5000*k,1])
-        phi = phi.reshape(batch_size,-1) # torch.Size([3,5000*k,1])
-        time = time.reshape(batch_size, -1) # torch.Size(3, 5000*k,1)
+        # theta = theta.reshape(batch_size, -1) # torch.Size([3,5000*k,1])
+        # phi = phi.reshape(batch_size, -1) # torch.Size([3,5000*k,1])
+        # time = time.reshape(batch_size, -1) # torch.Size(3, 5000*k,1)
 
         # spherical harmonics using pytorch
         sh_list = []
         for l in range(self.max_order+1):
             sh = get_spherical_harmonics(l, phi, theta)
             sh_list.append(sh)
-        
+
         #clear_spherical_harmonics_cache()
         sh = torch.cat(sh_list, dim=-1)
-        
-        """
-        # Previous (wrong) version of spherical harmonics using numpy.
-        sh_list = get_wrong_spherical_harmonics_by_np(self.max_order, theta, phi)
-        sh = torch.stack(sh_list, dim = -1)
-        """
-        
-        """
-        # Correct version of spherical harmonics using numpy.
-        sh_list = get_wrong_spherical_harmonics_by_np(self.max_order, theta, phi)
-        sh = torch.stack(sh_list, dim = -1)
-        """
-        
-        x = torch.cat([sh, time.unsqueeze(2)], dim=2) # torch.Size([3,5000*k,(max_order+1)**2+1])
-        x = x.reshape(batch_size, num_samples,-1) # torch.Size([3,5000, ((max_order+1)**2+1)*hidden_dim])
+
+        x = torch.cat([sh, time], dim=-1) # torch.Size([3,5000*k,(max_order+1)**2+1])
+        # x = x.reshape(batch_size, num_samples,-1) # torch.Size([3,5000, ((max_order+1)**2+1)*hidden_dim])
         
         # currently, without detach, gradient explodes...
-        x = x.detach()
+        # x = x.detach()
         
         return x
 
@@ -112,7 +100,7 @@ class MLP(nn.Module):
         self.dropout = dropout
         self.max_order = input_dim-1 # change this for spherical harmonics embedding max order (input_dim = dataset.n_fourier+1)
         print('Spherical Embedding order : ',self.max_order)
-        self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order, hidden_dim)
+        self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order)
 
         # Modules
         self.model = nn.ModuleList()
@@ -127,7 +115,7 @@ class MLP(nn.Module):
             if i==0:
                 layer = self.spherical_harmonics_layer
             elif i==1:
-                layer = nn.Linear(((self.max_order+1)**2+1)*hidden_dim,hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
+                layer = nn.Linear(((self.max_order+1)**2+1),hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
             else : 
                 layer = nn.Linear(hidden_dim, out_dim)
             
@@ -163,8 +151,7 @@ class MLP(nn.Module):
                 out_dim = output_dim
 
     def forward(self, x):
-        x_in = x    
-        for i, layer in enumerate(self.model):
+        for layer in self.model:
             x = layer(x)
         return x
 
@@ -310,12 +297,6 @@ class SphericalINR(pl.LightningModule):
 
     def training_step(self, data, batch_idx):
         inputs, target, indices = data["inputs"], data["target"], data["index"]
-        # print('inputs shape : ',inputs.shape) # torch.Size([5, 5000, 35])
-        # print('inputs : ',inputs)
-        # print('target shape : ',target.shape) # torch.Size([5, 5000, 1])
-        # print('target : ',target)
-        # print('index shape : ',indices.shape)
-        # print('index : ',index)
 
         # Add latent codes
         if self.use_latents:
@@ -357,12 +338,6 @@ class SphericalINR(pl.LightningModule):
     
     def validation_step(self, data, batch_idx):
         inputs, target, indices = data["inputs"], data["target"], data["index"]
-        # print('inputs shape : ',inputs.shape) # torch.Size([5, 5000, 35])
-        # print('inputs : ',inputs)
-        # print('target shape : ',target.shape) # torch.Size([5, 5000, 1])
-        # print('target : ',target)
-        # print('index shape : ',indices.shape)
-        # print('index : ',index)
 
         # Add latent codes
         if self.use_latents:
@@ -414,7 +389,7 @@ class SphericalINR(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
-        parser.add_argument("--hidden_dim", type=int, default=64) # 원래 512
+        parser.add_argument("--hidden_dim", type=int, default=512)
         parser.add_argument("--n_layers", type=int, default=4)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)

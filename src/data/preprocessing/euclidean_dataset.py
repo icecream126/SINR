@@ -1,15 +1,13 @@
-import glob
 import os
+import glob
+from tqdm import tqdm
 from argparse import ArgumentParser
 
 import numpy as np
 import torch
 import torch.utils.data as data
 
-import sys
-sys.path.append('./')
 from src.utils.core import parse_t_f
-from tqdm import tqdm
 
 
 class EuclideanDataset(data.Dataset):
@@ -18,20 +16,24 @@ class EuclideanDataset(data.Dataset):
         dataset_dir,
         n_nodes_in_sample=1000,
         time=False,
-        cache_fourier=True,
         in_memory=True,
         cut=-1,
+        dataset_type = 'train',
         **kwargs,
     ):
         self.dataset_dir = dataset_dir
         self.n_nodes_in_sample = n_nodes_in_sample
         self.time = time
         self._points = None
-        self._points_path = os.path.join(dataset_dir,"points.npy")
         self.in_memory = in_memory
         self.cut = cut
+        self.dataset_type = dataset_type
+        if self.dataset_type == 'train':
+            self._points_path = os.path.join(dataset_dir, "train_points.npy")
+        elif self.dataset_type == 'valid':
+            self._points_path = os.path.join(dataset_dir, "valid_points.npy")
 
-        self.filenames = self.get_filenames(dataset_dir)
+        self.filenames = self.get_filenames(dataset_dir, self.dataset_type)
         if cut > 0:
             self.filenames = self.filenames[:cut]
         self.npzs = [np.load(f) for f in self.filenames]
@@ -48,14 +50,17 @@ class EuclideanDataset(data.Dataset):
 
         return data
 
-    # This is code for getting input as (x,y,z)
     def get_points(self, index):
-        if self._points is None:
-            self._points = np.load(self._points_path)
-            self._points = torch.from_numpy(self._points).float()
-            
-        return self._points
-
+        if os.path.exists(self._points_path):
+            if self._points is None:
+                self._points = np.load(self._points_path)
+                self._points = torch.from_numpy(self._points).float()
+            return self._points
+        else:
+            print(self.npzs[index])
+            arr = self.npzs[index]["points"]
+            return torch.from_numpy(arr).float()
+        
     def get_time(self, index):
         arr = self.npzs[index]["time"]
         return torch.from_numpy(arr).float()
@@ -116,7 +121,7 @@ class EuclideanDataset(data.Dataset):
         return parser
 
     @staticmethod
-    def get_filenames(dataset_dir, subset=None):
+    def get_filenames(dataset_dir, dataset_type, subset=None):
         if subset is None:
             subset = ["*"]
 
@@ -132,8 +137,15 @@ class EuclideanDataset(data.Dataset):
 
         npz_dir = os.path.join(dataset_dir, "npz_files")
         npz_filenames = []
-        for f in subset:
-            npz_filenames += glob.glob(os.path.join(npz_dir, f"{f}.npz"))
+        # for f in subset:
+        #     npz_filenames += glob.glob(os.path.join(npz_dir, f"{f}.npz"))
+        if dataset_type == 'train':
+            npz_filenames += glob.glob(os.path.join(npz_dir, r'train_*.npz'))
+        elif dataset_type == 'valid' : 
+            npz_filenames += glob.glob(os.path.join(npz_dir, r'valid_*.npz'))
+        else:
+            print('Invalid subset!')
+            exit(0)
 
         npz_filenames = sorted(npz_filenames, key=lambda s: s.split("/")[-1])
 
