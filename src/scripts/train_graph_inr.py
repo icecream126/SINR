@@ -1,27 +1,25 @@
 import os
+import sys
+sys.path.append('./')
+
 from argparse import ArgumentParser
 
-import numpy as np
-import pytorch_lightning as pl
 import torch
-from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
-                                         ModelCheckpoint)
-from pytorch_lightning.loggers import WandbLogger
+import pytorch_lightning as pl
 from torch.utils.data import DataLoader
+from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor, ModelCheckpoint)
 
-from src.data.graph_dataset import GraphDataset
+from src.data.preprocessing.graph_dataset import GraphDataset
 from src.models.graph_inr import GraphINR
 
 if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
-    parser.add_argument("--name", default="", type=str)
     parser.add_argument("--patience", default=5000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--n_workers", default=0, type=int)
-    parser.add_argument("--plot_3d", action="store_true")
-    parser.add_argument("--plot_heat", action="store_true")
     parser = pl.Trainer.add_argparse_args(parser)
     parser = GraphINR.add_model_specific_args(parser)
     parser = GraphDataset.add_dataset_specific_args(parser)

@@ -1,19 +1,17 @@
-# "args" : ["--dataset_dir","dataset/weather_time_gustsfc_cut/","--n_fourier 3", "--n_nodes_in_sample", "5000", "--lr", "0.001", "--n_layers", "8", "--skip","True", "--time", "True"]
-
 import os
-from argparse import ArgumentParser
-
-import pytorch_lightning as pl
-import torch
-from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor, ModelCheckpoint)
-from pytorch_lightning.loggers import WandbLogger
-from torch.utils.data import DataLoader
-
 import sys
 sys.path.append('./')
 
-from src.data.spherical_dataset import GraphDataset
-from src.models.spherical_inr import SHFeatINR
+from argparse import ArgumentParser
+
+import torch
+import pytorch_lightning as pl
+from torch.utils.data import DataLoader
+from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor, ModelCheckpoint)
+
+from src.data.preprocessing.spherical_dataset import SphericalDataset
+from src.models.spherical_inr import SphericalINR
 
 if __name__=='__main__':
     pl.seed_everything(1234)
@@ -23,15 +21,16 @@ if __name__=='__main__':
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--n_workers", default=0, type=int)
     parser = pl.Trainer.add_argparse_args(parser)
-    parser = SHFeatINR.add_model_specific_args(parser)
-    parser = GraphDataset.add_dataset_specific_args(parser)
+    parser = SphericalDataset.add_dataset_specific_args(parser)
+    parser = SphericalINR.add_model_specific_args(parser)
     args = parser.parse_args()
 
     # Data
     args.dataset_type = 'train'
-    train_dataset = GraphDataset(**vars(args))
+    train_dataset = SphericalDataset(**vars(args))
     args.dataset_type = 'valid'
-    valid_dataset = GraphDataset(**vars(args))
+    valid_dataset = SphericalDataset(**vars(args))
+    
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
     )
@@ -42,7 +41,7 @@ if __name__=='__main__':
     # Model
     input_dim = train_dataset.n_fourier + (1 if train_dataset.time else 0)
     output_dim = train_dataset.target_dim
-    model = SHFeatINR(input_dim, output_dim, len(train_dataset), **vars(args))
+    model = SphericalINR(input_dim, output_dim, len(train_dataset), **vars(args))
 
     # Training
     checkpoint_cb = ModelCheckpoint(
@@ -54,7 +53,7 @@ if __name__=='__main__':
         config=args, 
         project="SphericalINR", 
         save_dir="lightning_logs", 
-        name='shfeat/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample)
+        name='spherical/'+str(args.dataset_dir[8:])+str(args.n_fourier)+'/'+str(args.n_nodes_in_sample)
         )
     logger.experiment.log(
         {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}

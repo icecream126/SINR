@@ -12,7 +12,7 @@ from src.utils.core import parse_t_f
 from tqdm import tqdm
 
 
-class Dataset(data.Dataset):
+class SphericalDataset(data.Dataset):
     def __init__(
         self,
         dataset_dir,

@@ -6,11 +6,11 @@ import torchmetrics as tm
 
 import sys
 sys.path.append('./')
-from src.utils.core import parse_t_f
 from torch import nn
 from torch.optim import lr_scheduler
 import torch
 
+from src.utils.core import parse_t_f
 from src.utils import initializers as init
 from src.utils.spherical_harmonics import get_spherical_harmonics
 

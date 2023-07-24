@@ -9,9 +9,9 @@ from torch.optim import lr_scheduler
 import numpy as np
 import torch
 
+from src.utils.sine import Sine
 from src.utils.core import parse_t_f
 from src.utils import initializers as init
-from src.utils.sine import Sine
 
 
 class MLP(nn.Module):
