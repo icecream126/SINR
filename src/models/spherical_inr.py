@@ -4,7 +4,6 @@ import pytorch_lightning as pl
 import torch
 import torchmetrics as tm
 
-import time
 import sys
 sys.path.append('./')
 from torch import nn
@@ -81,6 +80,7 @@ class MLP(nn.Module):
         output_dim: int,
         hidden_dim: int,
         n_layers: int,
+        max_order: int,
         geometric_init: bool,
         beta: int,
         sine: bool,
@@ -99,8 +99,8 @@ class MLP(nn.Module):
         self.skip = skip
         self.bn = bn
         self.dropout = dropout
-        self.max_order = input_dim-1 # change this for spherical harmonics embedding max order (input_dim = dataset.n_fourier+1)
-        print('Spherical Embedding order : ',self.max_order)
+        self.max_order = max_order
+
         self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order)
 
         # Modules
@@ -152,18 +152,8 @@ class MLP(nn.Module):
                 out_dim = output_dim
 
     def forward(self, x):
-        for i, layer in enumerate(self.model):
-            if i==0:
-                start = time.time()
-                x = layer(x)
-                end = time.time()
-                print('spherical harmonics time:', end-start)
-            else:
-                if i==1:
-                    start = time.time()
-                x = layer(x)
-        end = time.time()
-        print('MLP time:', end-start)
+        for layer in self.model:
+            x = layer(x)
         return x
 
 
@@ -362,6 +352,7 @@ class SphericalINR(pl.LightningModule):
 
         parser.add_argument("--hidden_dim", type=int, default=512)
         parser.add_argument("--n_layers", type=int, default=4)
+        parser.add_argument("--max_order", type=int, default=3)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
         parser.add_argument("--geometric_init", type=parse_t_f, default=False)
