@@ -3,6 +3,6 @@
 .conda
 launch.json
 dataset/
-lightning_logs/
+experiment/
 assets/
 __pycache__

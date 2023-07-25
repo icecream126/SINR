@@ -17,7 +17,7 @@ if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
-    parser.add_argument("--patience", default=500, type=int)
+    parser.add_argument("--patience", default=5000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--n_workers", default=4, type=int)
     parser = pl.Trainer.add_argparse_args(parser)
