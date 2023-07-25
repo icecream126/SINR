@@ -17,9 +17,9 @@ if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
-    parser.add_argument("--patience", default=5000, type=int)
+    parser.add_argument("--patience", default=500, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
-    parser.add_argument("--n_workers", default=0, type=int)
+    parser.add_argument("--n_workers", default=4, type=int)
     parser = pl.Trainer.add_argparse_args(parser)
     parser = EuclideanDataset.add_dataset_specific_args(parser)
     parser = EuclideanINR.add_model_specific_args(parser)
@@ -30,12 +30,17 @@ if __name__=='__main__':
     train_dataset = EuclideanDataset(**vars(args))
     args.dataset_type = 'valid'
     valid_dataset = EuclideanDataset(**vars(args))
+    args.dataset_type = 'test'
+    test_dataset = EuclideanDataset(**vars(args))
     
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
     )
     valid_loader = DataLoader(
-        valid_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
+        valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.n_workers
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.n_workers
     )
 
     # Model
@@ -51,8 +56,8 @@ if __name__=='__main__':
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
     logger = WandbLogger(
         config=args, 
-        project="SphericalINR", 
-        save_dir="lightning_logs", 
+        project="EuclideanINR", 
+        save_dir="experiment", 
         name='euclidean/'+str(args.dataset_dir[8:])
         )
     logger.experiment.log(
@@ -68,3 +73,4 @@ if __name__=='__main__':
         strategy="ddp" if torch.cuda.device_count() > 1 else None,
     )
     trainer.fit(model, train_loader, valid_loader)
+    trainer.test(model, test_loader, 'best')

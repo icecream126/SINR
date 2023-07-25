@@ -17,26 +17,32 @@ if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
-    parser.add_argument("--patience", default=5000, type=int)
+    parser.add_argument("--patience", default=500, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
-    parser.add_argument("--n_workers", default=0, type=int)
+    parser.add_argument("--n_workers", default=4, type=int)
     parser = pl.Trainer.add_argparse_args(parser)
-    parser = GraphINR.add_model_specific_args(parser)
     parser = GraphDataset.add_dataset_specific_args(parser)
+    parser = GraphINR.add_model_specific_args(parser)
     args = parser.parse_args()
 
-    print(args)
     # Data
     args.dataset_type = 'train'
     train_dataset = GraphDataset(**vars(args))
     args.dataset_type = 'valid'
     valid_dataset = GraphDataset(**vars(args))
+    args.dataset_type = 'test'
+    test_dataset = GraphDataset(**vars(args))
+    
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
     )
     valid_loader = DataLoader(
-        valid_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_workers
+        valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.n_workers
     )
+    test_loader = DataLoader(
+        test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.n_workers
+    )
+
 
     # Model
     input_dim = train_dataset.n_fourier + (1 if train_dataset.time else 0)
@@ -50,8 +56,8 @@ if __name__=='__main__':
     earlystopping_cb = EarlyStopping(monitor="valid_loss", patience=args.patience)
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
     logger = WandbLogger(
-        project="SphericalINR", 
-        save_dir="lightning_logs",
+        project="GraphINR", 
+        save_dir="experiment",
         name='graph/'+str(args.dataset_dir[8:])
         )
     logger.experiment.log(
@@ -67,3 +73,4 @@ if __name__=='__main__':
         strategy="ddp" if torch.cuda.device_count() > 1 else None,
     )
     trainer.fit(model, train_loader, valid_loader)
+    trainer.test(model, test_loader, 'best')

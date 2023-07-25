@@ -4,13 +4,11 @@ import os
 
 torch.manual_seed(1)
 data_types = ['dpt2m', 'tcdcclm' , 'gustsfc']
-train_ratio=0.8
+n_nodes, train_size, valid_size = 65160, 39000, 13000
 
-n_nodes = 65160
 ids = torch.randperm(n_nodes)
-train_size = int(n_nodes * train_ratio)
-train_idx, valid_idx = ids[:train_size], ids[train_size:]
-prefixes = ('train','valid')
+train_idx, valid_idx, test_idx = ids[:train_size], ids[train_size:train_size+valid_size], ids[train_size+valid_size:]
+prefixes = ('train', 'valid', 'test')
 
 for data_type in data_types : 
     data_dir_path = './dataset/weather_time_'+data_type+'_cut/npz_files/'
@@ -27,7 +25,12 @@ for data_type in data_types :
         valid_target = data['target'][valid_idx]
         valid_points = points[valid_idx]
 
+        test_target = data['target'][test_idx]
+        test_points = points[test_idx]
+
         np.savez(data_dir_path+'train_'+data_file,time=time,target=train_target)
         np.savez(data_dir_path+'valid_'+data_file,time=time,target=valid_target)
+        np.savez(data_dir_path+'test_'+data_file,time=time,target=test_target)
         np.save(data_dir_path[:-10]+'train_points.npy',train_points)
         np.save(data_dir_path[:-10]+'valid_points.npy',valid_points)
+        np.save(data_dir_path[:-10]+'test_points.npy',test_points)

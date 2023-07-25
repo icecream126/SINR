@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 import torch
 import torchmetrics as tm
 
+import time
 import sys
 sys.path.append('./')
 from torch import nn
@@ -151,8 +152,18 @@ class MLP(nn.Module):
                 out_dim = output_dim
 
     def forward(self, x):
-        for layer in self.model:
-            x = layer(x)
+        for i, layer in enumerate(self.model):
+            if i==0:
+                start = time.time()
+                x = layer(x)
+                end = time.time()
+                print('spherical harmonics time:', end-start)
+            else:
+                if i==1:
+                    start = time.time()
+                x = layer(x)
+        end = time.time()
+        print('MLP time:', end-start)
         return x
 
 
@@ -163,14 +174,11 @@ class SphericalINR(pl.LightningModule):
     Arguments:
         input_dim: int, size of the inputs
         output_dim: int, size of the ouputs
-        dataset_size: int, number of samples in the dataset (for autodecoder latents)
+        dataset_size: int, number of samples in the dataset
         hidden_dim: int = 512, number of neurons in hidden layers
         n_layers: int = 4, number of layers (total, including first and last)
         lr: float = 0.0005, learning rate
         lr_patience: int = 500, learning rate patience (in number of epochs)
-        latents: bool = False, make the model an autodecoder with learnable latents
-        latent_dim: int = 256, size of the latents
-        lambda_latent: float = 0.0001, regularization factor for the latents
         geometric_init: bool = False, initialize weights so that output is spherical
         beta: int = 0, if positive, use SoftPlus(beta) instead of ReLU activations
         sine: bool = False, use SIREN activation in the first layer
@@ -190,9 +198,6 @@ class SphericalINR(pl.LightningModule):
         n_layers: int = 4,
         lr: float = 0.0005,
         lr_patience: int = 500,
-        latents: bool = False,
-        latent_dim: int = 256,
-        lambda_latent: float = 0.0001,
         geometric_init: bool = False,
         beta: int = 0,
         sine: bool = False,
@@ -212,9 +217,6 @@ class SphericalINR(pl.LightningModule):
         self.n_layers = n_layers
         self.lr = lr
         self.lr_patience = lr_patience
-        self.use_latents = latents
-        self.latent_dim = latent_dim
-        self.lambda_latent = lambda_latent
         self.geometric_init = geometric_init
         self.beta = beta
         self.sine = sine
@@ -226,14 +228,9 @@ class SphericalINR(pl.LightningModule):
 
         self.sync_dist = torch.cuda.device_count() > 1
 
-        # Compute true input dimension
-        input_dim_true = input_dim
-        if latents:
-            input_dim_true += latent_dim
-
         # Modules
         self.model = MLP(
-            input_dim_true,
+            input_dim,
             output_dim,
             hidden_dim,
             n_layers,
@@ -246,10 +243,6 @@ class SphericalINR(pl.LightningModule):
             dropout,
         )
 
-        # Latent codes
-        if latents:
-            self.latents = nn.Embedding(dataset_size, latent_dim)
-
         # Loss
         if self.classifier:
             self.loss_fn = nn.CrossEntropyLoss()
@@ -259,6 +252,7 @@ class SphericalINR(pl.LightningModule):
         # Metrics
         self.train_r2_score = tm.R2Score(output_dim)
         self.valid_r2_score = tm.R2Score(output_dim)
+        self.test_r2_score = tm.R2Score(output_dim)
 
         self.save_hyperparameters()
 
@@ -267,20 +261,7 @@ class SphericalINR(pl.LightningModule):
 
     def forward_with_preprocessing(self, data):
         points, indices = data
-        if self.use_latents:
-            latents = self.latents(indices)
-            points = self.add_latent(points, latents)
         return self.forward(points)
-
-    def add_latent(self, points, latents):
-        n_points = points.shape[1]
-        latents = latents.unsqueeze(1).repeat(1, n_points, 1)
-
-        return torch.cat([latents, points], dim=-1)
-
-    def latent_size_reg(self, indices):
-        latent_loss = self.latents(indices).norm(dim=-1).mean()
-        return latent_loss
 
     @staticmethod
     def gradient(inputs, outputs):
@@ -296,13 +277,7 @@ class SphericalINR(pl.LightningModule):
         return points_grad
 
     def training_step(self, data, batch_idx):
-        inputs, target, indices = data["inputs"], data["target"], data["index"]
-
-        # Add latent codes
-        if self.use_latents:
-            latents = self.latents(indices)
-            inputs = self.add_latent(inputs, latents)
-
+        inputs, target = data["inputs"], data["target"]
         inputs.requires_grad_()
 
         # Predict signal
@@ -312,37 +287,21 @@ class SphericalINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
-        main_loss = self.loss_fn(pred, target)
-        self.log("main_loss", main_loss, prog_bar=True, sync_dist=self.sync_dist)
-        loss = main_loss
+        loss = self.loss_fn(pred, target)
+        self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
         if not self.classifier:
             self.train_r2_score(
                 pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
             )
             self.log(
-                "r2_score", self.train_r2_score, prog_bar=True, on_epoch=True, on_step=False
+                "train_r2_score", self.train_r2_score, prog_bar=True, on_epoch=True, on_step=False
             )
-
-        # Latent size regularization
-        if self.use_latents:
-            latent_loss = self.latent_size_reg(indices)
-            loss += self.lambda_latent * latent_loss
-            self.log(
-                "latent_loss", latent_loss, prog_bar=True, sync_dist=self.sync_dist
-            )
-
-        self.log("loss", loss, sync_dist=self.sync_dist)
 
         return loss
     
     def validation_step(self, data, batch_idx):
-        inputs, target, indices = data["inputs"], data["target"], data["index"]
-
-        # Add latent codes
-        if self.use_latents:
-            latents = self.latents(indices)
-            inputs = self.add_latent(inputs, latents)
+        inputs, target = data["inputs"], data["target"]
 
         # Predict signal
         pred = self.forward(inputs)
@@ -351,9 +310,8 @@ class SphericalINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
-        main_loss = self.loss_fn(pred, target)
-        self.log("main_valid_loss", main_loss, prog_bar=True, sync_dist=self.sync_dist)
-        loss = main_loss
+        loss = self.loss_fn(pred, target)
+        self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
         if not self.classifier:
             self.valid_r2_score(
@@ -363,15 +321,28 @@ class SphericalINR(pl.LightningModule):
                 "valid_r2_score", self.valid_r2_score, prog_bar=True, on_epoch=True, on_step=False
             )
 
-        # Latent size regularization
-        if self.use_latents:
-            latent_loss = self.latent_size_reg(indices)
-            loss += self.lambda_latent * latent_loss
-            self.log(
-                "valid_latent_loss", latent_loss, prog_bar=True, sync_dist=self.sync_dist
-            )
+        return loss
 
-        self.log("valid_loss", loss, sync_dist=self.sync_dist)
+    def test_step(self, data, batch_idx):
+        inputs, target = data["inputs"], data["target"]
+
+        # Predict signal
+        pred = self.forward(inputs)
+
+        # Loss
+        if self.classifier:
+            pred = torch.permute(pred, (0, 2, 1))
+
+        loss = self.loss_fn(pred, target)
+        self.log("test_loss", loss)
+
+        if not self.classifier:
+            self.test_r2_score(
+                pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
+            )
+            self.log(
+                "test_r2_score", self.test_r2_score
+            )
 
         return loss
 
@@ -381,7 +352,7 @@ class SphericalINR(pl.LightningModule):
         scheduler = lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.5, patience=self.lr_patience, verbose=True
         )
-        sch_dict = {"scheduler": scheduler, "monitor": "loss", "frequency": 1}
+        sch_dict = {"scheduler": scheduler, "monitor": "train_loss", "frequency": 1}
 
         return {"optimizer": optimizer, "lr_scheduler": sch_dict}
 
@@ -393,9 +364,6 @@ class SphericalINR(pl.LightningModule):
         parser.add_argument("--n_layers", type=int, default=4)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
-        parser.add_argument("--latents", action="store_true")
-        parser.add_argument("--latent_dim", type=int, default=256)
-        parser.add_argument("--lambda_latent", type=float, default=0.0001)
         parser.add_argument("--geometric_init", type=parse_t_f, default=False)
         parser.add_argument("--beta", type=int, default=0)
         parser.add_argument("--sine", type=parse_t_f, default=False)

@@ -32,6 +32,8 @@ class EuclideanDataset(data.Dataset):
             self._points_path = os.path.join(dataset_dir, "train_points.npy")
         elif self.dataset_type == 'valid':
             self._points_path = os.path.join(dataset_dir, "valid_points.npy")
+        elif self.dataset_type == 'test':
+            self._points_path = os.path.join(dataset_dir, "test_points.npy")
 
         self.filenames = self.get_filenames(dataset_dir, self.dataset_type)
         if cut > 0:
@@ -143,6 +145,8 @@ class EuclideanDataset(data.Dataset):
             npz_filenames += glob.glob(os.path.join(npz_dir, r'train_*.npz'))
         elif dataset_type == 'valid' : 
             npz_filenames += glob.glob(os.path.join(npz_dir, r'valid_*.npz'))
+        elif dataset_type == 'test' : 
+            npz_filenames += glob.glob(os.path.join(npz_dir, r'test_*.npz'))
         else:
             print('Invalid subset!')
             exit(0)

@@ -1,0 +1,1 @@
+{"CUDA_VISIBLE_DEVICES": "0", "_timestamp": 1690247962.0014284, "_runtime": 275.6613404750824, "_step": 1308, "lr-AdamW": 0.001, "trainer/global_step": 326, "train_loss": 0.02102297730743885, "epoch": 327, "valid_loss": 0.021865272894501686, "valid_r2_score": 0.9782117009162903, "train_r2_score": 0.9789751172065735, "_wandb": {"runtime": 279}}

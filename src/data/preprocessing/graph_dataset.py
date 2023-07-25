@@ -36,6 +36,8 @@ class GraphDataset(data.Dataset):
             self._fourier_path = os.path.join(dataset_dir,"train_fourier.npy")
         elif self.dataset_type == 'valid':
             self._fourier_path = os.path.join(dataset_dir,"valid_fourier.npy")
+        elif self.dataset_type == 'test':
+            self._fourier_path = os.path.join(dataset_dir,"test_fourier.npy")
         
         self.filenames = self.get_filenames(dataset_dir, self.dataset_type)
 
@@ -100,8 +102,6 @@ class GraphDataset(data.Dataset):
 
         n_points = data["inputs"].shape[0]
         points_idx = self.get_subsampling_idx(n_points, self.n_nodes_in_sample)
-        # print(n_points)
-        # print(data["target"].shape)
         data_out["inputs"] = data["inputs"][points_idx]
         data_out["target"] = data["target"][points_idx]
         data_out["index"] = index
@@ -153,6 +153,8 @@ class GraphDataset(data.Dataset):
             npz_filenames += glob.glob(os.path.join(npz_dir, r'train_*.npz'))
         elif dataset_type == 'valid' : 
             npz_filenames += glob.glob(os.path.join(npz_dir, r'valid_*.npz'))
+        elif dataset_type == 'test' : 
+            npz_filenames += glob.glob(os.path.join(npz_dir, r'test_*.npz'))
         else:
             print('Invalid subset!')
             exit(0)

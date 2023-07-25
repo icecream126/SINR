@@ -194,6 +194,7 @@ class GraphINR(pl.LightningModule):
         # Metrics
         self.train_r2_score = tm.R2Score(output_dim)
         self.valid_r2_score = tm.R2Score(output_dim)
+        self.test_r2_score = tm.R2Score(output_dim)
 
         self.save_hyperparameters()
 
@@ -211,19 +212,16 @@ class GraphINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
-        main_loss = self.loss_fn(pred, target)
-        self.log("main_loss", main_loss, prog_bar=True, sync_dist=self.sync_dist)
-        loss = main_loss
+        loss = self.loss_fn(pred, target)
+        self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
         if not self.classifier:
             self.train_r2_score(
                 pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
             )
             self.log(
-                "r2_score", self.train_r2_score, prog_bar=True, on_epoch=True, on_step=False
+                "train_r2_score", self.train_r2_score, prog_bar=True, on_epoch=True, on_step=False
             )
-
-        self.log("loss", loss, sync_dist=self.sync_dist)
 
         return loss
     
@@ -237,9 +235,8 @@ class GraphINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
-        main_loss = self.loss_fn(pred, target)
-        self.log("main_valid_loss", main_loss, prog_bar=True, sync_dist=self.sync_dist)
-        loss = main_loss
+        loss = self.loss_fn(pred, target)
+        self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
         if not self.classifier:
             self.valid_r2_score(
@@ -249,7 +246,28 @@ class GraphINR(pl.LightningModule):
                 "valid_r2_score", self.valid_r2_score, prog_bar=True, on_epoch=True, on_step=False
             )
 
-        self.log("valid_loss", loss, sync_dist=self.sync_dist)
+        return loss
+    
+    def test_step(self, data, batch_idx):
+        inputs, target = data["inputs"], data["target"]
+
+        # Predict signal
+        pred = self.forward(inputs)
+
+        # Loss
+        if self.classifier:
+            pred = torch.permute(pred, (0, 2, 1))
+
+        loss = self.loss_fn(pred, target)
+        self.log("test_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+
+        if not self.classifier:
+            self.test_r2_score(
+                pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
+            )
+            self.log(
+                "test_r2_score", self.test_r2_score, prog_bar=True, on_epoch=True, on_step=False
+            )
 
         return loss
 
@@ -259,7 +277,7 @@ class GraphINR(pl.LightningModule):
         scheduler = lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.5, patience=self.lr_patience, verbose=True
         )
-        sch_dict = {"scheduler": scheduler, "monitor": "loss", "frequency": 1}
+        sch_dict = {"scheduler": scheduler, "monitor": "train_loss", "frequency": 1}
 
         return {"optimizer": optimizer, "lr_scheduler": sch_dict}
 
@@ -271,7 +289,6 @@ class GraphINR(pl.LightningModule):
         parser.add_argument("--n_layers", type=int, default=4)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
-        parser.add_argument("--lambda_latent", type=float, default=0.0001)
         parser.add_argument("--geometric_init", type=parse_t_f, default=False)
         parser.add_argument("--beta", type=int, default=0)
         parser.add_argument("--sine", type=parse_t_f, default=False)
