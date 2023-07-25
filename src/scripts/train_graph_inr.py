@@ -56,7 +56,7 @@ if __name__=='__main__':
     earlystopping_cb = EarlyStopping(monitor="valid_loss", patience=args.patience)
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
     logger = WandbLogger(
-        project="GraphINR", 
+        project="SphericalINR", 
         save_dir="experiment",
         name='graph/'+str(args.dataset_dir[8:])
         )

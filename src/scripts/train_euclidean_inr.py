@@ -56,7 +56,7 @@ if __name__=='__main__':
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
     logger = WandbLogger(
         config=args, 
-        project="EuclideanINR", 
+        project="SphericalINR", 
         save_dir="experiment", 
         name='euclidean/'+str(args.dataset_dir[8:])
         )
