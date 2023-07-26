@@ -10,7 +10,7 @@ import torch.utils.data as data
 from src.utils.core import parse_t_f
 
 
-class SphericalDataset(data.Dataset):
+class SwaveletDataset(data.Dataset):
     def __init__(
         self,
         dataset_dir,

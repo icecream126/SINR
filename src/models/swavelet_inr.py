@@ -8,55 +8,63 @@ sys.path.append('./')
 
 import torch
 from torch import nn
+from math import pi
 from torch.optim import lr_scheduler
 
 from src.utils.core import parse_t_f
 from src.utils import initializers as init
-from src.utils.spherical_harmonics import get_spherical_harmonics
 
-class SphericalHarmonicsLayer(nn.Module):
-    def __init__(self, max_order):
-        super(SphericalHarmonicsLayer, self).__init__()
-        self.max_order = max_order
 
-        # self.theta_layer = nn.Linear(1, hidden_dim)
-        # self.phi_layer = nn.Linear(1, hidden_dim)
-        # self.time_layer = nn.Linear(1, hidden_dim)
+
+class SphericalGaborLayer(nn.Module):
+    '''
+        Implicit representation with complex Gabor nonlinearity
         
+        Inputs;
+            input_dim: Input features
+            wavelet_dim; Output features
+            is_first: Legacy SIREN parameter
+            omega0: Frequency of Gabor sinusoid term
+            sigma0: Scaling of Gabor Gaussian term
+            trainable: If True, omega and sigma are trainable parameters
+    '''
+    
+    def __init__(self, wavelet_dim, omega_0=30.0, sigma_0=10.0):
+        super().__init__()
+        self.omega_0 = omega_0
+        self.scale_0 = sigma_0
+        self.wavelet_dim = wavelet_dim
+            
+        # Set trainable parameters if they are to be simultaneously optimized
+        self.omega_0 = nn.Parameter(self.omega_0*torch.ones(1))
+        self.scale_0 = nn.Parameter(self.scale_0*torch.ones(1))
+
+        self.theta_0 = nn.Parameter(torch.empty(1, wavelet_dim))
+        self.phi_0 = nn.Parameter(torch.empty(1, wavelet_dim))
+        nn.init.uniform_(self.theta_0, 0, 2*pi)
+        nn.init.uniform_(self.phi_0, 0, 2*pi)
+
+
     def forward(self, x):
+        theta = x[..., 0:1].repeat(1, 1, self.wavelet_dim)
+        phi = x[..., 1:2].repeat(1, 1, self.wavelet_dim)
+        time = x[..., 2:]
 
-        # batch_size = x.shape[0]
-        # num_samples = x.shape[1]
+        tan = torch.tan((theta-self.theta_0)/2)
+        cos = torch.cos(phi-self.phi_0)
 
-        theta = x[:,:,0].unsqueeze(-1) # torch.Size([3,5000,1])
-        phi = x[:,:,1].unsqueeze(-1) # torch.Size([3,5000,1])
-        time = x[:,:,2].unsqueeze(-1) # torch.Size([3,5000,1])
-
-        # theta = self.theta_layer(theta) # torch.Size([3,5000, k])
-        # phi = self.phi_layer(phi) # torch.Size([3,5000, k])
-        # time = self.time_layer(time) # torch.Size([3,5000,k]) # 굳이 할 필요는 없지만 나중에 concat 해주기 위해 dimension 맞춰주는 용도
-
-        # theta = theta.reshape(batch_size, -1) # torch.Size([3,5000*k,1])
-        # phi = phi.reshape(batch_size, -1) # torch.Size([3,5000*k,1])
-        # time = time.reshape(batch_size, -1) # torch.Size(3, 5000*k,1)
-
-        # spherical harmonics using pytorch
-        sh_list = []
-        for l in range(self.max_order+1):
-            sh = get_spherical_harmonics(l, phi, theta)
-            sh_list.append(sh)
-
-        #clear_spherical_harmonics_cache()
-        sh = torch.cat(sh_list, dim=-1)
-
-        x = torch.cat([sh, time], dim=-1) # torch.Size([3,5000*k,(max_order+1)**2+1])
-        # x = x.reshape(batch_size, num_samples,-1) # torch.Size([3,5000, ((max_order+1)**2+1)*hidden_dim])
+        gauss = torch.exp(-torch.square(self.scale_0*tan))
         
-        # currently, without detach, gradient explodes...
-        # x = x.detach()
+        angle = self.omega_0 * tan * cos
+
+        cos = torch.cos(angle)
+        sin = torch.sin(angle)
         
+        spherical_gabor = torch.cat([gauss*cos, gauss*sin], dim=-1)
+
+        x = torch.cat([spherical_gabor, time], dim=-1)
         return x
-
+    
 
 class MLP(nn.Module):
     """
@@ -80,7 +88,7 @@ class MLP(nn.Module):
         output_dim: int,
         hidden_dim: int,
         n_layers: int,
-        max_order: int,
+        wavelet_dim: int,
         geometric_init: bool,
         beta: int,
         sine: bool,
@@ -99,13 +107,13 @@ class MLP(nn.Module):
         self.skip = skip
         self.bn = bn
         self.dropout = dropout
-        self.max_order = max_order
+        self.wavelet_dim = wavelet_dim
 
-        self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order)
+        self.spherical_gabor_layer = SphericalGaborLayer(self.wavelet_dim)
 
         # Modules
         self.model = nn.ModuleList()
-        # hidden_dim = (self.max_order+1)**2
+        # hidden_dim = 2*wavelet_dim+1
         in_dim = input_dim
         # in_dim=3
         out_dim = hidden_dim
@@ -114,9 +122,9 @@ class MLP(nn.Module):
         for i in range(n_layers):   
             
             if i==0:
-                layer = self.spherical_harmonics_layer
+                layer = self.spherical_gabor_layer
             elif i==1:
-                layer = nn.Linear(((self.max_order+1)**2+1),hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
+                layer = nn.Linear(2*wavelet_dim+1, hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
             else : 
                 layer = nn.Linear(hidden_dim, out_dim)
             
@@ -155,11 +163,9 @@ class MLP(nn.Module):
         for layer in self.model:
             x = layer(x)
         return x
+    
 
-
-
-
-class SphericalINR(pl.LightningModule):
+class SwaveletINR(pl.LightningModule):
     """
     Arguments:
         input_dim: int, size of the inputs
@@ -186,7 +192,7 @@ class SphericalINR(pl.LightningModule):
         dataset_size: int,
         hidden_dim: int = 512,
         n_layers: int = 4,
-        max_order: int = 3,
+        wavelet_dim: int = 16,
         lr: float = 0.0005,
         lr_patience: int = 500,
         geometric_init: bool = False,
@@ -225,7 +231,7 @@ class SphericalINR(pl.LightningModule):
             output_dim,
             hidden_dim,
             n_layers,
-            max_order,
+            wavelet_dim,
             geometric_init,
             beta,
             sine,
@@ -354,7 +360,7 @@ class SphericalINR(pl.LightningModule):
 
         parser.add_argument("--hidden_dim", type=int, default=512)
         parser.add_argument("--n_layers", type=int, default=4)
-        parser.add_argument("--max_order", type=int, default=3)
+        parser.add_argument("--wavelet_dim", type=int, default=16)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
         parser.add_argument("--geometric_init", type=parse_t_f, default=False)
