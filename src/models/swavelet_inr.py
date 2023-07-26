@@ -6,44 +6,40 @@ import torchmetrics as tm
 import sys
 sys.path.append('./')
 
+import numpy as np
 import torch
 from torch import nn
 from math import pi
 from torch.optim import lr_scheduler
 
-from src.utils.core import parse_t_f
 from src.utils import initializers as init
 
 
 
 class SphericalGaborLayer(nn.Module):
     '''
-        Implicit representation with complex Gabor nonlinearity
+        Implicit representation with spherical Gabor nonlinearity
         
         Inputs;
-            input_dim: Input features
             wavelet_dim; Output features
-            is_first: Legacy SIREN parameter
             omega0: Frequency of Gabor sinusoid term
             sigma0: Scaling of Gabor Gaussian term
             trainable: If True, omega and sigma are trainable parameters
     '''
     
-    def __init__(self, wavelet_dim, omega_0=30.0, sigma_0=10.0):
+    def __init__(self, wavelet_dim, omega_0=30.0, sigma_0=10.0, trainable=False):
         super().__init__()
         self.omega_0 = omega_0
         self.scale_0 = sigma_0
         self.wavelet_dim = wavelet_dim
             
-        # Set trainable parameters if they are to be simultaneously optimized
-        self.omega_0 = nn.Parameter(self.omega_0*torch.ones(1))
-        self.scale_0 = nn.Parameter(self.scale_0*torch.ones(1))
+        self.omega_0 = nn.Parameter(self.omega_0*torch.ones(1), trainable)
+        self.scale_0 = nn.Parameter(self.scale_0*torch.ones(1), trainable)
 
         self.theta_0 = nn.Parameter(torch.empty(1, wavelet_dim))
         self.phi_0 = nn.Parameter(torch.empty(1, wavelet_dim))
         nn.init.uniform_(self.theta_0, 0, 2*pi)
         nn.init.uniform_(self.phi_0, 0, 2*pi)
-
 
     def forward(self, x):
         theta = x[..., 0:1].repeat(1, 1, self.wavelet_dim)
@@ -113,23 +109,17 @@ class MLP(nn.Module):
 
         # Modules
         self.model = nn.ModuleList()
-        # hidden_dim = 2*wavelet_dim+1
-        in_dim = input_dim
-        # in_dim=3
+        in_dim = hidden_dim
         out_dim = hidden_dim
-        
-        # 앞에서 layer 하나 spherical activation으로 따로 정의해줬으니까 n_layers-1까지만 돌기
+
         for i in range(n_layers):   
             
             if i==0:
                 layer = self.spherical_gabor_layer
             elif i==1:
-                layer = nn.Linear(2*wavelet_dim+1, hidden_dim) #  첫 레이어에서는 input으로 (\theta,\phi,t)를 받으므로 input_dim을 3으로 설정
+                layer = nn.Linear(2*wavelet_dim+1, hidden_dim)
             else : 
-                layer = nn.Linear(hidden_dim, out_dim)
-            
-            # layer = nn.Linear(in_dim,out_dim)
-
+                layer = nn.Linear(in_dim, out_dim)
 
             # Custom initializations
             if geometric_init:
@@ -144,7 +134,7 @@ class MLP(nn.Module):
             self.model.append(layer)
 
             if i<n_layers-1 and i>0:
-                act = nn.ReLU() # 첫번째 layer 이후 activation은 ReLU
+                act = nn.ReLU() 
                 self.model.append(act)
 
             if i<n_layers-1:
@@ -154,15 +144,23 @@ class MLP(nn.Module):
                     self.model.append(nn.Dropout(dropout))
 
             in_dim = hidden_dim
+            # Skip connection
+            if i + 1 == int(np.ceil(n_layers / 2)) and skip:
+                self.skip_at = len(self.model)
+                in_dim += input_dim
 
-            out_dim = hidden_dim
             if i + 1 == n_layers - 1:
                 out_dim = output_dim
 
     def forward(self, x):
-        for layer in self.model:
+        x_in = x
+        for i, layer in enumerate(self.model):
+            if i == self.skip_at:
+                x = torch.cat([x, x_in], dim=-1)
             x = layer(x)
+
         return x
+
     
 
 class SwaveletINR(pl.LightningModule):
@@ -363,12 +361,12 @@ class SwaveletINR(pl.LightningModule):
         parser.add_argument("--wavelet_dim", type=int, default=16)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
-        parser.add_argument("--geometric_init", type=parse_t_f, default=False)
+        parser.add_argument("--geometric_init", type=bool, default=False)
         parser.add_argument("--beta", type=int, default=0)
-        parser.add_argument("--sine", type=parse_t_f, default=False)
-        parser.add_argument("--all_sine", type=parse_t_f, default=False)
-        parser.add_argument("--skip", type=parse_t_f, default=True)
-        parser.add_argument("--bn", type=parse_t_f, default=False)
+        parser.add_argument("--sine", type=bool, default=False)
+        parser.add_argument("--all_sine", type=bool, default=False)
+        parser.add_argument("--skip", type=bool, default=True)
+        parser.add_argument("--bn", type=bool, default=False)
         parser.add_argument("--dropout", type=float, default=0.0)
 
         return parser

@@ -10,7 +10,6 @@ import numpy as np
 import torch
 
 from src.utils.sine import Sine
-from src.utils.core import parse_t_f
 from src.utils import initializers as init
 
 
@@ -289,12 +288,12 @@ class GraphINR(pl.LightningModule):
         parser.add_argument("--n_layers", type=int, default=4)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
-        parser.add_argument("--geometric_init", type=parse_t_f, default=False)
+        parser.add_argument("--geometric_init", type=bool, default=False)
         parser.add_argument("--beta", type=int, default=0)
-        parser.add_argument("--sine", type=parse_t_f, default=False)
-        parser.add_argument("--all_sine", type=parse_t_f, default=False)
-        parser.add_argument("--skip", type=parse_t_f, default=True)
-        parser.add_argument("--bn", type=parse_t_f, default=False)
+        parser.add_argument("--sine", type=bool, default=False)
+        parser.add_argument("--all_sine", type=bool, default=False)
+        parser.add_argument("--skip", type=bool, default=True)
+        parser.add_argument("--bn", type=bool, default=False)
         parser.add_argument("--dropout", type=float, default=0.0)
 
         return parser

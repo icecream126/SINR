@@ -1,47 +1,34 @@
+from argparse import ArgumentParser
+
 import os
 import glob
 from tqdm import tqdm
-from argparse import ArgumentParser
 
-import numpy as np
 import torch
-import torch.utils.data as data
+import numpy as np
+from torch.utils.data import Dataset
 
-from src.utils.core import parse_t_f
 
-
-class SphericalDataset(data.Dataset):
+class SphericalDataset(Dataset):
     def __init__(
         self,
         dataset_dir,
-        n_nodes_in_sample=1000,
-        time=False,
-        cache_fourier=True,
+        n_nodes_in_sample=10000,
+        time=True,
         in_memory=True,
-        cut=-1,
         dataset_type = 'train',
         **kwargs,
     ):
         self.dataset_dir = dataset_dir
         self.n_nodes_in_sample = n_nodes_in_sample
         self.time = time
-        self.cache_fourier = cache_fourier
-        self._fourier = None
+        self._points = None
         self.in_memory = in_memory
-        self.cut = cut
-        self.dataset_type = dataset_type
-        if self.dataset_type == 'train':
-            self._points_path = os.path.join(dataset_dir,"train_spherical_points.npy")
-        elif self.dataset_type == 'valid':
-            self._points_path = os.path.join(dataset_dir,"valid_spherical_points.npy")
-        elif self.dataset_type == 'test':
-            self._points_path = os.path.join(dataset_dir,"test_spherical_points.npy")
-
-        self.filenames = self.get_filenames(dataset_dir, self.dataset_type)
-        if cut > 0:
-            self.filenames = self.filenames[:cut]
+        self._points_path = os.path.join(dataset_dir, dataset_type+"_spherical_points.npy")
+        self.filenames = self.get_filenames(dataset_dir, dataset_type)
         self.npzs = [np.load(f) for f in self.filenames]
         self._data = None
+
         if in_memory:
             print("Loading dataset")
             self._data = [self.load_data(i) for i in tqdm(range(len(self)))]
@@ -54,16 +41,16 @@ class SphericalDataset(data.Dataset):
 
         return data
 
-    def get_fourier(self, index):
-        if self.cache_fourier and os.path.exists(self._points_path):
-            if self._fourier is None:
-                self._fourier = np.load(self._points_path)
-                self._fourier = torch.from_numpy(self._fourier).float()
-            return self._fourier
+    def get_points(self, index):
+        if os.path.exists(self._points_path):
+            if self._points is None:
+                self._points = np.load(self._points_path)
+                self._points = torch.from_numpy(self._points).float()
+            return self._points
         else:
             arr = self.npzs[index]["points"]
             return torch.from_numpy(arr).float()
-            
+        
     def get_time(self, index):
         arr = self.npzs[index]["time"]
         return torch.from_numpy(arr).float()
@@ -75,10 +62,11 @@ class SphericalDataset(data.Dataset):
         return torch.cat([points, time], dim=-1)
 
     def get_inputs(self, index):
-        arr = self.get_fourier(index)
+        arr = self.get_points(index)
         if self.time:
             time = self.get_time(index)
             arr = self.add_time(arr, time)
+        
         return arr
 
     def get_target(self, index):
@@ -114,44 +102,17 @@ class SphericalDataset(data.Dataset):
     def add_dataset_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
-        parser.add_argument("--dataset_dir", default="data/", type=str)
-        parser.add_argument("--n_nodes_in_sample", default=1000, type=int)
-        parser.add_argument("--time", type=parse_t_f, default=False)
-        parser.add_argument("--in_memory", type=parse_t_f, default=True)
-        parser.add_argument("--cut", default=-1, type=int)
-        parser.add_argument("--dataset_type", type=str)
+        parser.add_argument("--dataset_dir", type=str)
+        parser.add_argument("--n_nodes_in_sample", type=int, default=10000)
+        parser.add_argument("--time", type=bool, default=True)
+        parser.add_argument("--in_memory", type=bool, default=True)
 
         return parser
 
     @staticmethod
-    def get_filenames(dataset_dir, dataset_type, subset=None):
-        if subset is None:
-            subset = ["*"]
-
-        if isinstance(subset, str):
-            subset = open(subset).read().splitlines()
-        elif isinstance(subset, list):
-            pass
-        else:
-            raise TypeError(
-                f"Unsupported type {type(subset)} for subset. "
-                f"Expected string or list."
-            )
-
+    def get_filenames(dataset_dir, dataset_type):
         npz_dir = os.path.join(dataset_dir, "npz_files")
-        npz_filenames = []
-        # for f in subset:
-        #     npz_filenames += glob.glob(os.path.join(npz_dir, f"{f}.npz"))
-        if dataset_type == 'train':
-            npz_filenames += glob.glob(os.path.join(npz_dir, r'train_*.npz'))
-        elif dataset_type == 'valid' : 
-            npz_filenames += glob.glob(os.path.join(npz_dir, r'valid_*.npz'))
-        elif dataset_type == 'test' : 
-            npz_filenames += glob.glob(os.path.join(npz_dir, r'test_*.npz'))
-        else:
-            print('Invalid subset!')
-            exit(0)
-
+        npz_filenames = glob.glob(os.path.join(npz_dir, dataset_type+r"_*.npz"))
         npz_filenames = sorted(npz_filenames, key=lambda s: s.split("/")[-1])
 
         return npz_filenames

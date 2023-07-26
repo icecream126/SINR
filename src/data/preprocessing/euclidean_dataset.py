@@ -1,23 +1,21 @@
+from argparse import ArgumentParser
+
 import os
 import glob
 from tqdm import tqdm
-from argparse import ArgumentParser
 
-import numpy as np
 import torch
-import torch.utils.data as data
+import numpy as np
+from torch.utils.data import Dataset
 
-from src.utils.core import parse_t_f
 
-
-class EuclideanDataset(data.Dataset):
+class EuclideanDataset(Dataset):
     def __init__(
         self,
         dataset_dir,
-        n_nodes_in_sample=1000,
-        time=False,
+        n_nodes_in_sample=10000,
+        time=True,
         in_memory=True,
-        cut=-1,
         dataset_type = 'train',
         **kwargs,
     ):
@@ -26,20 +24,11 @@ class EuclideanDataset(data.Dataset):
         self.time = time
         self._points = None
         self.in_memory = in_memory
-        self.cut = cut
-        self.dataset_type = dataset_type
-        if self.dataset_type == 'train':
-            self._points_path = os.path.join(dataset_dir, "train_points.npy")
-        elif self.dataset_type == 'valid':
-            self._points_path = os.path.join(dataset_dir, "valid_points.npy")
-        elif self.dataset_type == 'test':
-            self._points_path = os.path.join(dataset_dir, "test_points.npy")
-
-        self.filenames = self.get_filenames(dataset_dir, self.dataset_type)
-        if cut > 0:
-            self.filenames = self.filenames[:cut]
+        self._points_path = os.path.join(dataset_dir, dataset_type+"_points.npy")
+        self.filenames = self.get_filenames(dataset_dir, dataset_type)
         self.npzs = [np.load(f) for f in self.filenames]
         self._data = None
+
         if in_memory:
             print("Loading dataset")
             self._data = [self.load_data(i) for i in tqdm(range(len(self)))]
@@ -59,7 +48,6 @@ class EuclideanDataset(data.Dataset):
                 self._points = torch.from_numpy(self._points).float()
             return self._points
         else:
-            print(self.npzs[index])
             arr = self.npzs[index]["points"]
             return torch.from_numpy(arr).float()
         
@@ -100,7 +88,7 @@ class EuclideanDataset(data.Dataset):
         data_out["inputs"] = data["inputs"][points_idx]
         data_out["target"] = data["target"][points_idx]
         data_out["index"] = index
-        
+
         return data_out
 
     def __len__(self):
@@ -114,43 +102,17 @@ class EuclideanDataset(data.Dataset):
     def add_dataset_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
-        parser.add_argument("--dataset_dir", default="data/", type=str)
-        parser.add_argument("--n_nodes_in_sample", default=1000, type=int)
-        parser.add_argument("--time", type=parse_t_f, default=False)
-        parser.add_argument("--in_memory", type=parse_t_f, default=True)
-        parser.add_argument("--cut", default=-1, type=int)
+        parser.add_argument("--dataset_dir", type=str)
+        parser.add_argument("--n_nodes_in_sample", type=int, default=10000)
+        parser.add_argument("--time", type=bool, default=True)
+        parser.add_argument("--in_memory", type=bool, default=True)
 
         return parser
 
     @staticmethod
-    def get_filenames(dataset_dir, dataset_type, subset=None):
-        if subset is None:
-            subset = ["*"]
-
-        if isinstance(subset, str):
-            subset = open(subset).read().splitlines()
-        elif isinstance(subset, list):
-            pass
-        else:
-            raise TypeError(
-                f"Unsupported type {type(subset)} for subset. "
-                f"Expected string or list."
-            )
-
+    def get_filenames(dataset_dir, dataset_type):
         npz_dir = os.path.join(dataset_dir, "npz_files")
-        npz_filenames = []
-        # for f in subset:
-        #     npz_filenames += glob.glob(os.path.join(npz_dir, f"{f}.npz"))
-        if dataset_type == 'train':
-            npz_filenames += glob.glob(os.path.join(npz_dir, r'train_*.npz'))
-        elif dataset_type == 'valid' : 
-            npz_filenames += glob.glob(os.path.join(npz_dir, r'valid_*.npz'))
-        elif dataset_type == 'test' : 
-            npz_filenames += glob.glob(os.path.join(npz_dir, r'test_*.npz'))
-        else:
-            print('Invalid subset!')
-            exit(0)
-
+        npz_filenames = glob.glob(os.path.join(npz_dir, dataset_type+r"_*.npz"))
         npz_filenames = sorted(npz_filenames, key=lambda s: s.split("/")[-1])
 
         return npz_filenames
