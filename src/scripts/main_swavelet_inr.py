@@ -35,7 +35,7 @@ if __name__=='__main__':
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.n_workers)
 
     # Model
-    input_dim = 2 + (1 if train_dataset.time else 0)
+    input_dim = 3 + (1 if train_dataset.time else 0)
     output_dim = train_dataset.target_dim
     model = SwaveletINR(input_dim, output_dim, len(train_dataset), **vars(args))
 

@@ -24,7 +24,7 @@ class SwaveletDataset(Dataset):
         self.time = time
         self._points = None
         self.in_memory = in_memory
-        self._points_path = os.path.join(dataset_dir, dataset_type+"_spherical_points.npy")
+        self._points_path = os.path.join(dataset_dir, dataset_type+"_points.npy")
         self.filenames = self.get_filenames(dataset_dir, dataset_type)
         self.npzs = [np.load(f) for f in self.filenames]
         self._data = None

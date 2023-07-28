@@ -27,40 +27,75 @@ class SphericalGaborLayer(nn.Module):
             trainable: If True, omega and sigma are trainable parameters
     '''
     
-    def __init__(self, wavelet_dim, omega_0=30.0, sigma_0=10.0, trainable=False):
-        super().__init__()
+    def __init__(self, wavelet_dim, omega_0=60.0, sigma_0=100.0, trainable=False):
+        super().__init__() 
+
+        self.wavelet_dim = wavelet_dim
         self.omega_0 = omega_0
         self.scale_0 = sigma_0
-        self.wavelet_dim = wavelet_dim
-            
+
         self.omega_0 = nn.Parameter(self.omega_0*torch.ones(1), trainable)
         self.scale_0 = nn.Parameter(self.scale_0*torch.ones(1), trainable)
 
-        self.theta_0 = nn.Parameter(torch.empty(1, wavelet_dim))
-        self.phi_0 = nn.Parameter(torch.empty(1, wavelet_dim))
-        nn.init.uniform_(self.theta_0, 0, 2*pi)
-        nn.init.uniform_(self.phi_0, 0, 2*pi)
+        self.alpha = nn.Parameter(torch.empty(wavelet_dim))
+        self.beta = nn.Parameter(torch.empty(wavelet_dim))
+        self.gamma = nn.Parameter(torch.empty(wavelet_dim))
+        nn.init.uniform_(self.alpha, 0, 2*pi)
+        nn.init.uniform_(self.beta, 0, pi)
+        nn.init.uniform_(self.gamma, 0, 2*pi)
 
-    def forward(self, x):
-        theta = x[..., 0:1].repeat(1, 1, self.wavelet_dim)
-        phi = x[..., 1:2].repeat(1, 1, self.wavelet_dim)
-        time = x[..., 2:]
+    def forward(self, input):
+        points = input[..., 0:3]
+        time = input[..., 3:4]
 
-        tan = torch.tan((theta-self.theta_0)/2)
-        cos = torch.cos(phi-self.phi_0)
+        # generate euler matrix
+        zeros = torch.zeros(self.wavelet_dim, device=input.device)
+        ones = torch.ones(self.wavelet_dim, device=input.device)
 
-        gauss = torch.exp(-torch.square(self.scale_0*tan))
+        cos_alpha = torch.cos(self.alpha)
+        cos_beta = torch.cos(self.beta)
+        cos_gamma = torch.cos(self.gamma)
+        sin_alpha = torch.sin(self.alpha)
+        sin_beta = torch.sin(self.beta)
+        sin_gamma = torch.sin(self.gamma)
+
+        alpha_row_1 = torch.stack([cos_alpha, -sin_alpha, zeros], 1)
+        alpha_row_2 = torch.stack([sin_alpha, cos_alpha, zeros], 1)
+        alpha_row_3 = torch.stack([zeros, zeros, ones], 1)
+        yaw = torch.stack([alpha_row_1, alpha_row_2, alpha_row_3], 1)
+
+        beta_row_1 = torch.stack([ones, zeros, zeros], 1)
+        beta_row_2 = torch.stack([zeros, cos_beta, -sin_beta], 1)
+        beta_row_3 = torch.stack([zeros, sin_beta, cos_beta], 1)
+        pitch = torch.stack([beta_row_1, beta_row_2, beta_row_3], 1)
+
+        gamma_row_1 = torch.stack([cos_gamma, -sin_gamma, zeros], 1)
+        gamma_row_2 = torch.stack([sin_gamma, cos_gamma, zeros], 1)
+        gamma_row_3 = torch.stack([zeros, zeros, ones], 1)
+        roll = torch.stack([gamma_row_1, gamma_row_2, gamma_row_3], 1)
+
+        points = torch.matmul(yaw, points.unsqueeze(2).unsqueeze(-1)) 
+        points = torch.matmul(pitch, points)
+        points = torch.matmul(roll, points)
+        points = points.squeeze(-1)
+
+        x, z = points[..., 0], points[..., 2]
+
+        gauss = torch.exp(self.scale_0*torch.div(z-1, 1e-6+1+z))
         
-        angle = self.omega_0 * tan * cos
+        angle = self.omega_0 * torch.div(x, 1e-6+1+z)
 
-        cos = torch.cos(angle)
-        sin = torch.sin(angle)
-        
-        spherical_gabor = torch.cat([gauss*cos, gauss*sin], dim=-1)
+        real_sinusoid = torch.cos(angle)
+        img_sinusoid = torch.sin(angle)
+
+        real_gabor = gauss * real_sinusoid
+        img_gabor = gauss * img_sinusoid
+
+        spherical_gabor = torch.cat([real_gabor, img_gabor], dim=-1)
 
         x = torch.cat([spherical_gabor, time], dim=-1)
         return x
-    
+
 
 class MLP(nn.Module):
     """
@@ -190,7 +225,7 @@ class SwaveletINR(pl.LightningModule):
         dataset_size: int,
         hidden_dim: int = 512,
         n_layers: int = 4,
-        wavelet_dim: int = 16,
+        wavelet_dim: int = 256,
         lr: float = 0.0005,
         lr_patience: int = 500,
         geometric_init: bool = False,
@@ -358,7 +393,7 @@ class SwaveletINR(pl.LightningModule):
 
         parser.add_argument("--hidden_dim", type=int, default=512)
         parser.add_argument("--n_layers", type=int, default=4)
-        parser.add_argument("--wavelet_dim", type=int, default=16)
+        parser.add_argument("--wavelet_dim", type=int, default=256)
         parser.add_argument("--lr", type=float, default=0.0005)
         parser.add_argument("--lr_patience", type=int, default=1000)
         parser.add_argument("--geometric_init", type=bool, default=False)
