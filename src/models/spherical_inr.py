@@ -15,8 +15,9 @@ from src.utils import initializers as init
 from src.utils.spherical_harmonics import get_spherical_harmonics
 
 class SphericalHarmonicsLayer(nn.Module):
-    def __init__(self, max_order):
+    def __init__(self, need_time, max_order):
         super(SphericalHarmonicsLayer, self).__init__()
+        self.need_time = need_time
         self.max_order = max_order
 
         # self.theta_layer = nn.Linear(1, hidden_dim)
@@ -30,7 +31,8 @@ class SphericalHarmonicsLayer(nn.Module):
 
         theta = x[:,:,0].unsqueeze(-1) # torch.Size([3,5000,1])
         phi = x[:,:,1].unsqueeze(-1) # torch.Size([3,5000,1])
-        time = x[:,:,2].unsqueeze(-1) # torch.Size([3,5000,1])
+        if self.need_time:
+            time = x[:,:,2].unsqueeze(-1) # torch.Size([3,5000,1])
 
         # theta = self.theta_layer(theta) # torch.Size([3,5000, k])
         # phi = self.phi_layer(phi) # torch.Size([3,5000, k])
@@ -49,7 +51,10 @@ class SphericalHarmonicsLayer(nn.Module):
         #clear_spherical_harmonics_cache()
         sh = torch.cat(sh_list, dim=-1)
 
-        x = torch.cat([sh, time], dim=-1) # torch.Size([3,5000*k,(max_order+1)**2+1])
+        if self.need_time:
+            x = torch.cat([sh, time], dim=-1) # torch.Size([3,5000*k,(max_order+1)**2+1])
+        else:
+            x = sh
         # x = x.reshape(batch_size, num_samples,-1) # torch.Size([3,5000, ((max_order+1)**2+1)*hidden_dim])
         
         # currently, without detach, gradient explodes...
@@ -76,6 +81,7 @@ class MLP(nn.Module):
 
     def __init__(
         self,
+        need_time: bool,
         input_dim: int,
         output_dim: int,
         hidden_dim: int,
@@ -101,7 +107,7 @@ class MLP(nn.Module):
         self.dropout = dropout
         self.max_order = max_order
 
-        self.spherical_harmonics_layer = SphericalHarmonicsLayer(self.max_order)
+        self.spherical_harmonics_layer = SphericalHarmonicsLayer(need_time, self.max_order)
 
         # Modules
         self.model = nn.ModuleList()
@@ -113,7 +119,10 @@ class MLP(nn.Module):
             if i==0:
                 layer = self.spherical_harmonics_layer
             elif i==1:
-                layer = nn.Linear((self.max_order+1)**2+1, hidden_dim)
+                if need_time:
+                    layer = nn.Linear((self.max_order+1)**2+1, hidden_dim)
+                else:
+                    layer = nn.Linear((self.max_order+1)**2, hidden_dim)
             else : 
                 layer = nn.Linear(in_dim, out_dim)
 
@@ -182,6 +191,7 @@ class SphericalINR(pl.LightningModule):
 
     def __init__(
         self,
+        need_time: bool,
         input_dim: int,
         output_dim: int,
         dataset_size: int,
@@ -201,7 +211,7 @@ class SphericalINR(pl.LightningModule):
         **kwargs
     ):
         super().__init__()
-
+        self.need_time = need_time
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.dataset_size = dataset_size
@@ -222,6 +232,7 @@ class SphericalINR(pl.LightningModule):
 
         # Modules
         self.model = MLP(
+            need_time,
             input_dim,
             output_dim,
             hidden_dim,
@@ -280,6 +291,8 @@ class SphericalINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
@@ -303,6 +316,8 @@ class SphericalINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
@@ -326,6 +341,8 @@ class SphericalINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("test_loss", loss)
 
