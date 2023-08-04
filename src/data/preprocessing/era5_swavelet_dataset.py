@@ -19,14 +19,16 @@ def era5(path_to_data, batch_size=16):
         path_to_data (string):
         batch_size (int):
     """
-    dataset = ERA5SphericalDataset(path_to_data)
+    dataset = ERA5SwaveletDataset(path_to_data)
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     return dataloader
+def deg_to_rad(degrees):
+    return np.pi * degrees / 180.
 
 
-class ERA5SphericalDataset(Dataset):
+class ERA5SwaveletDataset(Dataset):
     """ERA5 temperature dataset.
 
     Args:
@@ -52,14 +54,25 @@ class ERA5SphericalDataset(Dataset):
         latitude = data['latitude']  # Shape (num_lats,) theta
         longitude = data['longitude']  # Shape (num_lons,) phi
 
+        lat_rad = deg_to_rad(latitude)
+        lon_rad = deg_to_rad(longitude)
+
+
+
         if self.normalize:
             temperature = (temperature - T_MIN) / (T_MAX - T_MIN)
 
-        longitude_grid, latitude_grid = np.meshgrid(longitude, latitude)
+        longitude_grid, latitude_grid = np.meshgrid(lon_rad, lat_rad)
 
         latitude = torch.flatten(torch.tensor(latitude_grid))
         longitude = torch.flatten(torch.tensor(longitude_grid))
-        inputs = torch.stack([latitude, longitude],dim=-1)
+        # lat_rad = torch.tensor(lat_rad)
+        # lon_rad = torch.tensor(lon_rad)
+        x = torch.cos(latitude) * torch.cos(longitude)
+        y = torch.cos(latitude) * torch.sin(longitude)
+        z = torch.sin(latitude)
+        
+        inputs = torch.stack([x,y,z],dim=-1)
 
         data_out["inputs"] = inputs
         data_out["target"] = torch.flatten(temperature)
@@ -88,9 +101,9 @@ class ERA5SphericalDataset(Dataset):
     def add_dataset_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
 
-        parser.add_argument("--dataset_dir", type=str)
-        # parser.add_argument("--n_nodes_in_sample", type=int, default=10000)
-        parser.add_argument("--time", type=bool, default=True)
-        # parser.add_argument("--in_memory", type=bool, default=True)
+        parser.add_argument("—dataset_dir", type=str)
+        parser.add_argument("—n_nodes_in_sample", type=int, default=10000)
+        parser.add_argument("—time", type=bool, default=True)
+        parser.add_argument("—in_memory", type=bool, default=True)
 
         return parser
