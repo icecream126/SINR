@@ -1,16 +1,19 @@
-program: ./src/scripts/era5/main_swavelet_inr.py
+program: ./sweeps/scripts/tune_era5_spherical.py
+name: era5_spherical
 method: bayes
 metric: 
   name: train_loss
   goal: minimize
 parameters: 
-  wavelet_dim:
-    values: [64, 128, 256]
+  max_order: 
+    values: [1, 2, 3]
+  batch_size:
+    values: [32, 64, 128]
   lr:
     min: 0.0001
     max: 0.01
   hidden_dim:
-    values: [64, 128, 256]
+    values: [64, 128, 256, 512]
   n_layers:
     values: [4,6,8]
   lr_patience:

@@ -13,88 +13,94 @@ from math import pi
 from torch.optim import lr_scheduler
 
 from src.utils import initializers as init
+from src.utils.psnr import mse2psnr
+from src.utils.bpp import model_size_in_bits
 
+ERA5_PIXEL_NUM = 46*90
 
 
 class SphericalGaborLayer(nn.Module):
     '''
         Implicit representation with spherical Gabor nonlinearity
-        
         Inputs;
             wavelet_dim; Output features
             omega0: Frequency of Gabor sinusoid term
             sigma0: Scaling of Gabor Gaussian term
             trainable: If True, omega and sigma are trainable parameters
     '''
-    
-    def __init__(self, wavelet_dim, omega_0=60.0, sigma_0=100.0, trainable=False):
-        super().__init__() 
-
+    def __init__(self, need_time, wavelet_dim, omega=30.0, scale=100.0, cocycle=False):
+        super().__init__()
+        self.need_time = need_time
         self.wavelet_dim = wavelet_dim
-        self.omega_0 = omega_0
-        self.scale_0 = sigma_0
-
-        self.omega_0 = nn.Parameter(self.omega_0*torch.ones(1), trainable)
-        self.scale_0 = nn.Parameter(self.scale_0*torch.ones(1), trainable)
-
-        self.alpha = nn.Parameter(torch.empty(wavelet_dim))
-        self.beta = nn.Parameter(torch.empty(wavelet_dim))
-        self.gamma = nn.Parameter(torch.empty(wavelet_dim))
-        nn.init.uniform_(self.alpha, 0, 2*pi)
-        nn.init.uniform_(self.beta, 0, pi)
-        nn.init.uniform_(self.gamma, 0, 2*pi)
-
+        self.omega_0 = omega
+        self.scale_0 = scale
+        self.cocycle = cocycle
+        self.dilate = nn.Parameter(torch.empty(1, 1, wavelet_dim))
+        nn.init.normal_(self.dilate)
+        self.u = nn.Parameter(torch.empty(wavelet_dim))
+        self.v = nn.Parameter(torch.empty(wavelet_dim))
+        self.w = nn.Parameter(torch.empty(wavelet_dim))
+        nn.init.uniform_(self.u)
+        nn.init.uniform_(self.v)
+        nn.init.uniform_(self.w)
+        
     def forward(self, input):
         points = input[..., 0:3]
-        time = input[..., 3:4]
-
+        if self.need_time:
+            time = input[..., 3:4]
         # generate euler matrix
         zeros = torch.zeros(self.wavelet_dim, device=input.device)
         ones = torch.ones(self.wavelet_dim, device=input.device)
-
-        cos_alpha = torch.cos(self.alpha)
-        cos_beta = torch.cos(self.beta)
-        cos_gamma = torch.cos(self.gamma)
-        sin_alpha = torch.sin(self.alpha)
-        sin_beta = torch.sin(self.beta)
-        sin_gamma = torch.sin(self.gamma)
-
-        alpha_row_1 = torch.stack([cos_alpha, -sin_alpha, zeros], 1)
-        alpha_row_2 = torch.stack([sin_alpha, cos_alpha, zeros], 1)
-        alpha_row_3 = torch.stack([zeros, zeros, ones], 1)
-        yaw = torch.stack([alpha_row_1, alpha_row_2, alpha_row_3], 1)
-
-        beta_row_1 = torch.stack([ones, zeros, zeros], 1)
-        beta_row_2 = torch.stack([zeros, cos_beta, -sin_beta], 1)
-        beta_row_3 = torch.stack([zeros, sin_beta, cos_beta], 1)
-        pitch = torch.stack([beta_row_1, beta_row_2, beta_row_3], 1)
-
-        gamma_row_1 = torch.stack([cos_gamma, -sin_gamma, zeros], 1)
-        gamma_row_2 = torch.stack([sin_gamma, cos_gamma, zeros], 1)
-        gamma_row_3 = torch.stack([zeros, zeros, ones], 1)
-        roll = torch.stack([gamma_row_1, gamma_row_2, gamma_row_3], 1)
-
-        points = torch.matmul(yaw, points.unsqueeze(2).unsqueeze(-1)) 
-        points = torch.matmul(pitch, points)
-        points = torch.matmul(roll, points)
+        alpha = 2*pi*self.u
+        beta = torch.arccos(torch.clamp(2*self.v-1, -1+1e-6, 1-1e-6))
+        gamma = 2*pi*self.w
+        cos_alpha = torch.cos(alpha)
+        cos_beta = torch.cos(beta)
+        cos_gamma = torch.cos(gamma)
+        sin_alpha = torch.sin(alpha)
+        sin_beta = torch.sin(beta)
+        sin_gamma = torch.sin(gamma)
+        Rz_alpha = torch.stack([
+            torch.stack([cos_alpha, -sin_alpha, zeros], 1),
+            torch.stack([sin_alpha,  cos_alpha, zeros], 1),
+            torch.stack([    zeros,      zeros,  ones], 1)
+            ], 1)
+        Rx_beta = torch.stack([
+            torch.stack([ ones,     zeros,      zeros], 1),
+            torch.stack([zeros, cos_beta, -sin_beta], 1),
+            torch.stack([zeros, sin_beta,  cos_beta], 1)
+            ], 1)
+        Rz_gamma = torch.stack([
+            torch.stack([cos_gamma, -sin_gamma, zeros], 1),
+            torch.stack([sin_gamma,  cos_gamma, zeros], 1),
+            torch.stack([    zeros,      zeros,  ones], 1)
+            ], 1)
+        R = torch.bmm(torch.bmm(Rz_gamma, Rx_beta), Rz_alpha)
+        points = torch.matmul(R, points.unsqueeze(2).unsqueeze(-1))
         points = points.squeeze(-1)
-
         x, z = points[..., 0], points[..., 2]
-
-        gauss = torch.exp(self.scale_0*torch.div(z-1, 1e-6+1+z))
-        
-        angle = self.omega_0 * torch.div(x, 1e-6+1+z)
-
+        dilate = torch.exp(self.dilate)
+        gauss = torch.exp(-self.scale_0*dilate*dilate*(1-z)/(1e-6+1+z))
+        angle = self.omega_0 * dilate * 2*x / (1e-6+1+z)
         real_sinusoid = torch.cos(angle)
         img_sinusoid = torch.sin(angle)
-
-        real_gabor = gauss * real_sinusoid
-        img_gabor = gauss * img_sinusoid
-
+        real_gabor = gauss * real_sinusoid #/ (1e-6+1+z)
+        img_gabor = gauss * img_sinusoid #/ (1e-6+1+z)
+        if self.cocycle:
+            dilate_inv_square = 1 / torch.square(dilate)
+            cocycle = 4 * dilate_inv_square / torch.square((dilate_inv_square-1)*z+(dilate_inv_square+1))
+            sqrt_cocycle = torch.sqrt(cocycle)
+            real_gabor = sqrt_cocycle * real_gabor
+            img_gabor = sqrt_cocycle * img_gabor
         spherical_gabor = torch.cat([real_gabor, img_gabor], dim=-1)
-
-        x = torch.cat([spherical_gabor, time], dim=-1)
+        
+        if self.need_time:
+            x = torch.cat([spherical_gabor, time], dim=-1)
+        else:
+            x = spherical_gabor
         return x
+    
+    
 
 
 class MLP(nn.Module):
@@ -115,6 +121,7 @@ class MLP(nn.Module):
 
     def __init__(
         self,
+        need_time: bool,
         input_dim: int,
         output_dim: int,
         hidden_dim: int,
@@ -140,7 +147,7 @@ class MLP(nn.Module):
         self.dropout = dropout
         self.wavelet_dim = wavelet_dim
 
-        self.spherical_gabor_layer = SphericalGaborLayer(self.wavelet_dim)
+        self.spherical_gabor_layer = SphericalGaborLayer(need_time, self.wavelet_dim)
 
         # Modules
         self.model = nn.ModuleList()
@@ -152,7 +159,10 @@ class MLP(nn.Module):
             if i==0:
                 layer = self.spherical_gabor_layer
             elif i==1:
-                layer = nn.Linear(2*wavelet_dim+1, hidden_dim)
+                if need_time:
+                    layer = nn.Linear(2*wavelet_dim+1, hidden_dim)
+                else:
+                    layer = nn.Linear(2*wavelet_dim, hidden_dim)
             else : 
                 layer = nn.Linear(in_dim, out_dim)
 
@@ -220,6 +230,7 @@ class SwaveletINR(pl.LightningModule):
 
     def __init__(
         self,
+        need_time: bool,
         input_dim: int,
         output_dim: int,
         dataset_size: int,
@@ -239,7 +250,7 @@ class SwaveletINR(pl.LightningModule):
         **kwargs
     ):
         super().__init__()
-
+        self.need_time = need_time
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.dataset_size = dataset_size
@@ -257,9 +268,11 @@ class SwaveletINR(pl.LightningModule):
         self.classifier = classifier
 
         self.sync_dist = torch.cuda.device_count() > 1
+        self.use_psnr=True
 
         # Modules
         self.model = MLP(
+            need_time,
             input_dim,
             output_dim,
             hidden_dim,
@@ -274,11 +287,15 @@ class SwaveletINR(pl.LightningModule):
             dropout,
         )
 
+        self.model_bits = model_size_in_bits(self.model)
+
         # Loss
         if self.classifier:
             self.loss_fn = nn.CrossEntropyLoss()
+            self.use_psnr = False
         else:
             self.loss_fn = nn.MSELoss()
+            self.use_psnr = True
 
         # Metrics
         self.train_r2_score = tm.R2Score(output_dim)
@@ -317,9 +334,14 @@ class SwaveletINR(pl.LightningModule):
         # Loss
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
-
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("train_psnr",psnr, prog_bar=True, sync_dist = self.sync_dist)
 
         if not self.classifier:
             self.train_r2_score(
@@ -340,10 +362,16 @@ class SwaveletINR(pl.LightningModule):
         # Loss
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
+            
+        if not self.need_time:
+            target = target.unsqueeze(-1)
 
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
 
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("valid_psnr",psnr, prog_bar=True, sync_dist = self.sync_dist)
         if not self.classifier:
             self.valid_r2_score(
                 pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
@@ -363,9 +391,16 @@ class SwaveletINR(pl.LightningModule):
         # Loss
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
-
+        
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("test_loss", loss)
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("test_psnr",psnr)
+            # self.log('bpp', self.model_bits/ERA5_PIXEL_NUM)
+
 
         if not self.classifier:
             self.test_r2_score(

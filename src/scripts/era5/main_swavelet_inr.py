@@ -1,9 +1,11 @@
 import os
+import yaml
 import sys
 sys.path.append('./')
 
 from argparse import ArgumentParser
 
+import wandb
 import torch
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
@@ -19,6 +21,7 @@ if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
+    parser.add_argument('--config',type=str, default='./sweeps/era5_swavelet.yaml')
     parser.add_argument("--dataset", default='ERA5', type=str)
     parser.add_argument("--patience", default=5000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
@@ -28,7 +31,7 @@ if __name__=='__main__':
     parser = SwaveletINR.add_model_specific_args(parser)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
-
+    
     # Data
     train_dataset = ERA5SwaveletDataset(dataset_type='train',**vars(args))
     test_dataset = ERA5SwaveletDataset(dataset_type='test',**vars(args))
@@ -65,7 +68,7 @@ if __name__=='__main__':
         max_epochs=-1,
         log_every_n_steps=1,
         callbacks=[lrmonitor_cb, checkpoint_cb],
-        # logger=logger,
+        logger=logger,
         gpus=torch.cuda.device_count(),
         strategy="ddp" if torch.cuda.device_count() > 1 else None
     )

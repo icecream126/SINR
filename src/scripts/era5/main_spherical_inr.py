@@ -29,6 +29,7 @@ if __name__=='__main__':
     
     # Data
     train_dataset = ERA5SphericalDataset(dataset_type='train',**vars(args))
+    valid_dataset = ERA5SphericalDataset(dataset_type='valid', **vars(args))
     test_dataset = ERA5SphericalDataset(dataset_type='test',**vars(args))
     need_time=False
     
@@ -63,7 +64,7 @@ if __name__=='__main__':
         max_epochs=-1,
         log_every_n_steps=1,
         callbacks=[lrmonitor_cb, checkpoint_cb],
-        # logger=logger,
+        logger=logger,
         gpus=torch.cuda.device_count(),
         strategy="ddp" if torch.cuda.device_count() > 1 else None
     )

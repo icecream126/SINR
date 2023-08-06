@@ -64,7 +64,7 @@ if __name__=='__main__':
         max_epochs=-1,
         log_every_n_steps=1,
         callbacks=[lrmonitor_cb, checkpoint_cb],
-        # logger=logger,
+        logger=logger,
         gpus=torch.cuda.device_count(),
         strategy="ddp" if torch.cuda.device_count() > 1 else None
     )

@@ -11,6 +11,10 @@ import torch
 
 from src.utils.sine import Sine
 from src.utils import initializers as init
+from src.utils.psnr import mse2psnr
+from src.utils.bpp import model_size_in_bits
+
+ERA5_PIXEL_NUM = 46*90
 
 
 class MLP(nn.Module):
@@ -31,6 +35,7 @@ class MLP(nn.Module):
 
     def __init__(
         self,
+        need_time: bool,
         input_dim: int,
         output_dim: int,
         hidden_dim: int,
@@ -132,6 +137,7 @@ class EuclideanINR(pl.LightningModule):
 
     def __init__(
         self,
+        need_time: bool,
         input_dim: int,
         output_dim: int,
         dataset_size: int,
@@ -150,7 +156,7 @@ class EuclideanINR(pl.LightningModule):
         **kwargs
     ):
         super().__init__()
-
+        self.need_time = need_time
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.dataset_size = dataset_size
@@ -168,9 +174,11 @@ class EuclideanINR(pl.LightningModule):
         self.classifier = classifier
 
         self.sync_dist = torch.cuda.device_count() > 1
+        self.use_psnr = True
 
         # Modules
         self.model = MLP(
+            need_time,
             input_dim,
             output_dim,
             hidden_dim,
@@ -184,11 +192,15 @@ class EuclideanINR(pl.LightningModule):
             dropout,
         )
 
+        self.model_bits = model_size_in_bits(self.model)
+
         # Loss
         if self.classifier:
             self.loss_fn = nn.CrossEntropyLoss()
+            self.use_psnr = False
         else:
             self.loss_fn = nn.MSELoss()
+            self.use_psnr = True
 
         # Metrics
         self.train_r2_score = tm.R2Score(output_dim)
@@ -212,8 +224,13 @@ class EuclideanINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("train_psnr",psnr, prog_bar=True, sync_dist = self.sync_dist)
 
         if not self.classifier:
             self.train_r2_score(
@@ -234,10 +251,15 @@ class EuclideanINR(pl.LightningModule):
         # Loss
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
-
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
-
+        if not self.need_time:
+            target = target.unsqueeze(-1)
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("valid_psnr",psnr, prog_bar=True, sync_dist = self.sync_dist)
         if not self.classifier:
             self.valid_r2_score(
                 pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
@@ -258,8 +280,14 @@ class EuclideanINR(pl.LightningModule):
         if self.classifier:
             pred = torch.permute(pred, (0, 2, 1))
 
+        if not self.need_time:
+            target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("test_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("test_psnr",psnr)
+            # self.log('bpp', self.model_bits/ERA5_PIXEL_NUM)
 
         if not self.classifier:
             self.test_r2_score(

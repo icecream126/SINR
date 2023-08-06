@@ -1,0 +1,25 @@
+program: ./sweeps/scripts/tune_era5_swavelet.py
+name: era5_swavelet
+method: bayes
+metric: 
+  name: train_loss
+  goal: minimize
+parameters: 
+  batch_size:
+    values: [32, 64, 128]
+  wavelet_dim:
+    values: [64, 128, 256]
+  lr:
+    min: 0.0001
+    max: 0.01
+  hidden_dim:
+    values: [64, 128, 256, 512]
+  n_layers:
+    values: [4,6,8]
+  lr_patience:
+    values: [500, 1000, 2000]
+  dataset_dir:
+    value: dataset/era5_temp2m_16x/
+  
+  
+  

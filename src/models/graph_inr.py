@@ -11,6 +11,8 @@ import torch
 
 from src.utils.sine import Sine
 from src.utils import initializers as init
+from src.utils.psnr import mse2psnr
+
 
 
 class MLP(nn.Module):

@@ -13,6 +13,10 @@ from torch.optim import lr_scheduler
 
 from src.utils import initializers as init
 from src.utils.spherical_harmonics import get_spherical_harmonics
+from src.utils.psnr import mse2psnr
+from src.utils.bpp import model_size_in_bits
+
+ERA5_PIXEL_NUM = 46*90
 
 class SphericalHarmonicsLayer(nn.Module):
     def __init__(self, need_time, max_order):
@@ -229,6 +233,7 @@ class SphericalINR(pl.LightningModule):
         self.classifier = classifier
 
         self.sync_dist = torch.cuda.device_count() > 1
+        self.use_psnr = True
 
         # Modules
         self.model = MLP(
@@ -247,11 +252,15 @@ class SphericalINR(pl.LightningModule):
             dropout,
         )
 
+        self.model_bits = model_size_in_bits(self.model)
+        
         # Loss
         if self.classifier:
             self.loss_fn = nn.CrossEntropyLoss()
+            self.use_psnr = False
         else:
             self.loss_fn = nn.MSELoss()
+            self.use_psnr = True
 
         # Metrics
         self.train_r2_score = tm.R2Score(output_dim)
@@ -293,8 +302,13 @@ class SphericalINR(pl.LightningModule):
 
         if not self.need_time:
             target = target.unsqueeze(-1)
+            
+        
         loss = self.loss_fn(pred, target)
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("train_psnr",psnr, prog_bar=True, sync_dist = self.sync_dist)
 
         if not self.classifier:
             self.train_r2_score(
@@ -320,7 +334,9 @@ class SphericalINR(pl.LightningModule):
             target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
-
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log("valid_psnr",psnr, prog_bar=True, sync_dist = self.sync_dist)
         if not self.classifier:
             self.valid_r2_score(
                 pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
@@ -345,6 +361,10 @@ class SphericalINR(pl.LightningModule):
             target = target.unsqueeze(-1)
         loss = self.loss_fn(pred, target)
         self.log("test_loss", loss)
+        if self.use_psnr:
+            psnr = mse2psnr(loss)
+            self.log('test psnr',psnr)
+            # self.log('bpp', self.model_bits/ERA5_PIXEL_NUM)
 
         if not self.classifier:
             self.test_r2_score(
