@@ -32,8 +32,8 @@ from tqdm import tqdm
 
 import sys
 sys.path.append('./')
-from src.data.graph_dataset import GraphDataset
-from src.models.graph_inr import GraphINR
+from src.datasets.graph_dataset import GraphDataset
+from src.models.graph import GraphINR
 from src.utils.data_generation import cartesian_to_sphere
 from src.utils.get_predictions import get_batched_predictions
 

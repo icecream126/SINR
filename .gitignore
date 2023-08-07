@@ -4,4 +4,6 @@
 launch.json
 dataset/
 experiment/
+wandb/
+SINR/
 __pycache__
