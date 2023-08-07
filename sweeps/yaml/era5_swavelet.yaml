@@ -2,8 +2,8 @@ program: ./sweeps/scripts/tune_era5_swavelet.py
 name: era5_swavelet
 method: bayes
 metric: 
-  name: valid_loss
-  goal: minimize
+  name: valid_psnr
+  goal: maximize
 parameters: 
   batch_size:
     values: [32, 64, 128]

@@ -2,8 +2,8 @@ program: ./sweeps/scripts/tune_era5_spherical.py
 name: era5_spherical
 method: bayes
 metric: 
-  name: valid_loss
-  goal: minimize
+  name: valid_psnr
+  goal: maximize
 parameters: 
   max_order: 
     values: [1, 2, 3]
