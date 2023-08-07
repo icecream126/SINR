@@ -1,3 +1,4 @@
+<<<<<<< HEAD:sweeps/era5_swavelet.yaml
 program: ./src/main.py
 method: bayes
 metric: 
@@ -10,6 +11,17 @@ parameters:
     values: ['swinr']
   wavelet_dim:
     values: [64, 128, 256]
+=======
+program: ./sweeps/scripts/tune_era5_euclidean.py
+name: era5_euclidean
+method: bayes
+metric: 
+  name: valid_psnr
+  goal: maximize
+parameters: 
+  batch_size:
+    values: [32, 64, 128]
+>>>>>>> 131d7ae3bb5cbaf3b19fe191d176e2c64e660ce7:sweeps/yaml/era5_euclidean.yaml
   lr:
     min: 0.0001
     max: 0.01
