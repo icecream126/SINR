@@ -42,11 +42,11 @@ if __name__=='__main__':
     parser.add_argument("--max_order", type=int, default=3)
 
     parser.add_argument("--hidden_dim", type=int, default=512)
-    parser.add_argument("--n_layers", type=int, default=4)
+    parser.add_argument("--n_layers", type=int, default=8)
     parser.add_argument('--skip', default=False, action='store_true')
     parser.add_argument('--sine', default=False, action='store_true')
     parser.add_argument('--all_sine', default=False, action='store_true')
-    parser.add_argument("--lr", type=float, default=0.0005)
+    parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
     parser = pl.Trainer.add_argparse_args(parser)

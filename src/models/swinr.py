@@ -9,6 +9,7 @@ import pytorch_lightning as pl
 from torch.optim import lr_scheduler
 
 from src.utils.sine import Sine
+from src.utils.psnr import mse2psnr
 from src.utils import initializers as init
 
 
@@ -129,12 +130,6 @@ class MLP(nn.Module):
     ):
         super().__init__()
 
-        self.wavelet_dim = wavelet_dim
-        self.n_layers = n_layers
-        self.skip = skip
-        self.sine = sine
-        self.all_sine = all_sine
-
         self.spherical_gabor_layer = SphericalGaborLayer(wavelet_dim, time)
 
         # Modules
@@ -147,7 +142,10 @@ class MLP(nn.Module):
             if i==0:
                 layer = self.spherical_gabor_layer
             elif i==1:
-                layer = nn.Linear(2*wavelet_dim+1, hidden_dim)
+                if time:
+                    layer = nn.Linear(2*wavelet_dim+1, hidden_dim)
+                else:
+                    layer = nn.Linear(2*wavelet_dim, hidden_dim)
             else : 
                 layer = nn.Linear(in_dim, out_dim)
 
@@ -211,25 +209,17 @@ class SWINR(pl.LightningModule):
         output_dim: int,
         hidden_dim: int = 512,
         wavelet_dim: int = 64,
-        n_layers: int = 4,
+        n_layers: int = 8,
         time: bool = True,
         skip: bool = True,
         sine: bool = False,
         all_sine: bool = False,
-        lr: float = 0.0005,
-        lr_patience: int = 500,
+        lr: float = 0.001,
+        lr_patience: int = 1000,
         **kwargs
     ):
         super().__init__()
 
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.hidden_dim = hidden_dim
-        self.wavelet_dim = wavelet_dim
-        self.n_layers = n_layers
-        self.skip = skip
-        self.sine = sine
-        self.all_sine = all_sine
         self.lr = lr
         self.lr_patience = lr_patience
 
@@ -261,8 +251,9 @@ class SWINR(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log("train_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         return loss
-
+    
     def validation_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
 
@@ -270,6 +261,7 @@ class SWINR(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log("valid_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         return loss
 
     def test_step(self, data, batch_idx):
@@ -279,6 +271,7 @@ class SWINR(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("test_mse", loss)
+        self.log("test_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         self.log("min_valid_loss", self.min_valid_loss)
         return loss
 

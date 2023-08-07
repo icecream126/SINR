@@ -6,4 +6,5 @@ dataset/
 experiment/
 wandb/
 SINR/
+sweeps/
 __pycache__

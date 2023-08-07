@@ -7,6 +7,8 @@ from torch import nn
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
 
+from src.utils.psnr import mse2psnr
+
 
 class RealGaborLayer(nn.Module):
     '''
@@ -22,7 +24,7 @@ class RealGaborLayer(nn.Module):
             scale: Scaling of Gabor Gaussian term
     '''
     
-    def __init__(self, input_dim, output_dim, omega0=10.0, sigma0=10.0):
+    def __init__(self, input_dim, output_dim, omega0=30.0, sigma0=10.0):
         super().__init__()
         self.omega_0 = omega0
         self.scale_0 = sigma0
@@ -39,53 +41,104 @@ class RealGaborLayer(nn.Module):
         return torch.cos(omega)*torch.exp(-(scale**2))
     
     
-class ComplexGaborLayer(nn.Module):
-    '''
-        Implicit representation with complex Gabor nonlinearity
+# class ComplexGaborLayer(nn.Module):
+#     '''
+#         Implicit representation with complex Gabor nonlinearity
         
-        Inputs;
-            input_dim: Input features
-            output_dim; Output features
-            bias: if True, enable bias for the linear operation
-            is_first: Legacy SIREN parameter
-            omega_0: Legacy SIREN parameter
-            omega0: Frequency of Gabor sinusoid term
-            sigma0: Scaling of Gabor Gaussian term
-            trainable: If True, omega and sigma are trainable parameters
-    '''
+#         Inputs;
+#             input_dim: Input features
+#             output_dim; Output features
+#             bias: if True, enable bias for the linear operation
+#             is_first: Legacy SIREN parameter
+#             omega_0: Legacy SIREN parameter
+#             omega0: Frequency of Gabor sinusoid term
+#             sigma0: Scaling of Gabor Gaussian term
+#             trainable: If True, omega and sigma are trainable parameters
+#     '''
     
+#     def __init__(
+#         self, 
+#         input_dim, 
+#         output_dim, 
+#         is_first=False, 
+#         omega0=30.0, 
+#         sigma0=10.0
+#     ):
+#         super().__init__()
+#         self.omega_0 = omega0
+#         self.scale_0 = sigma0
+#         self.is_first = is_first
+        
+#         self.input_dim = input_dim
+        
+#         if self.is_first:
+#             dtype = torch.float
+#         else:
+#             dtype = torch.cfloat
+            
+#         # Set trainable parameters if they are to be simultaneously optimized
+        
+#         self.linear = nn.Linear(input_dim,
+#                                 output_dim,
+#                                 dtype=dtype)
+    
+#     def forward(self, input):
+#         lin = self.linear(input)
+#         omega = self.omega_0 * lin
+#         scale = self.scale_0 * lin
+        
+#         return torch.exp(1j*omega - scale.abs().square())
+    
+
+class MLP(nn.Module):
+    """
+    Arguments:
+        input_dim: int, size of the inputs
+        output_dim: int, size of the ouputs
+        hidden_dim: int = 512, number of neurons in hidden layers
+        n_layers: int = 4, number of layers (total, including first and last)
+        skip: bool = True, add a skip connection to the middle layer
+        sine: bool = False, use SIREN activation in the first layer
+        all_sine: bool = False, use SIREN activations in all other layers
+    """
+
     def __init__(
-        self, 
-        input_dim, 
-        output_dim, 
-        is_first=False, 
-        omega0=30.0, 
-        sigma0=10.0
+        self,
+        input_dim: int,
+        output_dim: int,
+        hidden_dim: int,
+        n_layers: int,
+        skip: bool,
     ):
         super().__init__()
-        self.omega_0 = omega0
-        self.scale_0 = sigma0
-        self.is_first = is_first
-        
-        self.input_dim = input_dim
-        
-        if self.is_first:
-            dtype = torch.float
-        else:
-            dtype = torch.cfloat
-            
-        # Set trainable parameters if they are to be simultaneously optimized
-        
-        self.linear = nn.Linear(input_dim,
-                                output_dim,
-                                dtype=dtype)
-    
-    def forward(self, input):
-        lin = self.linear(input)
-        omega = self.omega_0 * lin
-        scale = self.scale_0 * lin
-        
-        return torch.exp(1j*omega - scale.abs().square())
+
+        # Modules
+        self.model = nn.ModuleList()
+        in_dim = input_dim
+        out_dim = hidden_dim
+
+        for i in range(n_layers):   
+            layer = RealGaborLayer(in_dim, out_dim)
+
+            self.model.append(layer)
+
+            in_dim = hidden_dim
+
+            # Skip connection
+            if i + 1 == int(np.ceil(n_layers / 2)) and skip:
+                self.skip_at = len(self.model)
+                in_dim += input_dim
+
+            if i + 1 == n_layers - 1:
+                out_dim = output_dim
+
+    def forward(self, x):
+        x_in = x
+        for i, layer in enumerate(self.model):
+            if i == self.skip_at:
+                x = torch.cat([x, x_in], dim=-1)
+            x = layer(x)
+        return x
     
 
 class WIRE(pl.LightningModule):
@@ -94,60 +147,33 @@ class WIRE(pl.LightningModule):
         input_dim: int,
         output_dim: int,
         hidden_dim: int = 512,
-        n_layers: int = 4,
-        first_omega_0=30., 
-        hidden_omega_0=30., 
-        scale=10.0,
-        lr: float = 0.0005,
-        lr_patience: int = 500,
+        n_layers: int = 8,
+        skip: bool = True,
+        lr: float = 0.001,
+        lr_patience: int = 1000,
         **kwargs
     ):
         super().__init__()
 
         self.lr = lr
         self.lr_patience = lr_patience
-        
-        # All results in the paper were with the default complex 'gabor' nonlinearity
-        self.nonlin = ComplexGaborLayer
-        
-        # Since complex numbers are two real numbers, reduce the number of 
-        # hidden parameters by 2
-        hidden_dim = int(hidden_dim/np.sqrt(2))
-        dtype = torch.cfloat
-        # self.complex = True
-        # self.wavelet = 'gabor'    
-        
-        # Legacy parameter
-        # self.pos_encode = False
-            
-        self.net = []
-        self.net.append(self.nonlin(input_dim,
-                                    hidden_dim, 
-                                    omega0=first_omega_0,
-                                    sigma0=scale,
-                                    is_first=True))
-
-        for i in range(n_layers):
-            self.net.append(self.nonlin(hidden_dim,
-                                        hidden_dim, 
-                                        omega0=hidden_omega_0,
-                                        sigma0=scale))
-
-        final_linear = nn.Linear(hidden_dim,
-                                 output_dim,
-                                 dtype=dtype)            
-        self.net.append(final_linear)
-        
-        self.net = nn.Sequential(*self.net)
 
         self.sync_dist = torch.cuda.device_count() > 1
 
+        # Modules
+        self.model = MLP(
+            input_dim,
+            output_dim,
+            hidden_dim,
+            n_layers,
+            skip
+        )
+
         self.loss_fn = nn.MSELoss()
         self.min_valid_loss = None
-    
-    def forward(self, coords):
-        output = self.net(coords)
-        return output.real
+
+    def forward(self, points):
+        return self.model(points)
 
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
@@ -156,6 +182,7 @@ class WIRE(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log("train_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         return loss
     
     def validation_step(self, data, batch_idx):
@@ -165,6 +192,7 @@ class WIRE(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log("valid_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         return loss
 
     def test_step(self, data, batch_idx):
@@ -174,6 +202,7 @@ class WIRE(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("test_mse", loss)
+        self.log("test_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         self.log("min_valid_loss", self.min_valid_loss)
         return loss
 

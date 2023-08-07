@@ -1,22 +1,21 @@
-program: ./src/scripts/era5/main_swavelet_inr.py
+program: ./src/main.py
 method: bayes
 metric: 
-  name: train_loss
+  name: min_valid_loss
   goal: minimize
-parameters: 
+parameters:
+  dataset:
+    values: ['era5']
+  model:
+    values: ['swinr']
   wavelet_dim:
     values: [64, 128, 256]
   lr:
     min: 0.0001
     max: 0.01
   hidden_dim:
-    values: [64, 128, 256]
+    values: [128, 256, 512]
   n_layers:
     values: [4,6,8]
-  lr_patience:
-    values: [500, 1000, 2000]
   dataset_dir:
     value: dataset/era5_temp2m_16x/
-  
-  
-  

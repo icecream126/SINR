@@ -56,8 +56,6 @@ class ERA5(Dataset):
 
         latitude = torch.flatten(torch.tensor(latitude_grid))
         longitude = torch.flatten(torch.tensor(longitude_grid))
-        # lat_rad = torch.tensor(lat_rad)
-        # lon_rad = torch.tensor(lon_rad)
 
         if self.spherical:
             inputs = torch.stack([latitude, longitude], dim=-1)
@@ -68,7 +66,7 @@ class ERA5(Dataset):
             inputs = torch.stack([x, y, z], dim=-1)
 
         data_out["inputs"] = inputs
-        data_out["target"] = torch.flatten(temperature)
+        data_out["target"] = torch.flatten(temperature).unsqueeze(-1)
         return data_out
 
         
