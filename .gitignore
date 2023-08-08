@@ -3,9 +3,7 @@
 .conda
 launch.json
 dataset/
-experiment/
 wandb/
 SINR/
-sweeps/
-era5/
+sweep.yaml
 __pycache__

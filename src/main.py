@@ -77,8 +77,7 @@ if __name__=='__main__':
 
     logger = WandbLogger(
         config=args, 
-        project="SINR", 
-        save_dir="experiment", 
+        project="SINR",
         name=args.dataset+'/'+args.model+'/'+str(args.dataset_dir[8:])
     )
 
