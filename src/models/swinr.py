@@ -97,7 +97,7 @@ class SphericalGaborLayer(nn.Module):
         out = torch.cat([real_gabor, img_gabor], dim=-1)
 
         if self.time:
-            time = input[..., 3:]
+            time = input[..., 3:] 
             out = torch.cat([out, time], dim=-1)
         return out
 

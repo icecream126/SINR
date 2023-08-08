@@ -30,7 +30,7 @@ class SphericalHarmonicsLayer(nn.Module):
         out = torch.cat(sh_list, dim=-1)
 
         if self.time:
-            time = input[..., 2].unsqueeze(-1) 
+            time = input[..., 2].unsqueeze(-1)
             out = torch.cat([out, time], dim=-1)  
         return out
 
@@ -76,9 +76,9 @@ class MLP(nn.Module):
                 layer = self.spherical_harmonics_layer
             elif i==1:
                 if time:
-                    layer = nn.Linear((self.max_order+1)**2+1, hidden_dim)
+                    layer = nn.Linear((max_order+1)**2+1, hidden_dim)
                 else:
-                    layer = nn.Linear((self.max_order+1)**2, hidden_dim)
+                    layer = nn.Linear((max_order+1)**2, hidden_dim)
             else : 
                 layer = nn.Linear(in_dim, out_dim)
 

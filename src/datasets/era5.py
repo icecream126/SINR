@@ -26,6 +26,7 @@ class ERA5(Dataset):
             dataset_type,
             temporal_res,
             spatial_res,
+            time,
             spherical=False,
             transform=None, 
             normalize=True, 
@@ -34,33 +35,45 @@ class ERA5(Dataset):
 
         self.target_dim = 1
 
+        self.dataset_type = dataset_type
         self.temporal_res = temporal_res
         self.spatial_res = spatial_res
+        self.time = time
         self.spherical = spherical
         self.transform = transform
         self.normalize = normalize
-        self.filepaths = self.get_filenames(dataset_dir, dataset_type, temporal_res)
+
+        self.filepaths = self.get_filenames(dataset_dir)
+        self.time_idx = self.get_time_idx(dataset_type, temporal_res, len(self.filepaths))
+        self.filepaths = self.filepaths[self.time_idx]
 
     def __getitem__(self, index):
         # Dictionary containing latitude, longitude and temperature
+
         data = np.load(self.filepaths[index])
         data_out = dict()
 
+        time = torch.tensor(data['time'])
         temperature = torch.tensor(data['temperature'])  # Shape (num_lats, num_lons)
         latitude = data['latitude']  # Shape (num_lats,) theta
         longitude = data['longitude']  # Shape (num_lons,) phi
 
         full_res = 180/len(latitude)
 
-        if full_res < self.spatial_res:
+        if self.dataset_type == 'train':
             step = int(self.spatial_res/full_res)
+        else:
+            step = int(self.spatial_res/full_res/2) # valid, test는 2배 해상도
+        
+        if step < 1:
+            raise ValueError('Exceed full resolution. Increase spatial_res')
 
-            lat_idx = np.arange(0, len(latitude), step)
-            lon_idx = np.arange(0, len(longitude), step)
+        lat_idx = np.arange(0, len(latitude), step)
+        lon_idx = np.arange(0, len(longitude), step)
 
-            latitude = latitude[lat_idx]
-            longitude = longitude[lon_idx]
-            temperature = temperature[lat_idx][:, lon_idx]
+        latitude = latitude[lat_idx]
+        longitude = longitude[lon_idx]
+        temperature = temperature[lat_idx][:, lon_idx]
 
         lat_rad = self.deg_to_rad(latitude)
         lon_rad = self.deg_to_rad(longitude)
@@ -72,14 +85,15 @@ class ERA5(Dataset):
 
         latitude = torch.flatten(torch.tensor(latitude_grid))
         longitude = torch.flatten(torch.tensor(longitude_grid))
+        time = time * torch.ones_like(latitude)
 
         if self.spherical:
-            inputs = torch.stack([latitude, longitude], dim=-1)
+            inputs = torch.stack([latitude, longitude, time], dim=-1)
         else:
             x = torch.cos(latitude) * torch.cos(longitude)
             y = torch.cos(latitude) * torch.sin(longitude)
             z = torch.sin(latitude)
-            inputs = torch.stack([x, y, z], dim=-1)
+            inputs = torch.stack([x, y, z, time], dim=-1)
 
         data_out["inputs"] = inputs
         data_out["target"] = torch.flatten(temperature).unsqueeze(-1)
@@ -106,7 +120,25 @@ class ERA5(Dataset):
         return np.pi * degrees / 180.
 
     @staticmethod
-    def get_filenames(dataset_dir, dataset_type, temporal_res):
-        filenames = glob.glob(dataset_dir+'_'+dataset_type+'/*.npz')
+    def get_filenames(dataset_dir):
+        filenames = glob.glob(dataset_dir+'/*.npz')
         filenames = sorted(filenames)
-        return filenames[::temporal_res]
+        return np.array(filenames)
+
+    @staticmethod
+    def get_time_idx(dataset_type, temporal_res, length):
+        indice = np.random.RandomState(seed=0).permutation(length)
+
+        train_size = int(length/temporal_res)
+        valid_size = int(2*length/temporal_res)
+        test_size = int(2*length/temporal_res)
+
+        if train_size + valid_size + test_size > length:
+            raise ValueError('Exceed full resolution. Increase temporal_res')
+
+        idx_dict = {
+            'train': indice[:train_size],
+            'valid': indice[train_size:train_size+valid_size],
+            'test': indice[train_size+valid_size:train_size+valid_size+test_size]
+        }
+        return idx_dict[dataset_type]
