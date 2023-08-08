@@ -24,6 +24,8 @@ class ERA5(Dataset):
             self, 
             dataset_dir,
             dataset_type,
+            temporal_res,
+            spatial_res,
             spherical=False,
             transform=None, 
             normalize=True, 
@@ -32,10 +34,12 @@ class ERA5(Dataset):
 
         self.target_dim = 1
 
+        self.temporal_res = temporal_res
+        self.spatial_res = spatial_res
         self.spherical = spherical
         self.transform = transform
         self.normalize = normalize
-        self.filepaths = self.get_filenames(dataset_dir, dataset_type)
+        self.filepaths = self.get_filenames(dataset_dir, dataset_type, temporal_res)
 
     def __getitem__(self, index):
         # Dictionary containing latitude, longitude and temperature
@@ -45,6 +49,18 @@ class ERA5(Dataset):
         temperature = torch.tensor(data['temperature'])  # Shape (num_lats, num_lons)
         latitude = data['latitude']  # Shape (num_lats,) theta
         longitude = data['longitude']  # Shape (num_lons,) phi
+
+        full_res = 180/len(latitude)
+
+        if full_res < self.spatial_res:
+            step = int(self.spatial_res/full_res)
+
+            lat_idx = np.arange(0, len(latitude), step)
+            lon_idx = np.arange(0, len(longitude), step)
+
+            latitude = latitude[lat_idx]
+            longitude = longitude[lon_idx]
+            temperature = temperature[lat_idx][:, lon_idx]
 
         lat_rad = self.deg_to_rad(latitude)
         lon_rad = self.deg_to_rad(longitude)
@@ -90,6 +106,7 @@ class ERA5(Dataset):
         return np.pi * degrees / 180.
 
     @staticmethod
-    def get_filenames(dataset_dir, dataset_type):
+    def get_filenames(dataset_dir, dataset_type, temporal_res):
         filenames = glob.glob(dataset_dir+'_'+dataset_type+'/*.npz')
-        return sorted(filenames)
+        filenames = sorted(filenames)
+        return filenames[::temporal_res]

@@ -7,4 +7,5 @@ experiment/
 wandb/
 SINR/
 sweeps/
+era5/
 __pycache__

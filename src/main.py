@@ -37,11 +37,12 @@ if __name__=='__main__':
     parser.add_argument('--spherical', default=False, action='store_true')
     parser.add_argument('--time', default=False, action='store_true')
     parser.add_argument('--in_memory', default=False, action='store_true')
-
-    parser.add_argument("--wavelet_dim", type=int, default=64)
-    parser.add_argument("--max_order", type=int, default=3)
+    parser.add_argument("--temporal_res", type=int, default=2)
+    parser.add_argument("--spatial_res", type=float, default=8.)
 
     parser.add_argument("--hidden_dim", type=int, default=512)
+    parser.add_argument("--wavelet_dim", type=int, default=64)
+    parser.add_argument("--max_order", type=int, default=3)
     parser.add_argument("--n_layers", type=int, default=8)
     parser.add_argument('--skip', default=False, action='store_true')
     parser.add_argument('--sine', default=False, action='store_true')
@@ -87,7 +88,7 @@ if __name__=='__main__':
 
     trainer = pl.Trainer.from_argparse_args(
         args,
-        max_epochs=-1,
+        max_epochs=args.max_epochs,
         log_every_n_steps=1,
         callbacks=[earlystopping_cb, lrmonitor_cb, checkpoint_cb],
         logger=logger,
