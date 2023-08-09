@@ -17,7 +17,8 @@ dataset_dict = {
     'era5': datasets.ERA5
 }
 model_dict = {
-    'inr': models.INR,
+    'relu': models.INR,
+    'siren': models.INR,
     'wire': models.WIRE,
     'shinr': models.SHINR,
     'swinr': models.SWINR
@@ -47,6 +48,8 @@ if __name__=='__main__':
     parser.add_argument('--skip', default=False, action='store_true')
     parser.add_argument('--sine', default=False, action='store_true')
     parser.add_argument('--all_sine', default=False, action='store_true')
+    parser.add_argument("--omega", type=float, default=30.)
+    parser.add_argument("--sigma", type=float, default=100.)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
@@ -78,7 +81,7 @@ if __name__=='__main__':
     logger = WandbLogger(
         config=args, 
         project="SINR",
-        name=args.dataset+'/'+args.model+'/'+str(args.dataset_dir[8:])
+        name=args.model+'/'+str(args.dataset_dir[8:])
     )
 
     logger.experiment.log(

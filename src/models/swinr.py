@@ -14,7 +14,13 @@ from src.utils import initializers as init
 
 
 class SphericalGaborLayer(nn.Module):
-    def __init__(self, wavelet_dim, time, omega=30.0, sigma=100.0):
+    def __init__(
+            self, 
+            wavelet_dim=128, 
+            omega=30.0, 
+            sigma=10.0, 
+            time=True
+        ):
         super().__init__()
 
         self.time = time
@@ -76,7 +82,7 @@ class SphericalGaborLayer(nn.Module):
 
         dilate = torch.exp(self.dilate)
 
-        gauss = torch.exp(self.scale_0*dilate*dilate*(z-1)/(1e-6+1+z)) 
+        gauss = torch.exp(self.scale_0*self.scale_0*dilate*dilate*(z-1)/(1e-6+1+z)) 
 
         angle = 2 * self.omega_0 * dilate * x / (1e-6+1+z)
 
@@ -97,7 +103,7 @@ class SphericalGaborLayer(nn.Module):
         out = torch.cat([real_gabor, img_gabor], dim=-1)
 
         if self.time:
-            time = input[..., 3:] 
+            time = input[..., 3:]
             out = torch.cat([out, time], dim=-1)
         return out
 
@@ -122,6 +128,8 @@ class MLP(nn.Module):
         output_dim: int,
         hidden_dim: int,
         wavelet_dim: int,
+        omega: float,
+        sigma: float,
         n_layers: int,
         time: bool,
         skip: bool,
@@ -130,7 +138,7 @@ class MLP(nn.Module):
     ):
         super().__init__()
 
-        self.spherical_gabor_layer = SphericalGaborLayer(wavelet_dim, time)
+        self.spherical_gabor_layer = SphericalGaborLayer(wavelet_dim, omega, sigma, time)
 
         # Modules
         self.model = nn.ModuleList()
@@ -208,7 +216,9 @@ class SWINR(pl.LightningModule):
         input_dim: int,
         output_dim: int,
         hidden_dim: int = 512,
-        wavelet_dim: int = 64,
+        wavelet_dim: int = 128,
+        omega: float=30.,
+        sigma: float=100.,
         n_layers: int = 8,
         time: bool = True,
         skip: bool = True,
@@ -231,6 +241,8 @@ class SWINR(pl.LightningModule):
             output_dim,
             hidden_dim,
             wavelet_dim,
+            omega,
+            sigma,
             n_layers,
             time,
             skip,

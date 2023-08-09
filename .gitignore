@@ -6,4 +6,5 @@ dataset/
 wandb/
 SINR/
 sweep.yaml
+sweep.sh
 __pycache__

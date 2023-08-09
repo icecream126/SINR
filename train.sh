@@ -41,6 +41,8 @@ CUDA_VISIBLE_DEVICES=3 python src/main.py \
     --time \
     --in_memory \
     --skip \
+    --sine \
+    --all_sine \
     --max_epoch 5000
 
 CUDA_VISIBLE_DEVICES=4 python src/main.py \
