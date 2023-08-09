@@ -9,6 +9,7 @@ from torch.optim import lr_scheduler
 
 from src.utils.sine import Sine
 from src.utils import initializers as init
+from src.utils.psnr import mse2psnr
 
 
 class MLP(nn.Module):
@@ -80,7 +81,7 @@ class MLP(nn.Module):
     def forward(self, x):
         x_in = x
         for i, layer in enumerate(self.model):
-            if i == self.skip_at:
+            if self.skip and i == self.skip_at:
                 x = torch.cat([x, x_in], dim=-1)
             x = layer(x)
         return x
@@ -111,6 +112,7 @@ class INR(pl.LightningModule):
         all_sine: bool = False,
         lr: float = 0.0005,
         lr_patience: int = 500,
+        dataset: str = 'sun360',
         **kwargs
     ):
         super().__init__()
@@ -124,6 +126,7 @@ class INR(pl.LightningModule):
         self.all_sine = all_sine
         self.lr = lr
         self.lr_patience = lr_patience
+        self.dataset = dataset
 
         self.sync_dist = torch.cuda.device_count() > 1
 
@@ -139,6 +142,7 @@ class INR(pl.LightningModule):
         )
 
         self.loss_fn = nn.MSELoss()
+        self.min_train_loss = None
         self.min_valid_loss = None
 
     def forward(self, points):
@@ -149,8 +153,9 @@ class INR(pl.LightningModule):
 
         pred = self.forward(inputs)
 
-        loss = self.loss_fn(pred, target)
+        loss = self.loss_fn(pred, target)        
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log("train_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         return loss
     
     def validation_step(self, data, batch_idx):
@@ -160,6 +165,7 @@ class INR(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
+        self.log("valid_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         return loss
 
     def test_step(self, data, batch_idx):
@@ -168,8 +174,13 @@ class INR(pl.LightningModule):
         pred = self.forward(inputs)
 
         loss = self.loss_fn(pred, target)
+        
         self.log("test_mse", loss)
-        self.log("min_valid_loss", self.min_valid_loss)
+        self.log("test_psnr", mse2psnr(loss))
+        if self.min_valid_loss:
+            self.log("min_valid_loss", self.min_valid_loss)
+        if self.min_train_loss:
+            self.log("min_train_loss", self.min_train_loss)
         return loss
 
     def configure_optimizers(self):
@@ -179,5 +190,10 @@ class INR(pl.LightningModule):
             optimizer, factor=0.5, patience=self.lr_patience, verbose=True
         )
 
-        sch_dict = {"scheduler": scheduler, "monitor": 'valid_loss', "frequency": 1}
-        return {"optimizer": optimizer, "lr_scheduler": sch_dict}
+        if self.dataset != 'sun360':
+            sch_dict = {"scheduler": scheduler, "monitor": 'valid_loss', "frequency": 1}
+            return {"optimizer": optimizer, "lr_scheduler": sch_dict}
+        else:
+            sch_dict = {"scheduler": scheduler, "monitor": 'train_loss', "frequency": 1}
+            return {"optimizer": optimizer, "lr_scheduler": sch_dict}
+            

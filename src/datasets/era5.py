@@ -93,5 +93,5 @@ class ERA5(Dataset):
 
     @staticmethod
     def get_filenames(dataset_dir, dataset_type):
-        filenames = glob.glob(dataset_dir+'_'+dataset_type+'/*.npz')
+        filenames = glob.glob(dataset_dir+'/'+dataset_type+'/*.npz')
         return sorted(filenames)
