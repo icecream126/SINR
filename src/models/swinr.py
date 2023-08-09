@@ -7,6 +7,7 @@ from math import pi
 from torch import nn
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
+from torchvision.utils import make_grid, save_image
 
 from src.utils.sine import Sine
 from src.utils.psnr import mse2psnr
@@ -226,12 +227,14 @@ class SWINR(pl.LightningModule):
         all_sine: bool = False,
         lr: float = 0.001,
         lr_patience: int = 1000,
+        plot: bool=False,
         **kwargs
     ):
         super().__init__()
 
         self.lr = lr
         self.lr_patience = lr_patience
+        self.plot = plot
 
         self.sync_dist = torch.cuda.device_count() > 1
 
@@ -253,11 +256,15 @@ class SWINR(pl.LightningModule):
         self.loss_fn = nn.MSELoss()
         self.min_valid_loss = None
 
+        self.cnt = 0
+
     def forward(self, points):
         return self.model(points)
     
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+
+        print(inputs.shape)
 
         pred = self.forward(inputs)
 
@@ -285,6 +292,21 @@ class SWINR(pl.LightningModule):
         self.log("test_mse", loss)
         self.log("test_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
         self.log("min_valid_loss", self.min_valid_loss)
+        
+        if self.plot:
+            error_fn = nn.PairwiseDistance(eps=0, keepdim=True)
+            error = error_fn(pred, target)
+
+            target_imgs = make_grid(target)
+            pred_imgs = make_grid(pred)
+            error_imgs = make_grid(error)
+
+            save_image(target_imgs, f'./examples/ground_truths_{self.cnt}.png')
+            save_image(pred_imgs, f'./examples/predictions_{self.cnt}.png')
+            save_image(error_imgs, f'./examples/error_maps_{self.cnt}.png')
+
+            self.cnt += 1
+        
         return loss
 
     def configure_optimizers(self):

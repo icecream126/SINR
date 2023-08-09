@@ -53,6 +53,9 @@ if __name__=='__main__':
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
+    parser.add_argument('--plot', default=False, action='store_true')
+    
+
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
