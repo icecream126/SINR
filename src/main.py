@@ -18,6 +18,7 @@ dataset_dict = {
     'sun360': datasets.SUN360
 }
 model_dict = {
+    'siren': models.INR,
     'inr': models.INR,
     'wire': models.WIRE,
     'shinr': models.SHINR,

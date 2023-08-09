@@ -4,13 +4,13 @@ from torch import nn
 
 
 def geometric_initializer(layer, in_dim):
-    print('geometric initializer')
+    # print('geometric initializer')
     nn.init.normal_(layer.weight, mean=np.sqrt(np.pi) / np.sqrt(in_dim), std=0.00001)
     nn.init.constant_(layer.bias, -1)
 
 
 def first_layer_sine_initializer(layer):
-    print('first layer sine init')
+    # print('first layer sine init')
     with torch.no_grad():
         if hasattr(layer, "weight"):
             num_input = layer.weight.size(-1)
@@ -19,7 +19,7 @@ def first_layer_sine_initializer(layer):
 
 
 def sine_initializer(layer):
-    print('sine init')
+    # print('sine init')
     with torch.no_grad():
         if hasattr(layer, "weight"):
             num_input = layer.weight.size(-1)
