@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 
-from src.utils.change_coord_sys import to_spherical
+from utils.change_coord_sys import to_spherical
 
 class NOAA(Dataset):
     def __init__(

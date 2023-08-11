@@ -5,6 +5,7 @@ launch.json
 dataset/
 wandb/
 SINR/
+figure/
 sweep.yaml
 sweep.sh
 __pycache__

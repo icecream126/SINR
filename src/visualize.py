@@ -7,12 +7,13 @@ from math import pi
 from torch import nn
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
-from torchvision.utils import make_grid, save_image
+from plotly import graph_objects as go
+
 
 from src.utils.sine import Sine
 from src.utils.psnr import mse2psnr
 from src.utils import initializers as init
-
+from src.utils.change_coord_sys import to_spherical
 
 class SphericalGaborLayer(nn.Module):
     def __init__(
@@ -218,9 +219,10 @@ class SWINR(pl.LightningModule):
         output_dim: int,
         hidden_dim: int = 512,
         wavelet_dim: int = 128,
-        omega: float=30.,
-        sigma: float=100.,
+        omega: float=7.,
+        sigma: float=1.,
         n_layers: int = 8,
+        spherical: bool = False,
         time: bool = True,
         skip: bool = True,
         sine: bool = False,
@@ -232,6 +234,8 @@ class SWINR(pl.LightningModule):
     ):
         super().__init__()
 
+        self.spherical = spherical
+        self.time = time
         self.lr = lr
         self.lr_patience = lr_patience
         self.plot = plot
@@ -256,15 +260,11 @@ class SWINR(pl.LightningModule):
         self.loss_fn = nn.MSELoss()
         self.min_valid_loss = None
 
-        self.cnt = 0
-
     def forward(self, points):
         return self.model(points)
     
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
-
-        print(inputs.shape)
 
         pred = self.forward(inputs)
 
@@ -290,23 +290,78 @@ class SWINR(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("test_mse", loss)
-        self.log("test_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
+        self.log("test_psnr", mse2psnr(loss))
         self.log("min_valid_loss", self.min_valid_loss)
         
         if self.plot:
-            error_fn = nn.PairwiseDistance(eps=0, keepdim=True)
+            coord = inputs[0]
+            if self.time:
+                coord = coord[:, :-1]
+            if not self.spherical:
+                coord = to_spherical(coord)
+
+            error_fn = nn.PairwiseDistance(eps=0)
             error = error_fn(pred, target)
 
-            target_imgs = make_grid(target)
-            pred_imgs = make_grid(pred)
-            error_imgs = make_grid(error)
+            coord = coord.detach().cpu().numpy()
+            pred = pred.detach().cpu().numpy()
+            target = target.detach().cpu().numpy()
+            error = error.detach().cpu().numpy()
 
-            save_image(target_imgs, f'./examples/ground_truths_{self.cnt}.png')
-            save_image(pred_imgs, f'./examples/predictions_{self.cnt}.png')
-            save_image(error_imgs, f'./examples/error_maps_{self.cnt}.png')
+            lats, lons = coord[:, 0], coord[:, 1]
 
-            self.cnt += 1
-        
+            # for i in range(len(target)):
+            #     fig = go.Figure()
+            #     fig.add_trace(go.Contour(
+            #             x=lats,
+            #             y=lons,
+            #             z=target[i],
+            #             colorscale="hot",
+            #             colorbar={},
+            #             contours_start=target[i].min(),
+            #             contours_end=target[i].max(),
+            #         )
+            #     )
+
+            #     img_path = f'figure/swinr/target_{str(i)}.png'
+            #     fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lon=180)
+            #     fig.write_image(img_path, width=4048, height=4048)
+
+            # for i in range(len(pred)):
+            #     fig = go.Figure()
+            #     fig.add_trace(go.Contour(
+            #             x=lats,
+            #             y=lons,
+            #             z=pred[i],
+            #             colorscale="hot",
+            #             colorbar={},
+            #             contours_start=target[i].min(),
+            #             contours_end=target[i].max(),
+            #         )
+            #     )
+
+            #     img_path = f'figure/swinr/pred_{str(i)}.png'
+            #     fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lon=180)
+            #     fig.write_image(img_path, width=4048, height=4048)
+
+            for i in range(len(error)):
+                fig = go.Figure()
+                fig.add_trace(go.Contour(
+                        x=lats,
+                        y=lons,
+                        z=error[i],
+                        colorscale="hot",
+                        colorbar={},
+                        contours_start=0,
+                        contours_end=2,
+                    )
+                )
+
+                img_path = f'figure/swinr/error_{str(i)}.png'
+                fig.update_layout(mapbox_style="stamen-terrain", mapbox_center_lon=180)
+                fig.write_image(img_path, width=4048, height=4048)
+
+            self.plot = False
         return loss
 
     def configure_optimizers(self):

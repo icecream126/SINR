@@ -1,5 +1,4 @@
 import torch
-from math import pi
 
 def to_spherical(points):
     x, y, z = points[:, 0], points[:, 1], points[:, 2]

@@ -1,43 +1,18 @@
 from math import pi, sqrt
-from functools import reduce, wraps
+from functools import reduce
 from operator import mul
 import torch
-import math
-import numpy as np
-from scipy.special import lpmv
 
-from functools import lru_cache
-
-def cache(cache, key_fn):
-    def cache_inner(fn):
-        @wraps(fn)
-        def inner(*args, **kwargs):
-            key_name = key_fn(*args, **kwargs)
-            if key_name in cache:
-                return cache[key_name]
-            res = fn(*args, **kwargs)
-            cache[key_name] = res
-            return res
-
-        return inner
-    return cache_inner
 # constants
 
-#CACHE = {}
-
-#def clear_spherical_harmonics_cache():
-#    CACHE.clear()
-
-#def lpmv_cache_key_fn(l, m, x):
-#    return (l, m)
+def lpmv_cache_key_fn(l, m, x):
+    return (l, m)
 
 # spherical harmonics
 
-#@lru_cache(maxsize = 1000)
 def semifactorial(x):
     return reduce(mul, range(x, 1, -2), 1.)
 
-#@lru_cache(maxsize = 1000)
 def pochhammer(x, k):
     return reduce(mul, range(x + 1, x + k), float(x))
 
@@ -46,7 +21,7 @@ def negative_lpmv(l, m, y):
         y *= ((-1) ** m / pochhammer(l + m + 1, -2 * m))
     return y
 
-#@cache(cache = CACHE, key_fn = lpmv_cache_key_fn)
+
 def lpmv(l, m, x):
     """Associated Legendre function including Condon-Shortley phase.
 
@@ -74,7 +49,7 @@ def lpmv(l, m, x):
         return negative_lpmv(l, m, y)
 
     # Recursively precompute lower degree harmonics
-    #lpmv(l-1, m, x)
+    lpmv(l-1, m, x)
 
     # Compute P_{l}^m from recursion in P_{l-1}^m and P_{l-2}^m
     # Inplace speedup
@@ -116,12 +91,7 @@ def get_spherical_harmonics_element(l, m, theta, phi):
         Y = torch.sin(m_abs * phi)
 
     Y *= leg
-    
-    ####### IMPORTANT #######
-    # somehow works better without normalization...
-    #N *= sqrt(2. / pochhammer(l - m_abs + 1, 2 * m_abs))
-    ####### IMPORTANT #######
-    
+    N *= sqrt(2. / pochhammer(l - m_abs + 1, 2 * m_abs))
     Y *= N
     return Y
 
@@ -138,47 +108,6 @@ def get_spherical_harmonics(l, theta, phi):
     Returns:
         tensor of shape [*theta.shape, 2*l+1]
     """
-    return torch.cat([ get_spherical_harmonics_element(l, m, theta, phi) \
+    return torch.stack([ get_spherical_harmonics_element(l, m, theta, phi) \
                          for m in range(-l, l+1) ],
                         dim = -1)
-
-
-# def get_spherical_harmonics_by_np(max_order, theta, phi):
-#     theta = theta.detach().cpu().numpy()
-#     phi = phi.detach().cpu().numpy()
-
-#     y = []
-#     for l in range(max_order + 1):
-#         for m in range(-l, l + 1):
-#             Klm = math.sqrt((2*l+1) * math.factorial(l-abs(m)) / (4*math.pi * math.factorial(l+abs(m))))
-            
-#             if m > 0:
-#                 Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
-#             elif m == 0:
-#                 Ylm = Klm * lpmv(0, l, np.cos(theta))
-#             else:
-#                 Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
-
-#             y.append(torch.Tensor(Ylm).cuda())
-
-#     return y
-
-# def get_wrong_spherical_harmonics_by_np(max_order, theta, phi):
-#     theta = theta.detach().cpu().numpy()
-#     phi = phi.detach().cpu().numpy()
-
-#     y = []
-#     for l in range(max_order + 1):
-#         for m in range(-l, l + 1):
-#             Klm = math.sqrt((2*l+1) * math.factorial(l-m) / (4*math.pi * math.factorial(l+m)))
-            
-#             if m > 0:
-#                 Ylm = Klm * math.sqrt(2) * lpmv(m, l, np.cos(theta)) * np.cos(m * phi)
-#             elif m == 0:
-#                 Ylm = Klm * lpmv(0, l, np.cos(theta))
-#             else:
-#                 Ylm = Klm * math.sqrt(2) * lpmv(-m, l, np.cos(theta)) * np.sin(-m * phi)
-
-#             y.append(torch.Tensor(Ylm).cuda())
-
-#     return y
