@@ -98,4 +98,4 @@ CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --model relu \
     --batch_size 32 \
     --hidden_dim 512 \
-    --max_epoch 100
+    --max_epoch 1

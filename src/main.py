@@ -24,7 +24,7 @@ if __name__=='__main__':
     pl.seed_everything(1234)
 
     parser = ArgumentParser()
-    parser.add_argument("--dataset", type=str, default='noaa')
+    parser.add_argument("--dataset", type=str, default='dpt2m')
     parser.add_argument("--model", type=str, default='relu')
 
     parser.add_argument("--batch_size", type=int, default=32)
@@ -47,7 +47,7 @@ if __name__=='__main__':
 
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
-    args.validation = False if args.model == 'sun360' else True
+    args.validation = False if args.dataset == 'sun360' else True
     args.spherical = True if args.model == 'shinr' else False
 
     train_dataset = dataset_dict[args.dataset](dataset_type='train', **vars(args))
