@@ -1,0 +1,27 @@
+program: ./sweeps/scripts/tune_sun360.py
+name: sun360/siren
+method: grid
+parameters: 
+  model:
+    value: siren
+  dataset:
+    value: sun360
+  panorama_idx:
+    value: 5
+  omega:
+    values : [1, 5, 10, 30]
+  lr:
+    values : [0.001, 0.01]
+  hidden_dim:
+    values: [128, 256, 512]
+  n_layers:
+    values: [4,8]
+  all_sine:
+    value: True
+  sine:
+    value: True
+  dataset_dir:
+    value: dataset/sun360/
+  
+  
+  

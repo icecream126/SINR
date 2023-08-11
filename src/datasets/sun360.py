@@ -11,10 +11,10 @@ class SUN360(Dataset):
     
     train_sampled_indices = None
     
-    def __init__(self, dataset_dir, dataset_type, sample_fraction=0.25, panorama_idx=0, spherical=False, **kwargs):
+    def __init__(self, dataset_type, sample_fraction=0.25, panorama_idx=0, spherical=False, **kwargs):
         super(SUN360, self).__init__()
         self.sample_fraction = sample_fraction        
-        self.dataset_dir = dataset_dir
+        self.dataset_dir = 'dataset/sun360/'
         self.dataset_type = dataset_type
         self.panorama_idx = panorama_idx
         self.spherical = spherical

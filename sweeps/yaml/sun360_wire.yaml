@@ -1,0 +1,27 @@
+program: ./sweeps/scripts/tune_sun360.py
+name: sun360/wire
+method: grid
+parameters: 
+  model:
+    value: wire
+  dataset:
+    value: sun360
+  dataset_dir:
+    value: dataset/sun360/
+  panorama_idx:
+    value: 6
+  omega:
+    values : [1, 5, 10, 30]
+  sigma:
+    values : [0.1, 1, 5]
+  wavelet_dim:
+    values: [128, 256, 512]
+  lr:
+    values : [0.001, 0.01]
+  hidden_dim:
+    values: [128, 256, 512]
+  n_layers:
+    values: [4,8]
+  
+  
+  

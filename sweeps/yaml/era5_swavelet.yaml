@@ -1,9 +1,8 @@
-program: ./src/scripts/era5/main_swavelet_inr.py
-method: bayes
-metric: 
-  name: train_loss
-  goal: minimize
-parameters: 
+program: src/main.py
+method: grid
+parameters:
+  dataset:
+    value: sun360
   wavelet_dim:
     values: [64, 128, 256]
   lr:

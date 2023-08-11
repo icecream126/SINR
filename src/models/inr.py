@@ -33,6 +33,7 @@ class MLP(nn.Module):
         skip: bool,
         sine: bool,
         all_sine: bool,
+        omega: float,
     ):
         super().__init__()
 
@@ -40,6 +41,7 @@ class MLP(nn.Module):
         self.skip = skip
         self.sine = sine
         self.all_sine = all_sine
+        self.omega_0 = omega
 
         # Modules
         self.model = nn.ModuleList()
@@ -61,9 +63,9 @@ class MLP(nn.Module):
             if i < n_layers - 1:
                 if sine:
                     if i == 0:
-                        act = Sine()
+                        act = Sine(omega_0 = self.omega_0)
                     else:
-                        act = Sine() if all_sine else nn.Tanh()
+                        act = Sine(omega_0 = self.omega_0) if all_sine else nn.Tanh()
                 else:
                     act = nn.ReLU(inplace=True)
                 self.model.append(act)
@@ -113,6 +115,7 @@ class INR(pl.LightningModule):
         lr: float = 0.0005,
         lr_patience: int = 500,
         dataset: str = 'sun360',
+        omega_0: float=30,
         **kwargs
     ):
         super().__init__()
@@ -127,6 +130,7 @@ class INR(pl.LightningModule):
         self.lr = lr
         self.lr_patience = lr_patience
         self.dataset = dataset
+        self.omega_0 = omega_0
 
         self.sync_dist = torch.cuda.device_count() > 1
 
@@ -139,6 +143,7 @@ class INR(pl.LightningModule):
             skip,
             sine,
             all_sine,
+            self.omega_0,
         )
 
         self.loss_fn = nn.MSELoss()

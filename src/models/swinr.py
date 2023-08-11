@@ -134,6 +134,8 @@ class MLP(nn.Module):
         skip: bool,
         sine: bool,
         all_sine: bool,
+        omega_0: float,
+        scale_0: float,
     ):
         super().__init__()
         
@@ -145,7 +147,7 @@ class MLP(nn.Module):
         self.sine = sine
         self.all_sine = all_sine
 
-        self.spherical_gabor_layer = SphericalGaborLayer(self.dataset, wavelet_dim, time)
+        self.spherical_gabor_layer = SphericalGaborLayer(self.dataset, wavelet_dim, time, omega_0, scale_0)
 
         # Modules
         self.model = nn.ModuleList()
@@ -228,13 +230,15 @@ class SWINR(pl.LightningModule):
         hidden_dim: int = 512,
         wavelet_dim: int = 64,
         n_layers: int = 4,
-        time: bool = True,
+        time: bool = False,
         skip: bool = True,
         sine: bool = False,
         all_sine: bool = False,
         lr: float = 0.0005,
         lr_patience: int = 500,
         dataset: str = 'sun360',
+        omega: float=30,
+        sigma: float=1,
         **kwargs
     ):
         super().__init__()
@@ -250,6 +254,8 @@ class SWINR(pl.LightningModule):
         self.lr = lr
         self.lr_patience = lr_patience
         self.dataset = dataset
+        self.omega_0 = omega
+        self.scale_0 = sigma
 
         self.sync_dist = torch.cuda.device_count() > 1
 
@@ -265,6 +271,8 @@ class SWINR(pl.LightningModule):
             skip,
             sine,
             all_sine,
+            self.omega_0,
+            self.scale_0
         )
 
         self.loss_fn = nn.MSELoss()

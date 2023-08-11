@@ -43,6 +43,8 @@ if __name__=='__main__':
 
     parser.add_argument("--wavelet_dim", type=int, default=64)
     parser.add_argument("--max_order", type=int, default=3)
+    parser.add_argument("--omega", type=float, default=30)
+    parser.add_argument("--sigma", type=float, default=1)
 
     parser.add_argument("--hidden_dim", type=int, default=512)
     parser.add_argument("--n_layers", type=int, default=4)

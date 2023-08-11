@@ -109,6 +109,8 @@ class MLP(nn.Module):
         hidden_dim: int,
         n_layers: int,
         skip: bool,
+        omega_0: float,
+        scale_0: float
     ):
         super().__init__()
 
@@ -118,7 +120,7 @@ class MLP(nn.Module):
         out_dim = hidden_dim
 
         for i in range(n_layers):   
-            layer = RealGaborLayer(in_dim, out_dim)
+            layer = RealGaborLayer(in_dim, out_dim, omega_0, scale_0)
 
             self.model.append(layer)
 
@@ -151,14 +153,19 @@ class WIRE(pl.LightningModule):
         skip: bool = True,
         lr: float = 0.001,
         lr_patience: int = 1000,
+        dataset: str = 'sun360',
+        omega: float=30,
+        sigma: float=1,
         **kwargs
     ):
         super().__init__()
 
         self.lr = lr
         self.lr_patience = lr_patience
-        self.dataset = kwargs['dataset']
-
+        self.dataset = dataset
+        self.omega_0 = omega
+        self.scale_0 = sigma
+        
         self.sync_dist = torch.cuda.device_count() > 1
 
         # Modules
@@ -167,7 +174,9 @@ class WIRE(pl.LightningModule):
             output_dim,
             hidden_dim,
             n_layers,
-            skip
+            skip,
+            self.omega_0,
+            self.scale_0
         )
 
         self.loss_fn = nn.MSELoss()
