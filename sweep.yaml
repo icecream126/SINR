@@ -1,0 +1,35 @@
+program: src/main.py
+project: SINR
+name: swinr/noaa/gustsfc
+entity: postech_sinr
+method: bayes
+metric:
+  name: min_valid_loss
+  goal: minimize
+parameters:
+  omega:
+    min: 1.
+    max: 20.
+  sigma:
+    min: 1.
+    max: 20.
+  hidden_dim:
+    values: [64, 128, 256, 512]
+  lr:
+    min: 0.0001
+    max: 0.01
+  hidden_inr:
+    values: ['relu', 'siren', 'wire']
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --dataset=noaa
+  - --model=swinr
+  - --dataset_dir=dataset/noaa/gustsfc
+  - --max_epoch=2000
+  - --batch_size=4
+  - --in_memory
+  - --time
+  - --skip
+  # - --spherical
