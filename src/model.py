@@ -18,6 +18,7 @@ class INR(pl.LightningModule):
     def __init__(
             self,
             model: str,
+            validation: bool,
             lr: float=0.001,
             lr_patience: int=500,
             **kwargs
@@ -25,6 +26,7 @@ class INR(pl.LightningModule):
         super().__init__()
         self.lr = lr
         self.lr_patience = lr_patience
+        self.validation = validation
         self.model = model_dict[model].INR(**kwargs)
         self.sync_dist = torch.cuda.device_count() > 1
 
@@ -62,7 +64,8 @@ class INR(pl.LightningModule):
         loss = self.loss_fn(pred, target)
         self.log("test_mse", loss)
         self.log("test_psnr", mse2psnr(loss))
-        self.log("min_valid_loss", self.min_valid_loss)
+        if self.validation:
+            self.log("min_valid_loss", self.min_valid_loss)
         return loss
 
     def configure_optimizers(self):
@@ -72,5 +75,9 @@ class INR(pl.LightningModule):
             optimizer, factor=0.5, patience=self.lr_patience, verbose=True
         )
 
-        sch_dict = {"scheduler": scheduler, "monitor": 'valid_loss', "frequency": 1}
+        sch_dict = {
+            "scheduler": scheduler, 
+            "monitor": 'valid_loss' if self.validation else 'train_loss', 
+            "frequency": 1
+        }
         return {"optimizer": optimizer, "lr_scheduler": sch_dict}

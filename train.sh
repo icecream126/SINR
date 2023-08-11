@@ -1,46 +1,40 @@
 # NOAA
 
 CUDA_VISIBLE_DEVICES=0 python src/main.py \
-    --dataset noaa \
+    --dataset tcdcclm \
     --model relu \
-    --dataset_dir dataset/noaa/tcdcclm \
     --batch_size 4 \
     --time \
     --in_memory \
     --max_epoch 1000
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
-    --dataset noaa \
+    --dataset tcdcclm \
     --model siren \
-    --dataset_dir dataset/noaa/tcdcclm \
     --batch_size 4 \
     --time \
     --in_memory \
     --max_epoch 1000
 
 CUDA_VISIBLE_DEVICES=2 python src/main.py \
-    --dataset noaa \
+    --dataset tcdcclm \
     --model shinr \
-    --dataset_dir dataset/noaa/tcdcclm \
     --batch_size 4 \
-    --spherical \
     --time \
     --in_memory \
     --max_epoch 1000
 
 CUDA_VISIBLE_DEVICES=3 python src/main.py \
-    --dataset noaa \
+    --dataset tcdcclm \
     --model swinr \
-    --dataset_dir dataset/noaa/tcdcclm \
     --batch_size 4 \
     --time \
     --in_memory \
     --max_epoch 1000
 
 CUDA_VISIBLE_DEVICES=4 python src/main.py \
-    --dataset noaa \
+    --dataset tcdcclm \
     --model wire \
-    --dataset_dir dataset/noaa/tcdcclm \
     --batch_size 4 \
     --time \
     --in_memory \
@@ -51,7 +45,6 @@ CUDA_VISIBLE_DEVICES=4 python src/main.py \
 CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --dataset era5 \
     --model relu \
-    --dataset_dir dataset/era5 \
     --time \
     --max_epoch 100 \
     --temporal_res 6 \
@@ -60,7 +53,6 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset era5 \
     --model siren \
-    --dataset_dir dataset/era5 \
     --time \
     --max_epoch 100 \
     --temporal_res 6 \
@@ -69,8 +61,6 @@ CUDA_VISIBLE_DEVICES=1 python src/main.py \
 CUDA_VISIBLE_DEVICES=6 python src/main.py \
     --dataset era5 \
     --model shinr \
-    --dataset_dir dataset/era5 \
-    --spherical \
     --time \
     --max_epoch 100 \
     --temporal_res 6 \
@@ -79,7 +69,6 @@ CUDA_VISIBLE_DEVICES=6 python src/main.py \
 CUDA_VISIBLE_DEVICES=7 python src/main.py \
     --dataset era5 \
     --model swinr \
-    --dataset_dir dataset/era5 \
     --time \
     --max_epoch 100 \
     --temporal_res 6 \
@@ -88,19 +77,25 @@ CUDA_VISIBLE_DEVICES=7 python src/main.py \
 CUDA_VISIBLE_DEVICES=4 python src/main.py \
     --dataset era5 \
     --model wire \
-    --dataset_dir dataset/era5 \
     --time \
     --max_epoch 100 \
     --temporal_res 6 \
     --spatial_res 8
 
-
 # CIRCLE
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset circle \
-    --model relu \
-    --dataset_dir dataset/circle \
+    --model shinr \
     --batch_size 256 \
     --hidden_dim 32 \
+    --max_epoch 100
+
+# SUN360
+
+CUDA_VISIBLE_DEVICES=1 python src/main.py \
+    --dataset sun360 \
+    --model relu \
+    --batch_size 32 \
+    --hidden_dim 512 \
     --max_epoch 100

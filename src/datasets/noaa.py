@@ -11,20 +11,20 @@ from utils.change_coord_sys import to_spherical
 class NOAA(Dataset):
     def __init__(
         self,
-        dataset_dir,
+        dataset,
         dataset_type,
         spherical=False,
         time=True,
         in_memory=True,
         **kwargs,
     ):
-        self.dataset_dir = dataset_dir
+        self.dataset_dir = "./dataset/" + dataset
         self.spherical = spherical
         self.time = time
         self.in_memory = in_memory
-        self.filenames = self.get_filenames(dataset_dir, dataset_type)
+        self.filenames = self.get_filenames(self.dataset_dir, dataset_type)
         self.npzs = [np.load(f) for f in self.filenames]
-        self._points_path = os.path.join(dataset_dir, dataset_type+"_points.npy")
+        self._points_path = os.path.join(self.dataset_dir, dataset_type+"_points.npy")
         self._data = None
         self._points = None
 

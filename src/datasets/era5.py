@@ -20,7 +20,7 @@ class ERA5(Dataset):
     """
     def __init__(
             self, 
-            dataset_dir,
+            dataset,
             dataset_type,
             temporal_res,
             spatial_res,
@@ -33,6 +33,7 @@ class ERA5(Dataset):
 
         self.target_dim = 1
 
+        self.dataset_dir = "./dataset/" + dataset
         self.dataset_type = dataset_type
         self.temporal_res = temporal_res
         self.spatial_res = spatial_res
@@ -41,7 +42,7 @@ class ERA5(Dataset):
         self.transform = transform
         self.normalize = normalize
 
-        self.filepaths = self.get_filenames(dataset_dir)
+        self.filepaths = self.get_filenames(self.dataset_dir)
         self.time_idx = self.get_time_idx(dataset_type, temporal_res, len(self.filepaths))
         self.filepaths = self.filepaths[self.time_idx]
 

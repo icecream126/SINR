@@ -1,6 +1,6 @@
 program: src/main.py
 project: SINR
-name: swinr/noaa/gustsfc
+name: swinr/gustsfc
 entity: postech_sinr
 method: bayes
 metric:
@@ -24,12 +24,10 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset=noaa
+  - --dataset=gustsfc
   - --model=swinr
-  - --dataset_dir=dataset/noaa/gustsfc
-  - --max_epoch=2000
+  - --max_epoch=1000
   - --batch_size=4
   - --in_memory
   - --time
   - --skip
-  # - --spherical

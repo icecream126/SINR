@@ -8,12 +8,15 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from datasets import noaa, era5, circle
+from datasets import noaa, era5, sun360, circle
 from model import INR
 
 dataset_dict = {
-    'noaa': noaa.NOAA,
+    'dpt2m': noaa.NOAA,
+    'gustsfc': noaa.NOAA,
+    'tcdcclm': noaa.NOAA,
     'era5': era5.ERA5,
+    'sun360': sun360.SUN360,
     'circle': circle.CIRCLE,
 }
 
@@ -24,35 +27,37 @@ if __name__=='__main__':
     parser.add_argument("--dataset", type=str, default='noaa')
     parser.add_argument("--model", type=str, default='relu')
 
-    parser.add_argument("--dataset_dir", type=str)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument('--spherical', default=False, action='store_true')
     parser.add_argument('--time', default=False, action='store_true')
     parser.add_argument('--in_memory', default=False, action='store_true')
     parser.add_argument("--temporal_res", type=int, default=24)
     parser.add_argument("--spatial_res", type=float, default=8)
+    parser.add_argument('--panorama_idx',default=0, type=int)
 
     parser.add_argument("--hidden_inr", type=str, default='wire')
     parser.add_argument("--hidden_dim", type=int, default=512)
     parser.add_argument("--max_order", type=int, default=3)
     parser.add_argument("--hidden_layers", type=int, default=6)
     parser.add_argument('--skip', default=False, action='store_true')
-    parser.add_argument("--omega", type=float, default=5.)
-    parser.add_argument("--sigma", type=float, default=1.)
+    parser.add_argument("--omega", type=float, default=30.)
+    parser.add_argument("--sigma", type=float, default=10.)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr_patience", type=int, default=500)
 
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
+    args.validation = False if args.model == 'sun360' else True
+    args.spherical = True if args.model == 'shinr' else True
 
     train_dataset = dataset_dict[args.dataset](dataset_type='train', **vars(args))
-    valid_dataset = dataset_dict[args.dataset](dataset_type='valid', **vars(args))
     test_dataset = dataset_dict[args.dataset](dataset_type='test', **vars(args))
-    
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    if args.validation:
+        valid_dataset = dataset_dict[args.dataset](dataset_type='valid', **vars(args))
+        valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     # Model
     args.input_dim = (2 if args.spherical else 3) + (1 if args.time else 0)
@@ -62,7 +67,7 @@ if __name__=='__main__':
     # Training
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
     checkpoint_cb = ModelCheckpoint(
-        monitor="valid_loss",
+        monitor="valid_loss" if args.validation else "train_loss",
         mode="min",
         filename="best"
     )
@@ -70,7 +75,7 @@ if __name__=='__main__':
     logger = WandbLogger(
         config=args, 
         project="SINR",
-        name=args.model+'/'+str(args.dataset_dir[8:])
+        name=args.model+'/'+args.dataset
     )
 
     logger.experiment.log(
@@ -87,6 +92,9 @@ if __name__=='__main__':
         strategy="ddp" if torch.cuda.device_count() > 1 else None
     )
 
-    trainer.fit(model, train_loader, valid_loader)
-    model.min_valid_loss = checkpoint_cb.best_model_score
+    if args.validation:
+        trainer.fit(model, train_loader, valid_loader)
+        model.min_valid_loss = checkpoint_cb.best_model_score
+    else:
+        trainer.fit(model, train_loader)
     trainer.test(model, test_loader, 'best')
