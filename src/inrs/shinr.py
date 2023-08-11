@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-from math import pi, ceil
+from math import ceil
 
 from .relu import ReLULayer
 from .siren import SineLayer

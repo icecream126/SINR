@@ -29,8 +29,8 @@ class SphericalGaborLayer(nn.Module):
         self.sigma = sigma
         self.hidden_dim = hidden_dim
 
-        self.dilate = nn.Parameter(torch.empty(1, 1, hidden_dim))
-        nn.init.normal_(self.dilate) 
+        self.dilate = nn.Parameter(torch.empty(1, hidden_dim))
+        nn.init.normal_(self.dilate)
 
         self.u = nn.Parameter(torch.empty(hidden_dim))
         self.v = nn.Parameter(torch.empty(hidden_dim))
@@ -79,8 +79,8 @@ class SphericalGaborLayer(nn.Module):
         
         R = torch.bmm(torch.bmm(Rz_gamma, Rx_beta), Rz_alpha)
 
-        points = torch.matmul(R, points.unsqueeze(2).unsqueeze(-1))
-        points = points.squeeze(-1)
+        points = torch.matmul(R, points.unsqueeze(-2).unsqueeze(-1))
+        points = points.squeeze(-1).squeeze(0)
 
         x, z = points[..., 0], points[..., 2]
 
@@ -90,14 +90,6 @@ class SphericalGaborLayer(nn.Module):
 
         freq_term = torch.exp(1j*2*self.omega*dilate*x/(1e-6+1+z))
         gauss_term = torch.exp(-self.sigma*self.sigma*arg)
-
-        # if self.cocycle:
-        #     dilate_inv_square = 1 / torch.square(dilate)
-        #     cocycle = 4 * dilate_inv_square / torch.square((dilate_inv_square-1)*z+(dilate_inv_square+1))
-        #     sqrt_cocycle = torch.sqrt(cocycle)
-
-        #     real_gabor = sqrt_cocycle * real_gabor
-        #     img_gabor = sqrt_cocycle * img_gabor
 
         out = freq_term * gauss_term
 

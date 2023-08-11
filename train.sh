@@ -93,3 +93,14 @@ CUDA_VISIBLE_DEVICES=4 python src/main.py \
     --max_epoch 100 \
     --temporal_res 6 \
     --spatial_res 8
+
+
+# CIRCLE
+
+CUDA_VISIBLE_DEVICES=1 python src/main.py \
+    --dataset circle \
+    --model relu \
+    --dataset_dir dataset/circle \
+    --batch_size 256 \
+    --hidden_dim 32 \
+    --max_epoch 100

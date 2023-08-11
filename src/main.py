@@ -8,12 +8,13 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from datasets import noaa, era5
+from datasets import noaa, era5, circle
 from model import INR
 
 dataset_dict = {
     'noaa': noaa.NOAA,
-    'era5': era5.ERA5
+    'era5': era5.ERA5,
+    'circle': circle.CIRCLE,
 }
 
 if __name__=='__main__':
@@ -32,13 +33,13 @@ if __name__=='__main__':
     parser.add_argument("--temporal_res", type=int, default=24)
     parser.add_argument("--spatial_res", type=float, default=8)
 
-    parser.add_argument("--hidden_inr", type=str, default='siren')
+    parser.add_argument("--hidden_inr", type=str, default='wire')
     parser.add_argument("--hidden_dim", type=int, default=512)
     parser.add_argument("--max_order", type=int, default=3)
     parser.add_argument("--hidden_layers", type=int, default=6)
     parser.add_argument('--skip', default=False, action='store_true')
-    parser.add_argument("--omega", type=float, default=10.)
-    parser.add_argument("--sigma", type=float, default=10.)
+    parser.add_argument("--omega", type=float, default=5.)
+    parser.add_argument("--sigma", type=float, default=1.)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr_patience", type=int, default=500)
 

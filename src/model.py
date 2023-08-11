@@ -41,7 +41,7 @@ class INR(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("train_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
-        self.log("train_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
+        self.log("train_psnr", mse2psnr(loss), sync_dist=self.sync_dist)
         return loss
     
     def validation_step(self, data, batch_idx):
@@ -51,7 +51,7 @@ class INR(pl.LightningModule):
 
         loss = self.loss_fn(pred, target)
         self.log("valid_loss", loss, prog_bar=True, sync_dist=self.sync_dist)
-        self.log("valid_psnr", mse2psnr(loss), prog_bar=True, sync_dist=self.sync_dist)
+        self.log("valid_psnr", mse2psnr(loss), sync_dist=self.sync_dist)
         return loss
 
     def test_step(self, data, batch_idx):
