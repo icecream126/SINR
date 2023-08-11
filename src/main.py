@@ -48,7 +48,7 @@ if __name__=='__main__':
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     args.validation = False if args.model == 'sun360' else True
-    args.spherical = True if args.model == 'shinr' else True
+    args.spherical = True if args.model == 'shinr' else False
 
     train_dataset = dataset_dict[args.dataset](dataset_type='train', **vars(args))
     test_dataset = dataset_dict[args.dataset](dataset_type='test', **vars(args))
