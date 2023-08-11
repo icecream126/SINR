@@ -34,8 +34,8 @@ class SphericalHarmonicsLayer(nn.Module):
                 self.linear.weight.uniform_(-1, 1)
         
     def forward(self, input):
-        theta = input[..., 1]
-        phi = input[..., 2]
+        theta = input[..., 0]
+        phi = input[..., 1]
 
         sh_list = []
         for l in range(self.max_order+1):
