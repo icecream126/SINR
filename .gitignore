@@ -7,3 +7,6 @@ experiment/
 lightning_logs/
 __pycache__
 wandb/
+sun360*.sh
+*.out
+hm_sinr.yaml
