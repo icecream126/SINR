@@ -39,7 +39,7 @@ class SUN360(Dataset):
         
         image_file = os.listdir(directory)[panorama_idx]  # Load the panorama_idx image
         image_path = os.path.join(directory, image_file)
-        wandb.log({"Error Map": wandb.Image(image_path)})
+        wandb.log({"Ground Truth": wandb.Image(image_path)})
         panorama = transform(Image.open(image_path))
         return panorama
 
