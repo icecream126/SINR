@@ -6,7 +6,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --batch_size 4 \
     --time \
     --in_memory \
-    --max_epoch 1000
+    --max_epoch 10
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset tcdcclm \

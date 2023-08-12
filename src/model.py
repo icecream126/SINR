@@ -128,3 +128,24 @@ class INR(pl.LightningModule):
         plt.savefig(f'./figure/{self.dataset}_{self.name}.png')
 
         wandb.log({"Error Map": wandb.Image(fig)})
+
+        if self.dataset in ['era5', 'dpt2m', 'gustsfc', 'tcdcclm']:
+            plt.clf()
+            target = target.squeeze(-1).detach().cpu().numpy()
+            fig = plt.figure(figsize=(40, 20))
+
+            print(target.shape, lon.shape, lat.shape)
+
+            plt.tricontourf(
+                lon,
+                pi - lat,
+                target,
+                cmap = 'hot',
+            )
+
+            plt.title(f'{self.name} Error map(PSNR: {mse2psnr(loss):.2f})', fontsize=40)
+            plt.colorbar()
+            plt.show()
+            plt.savefig(f'./figure/{self.dataset}_{self.name}_gt.png')
+
+            wandb.log({"Ground Truth": wandb.Image(fig)})
