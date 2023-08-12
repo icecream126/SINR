@@ -3,8 +3,10 @@ from torch import nn
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
 
-from inrs import relu, siren, wire, shinr, swinr
 from utils.psnr import mse2psnr
+import matplotlib.pyplot as plt
+from utils.change_coord_sys import to_spherical
+from inrs import relu, siren, wire, shinr, swinr
 
 model_dict = {
     'relu': relu,
@@ -17,17 +19,23 @@ model_dict = {
 class INR(pl.LightningModule):
     def __init__(
             self,
+            dataset: str,
             model: str,
             validation: bool,
+            plot: bool,
             lr: float=0.001,
             lr_patience: int=500,
             **kwargs
         ):
         super().__init__()
+
+        self.dataset = dataset
+        self.model = model_dict[model].INR(**kwargs)
+        self.plot = plot
+        self.validation = validation
         self.lr = lr
         self.lr_patience = lr_patience
-        self.validation = validation
-        self.model = model_dict[model].INR(**kwargs)
+
         self.sync_dist = torch.cuda.device_count() > 1
 
         self.loss_fn = nn.MSELoss()
@@ -64,8 +72,12 @@ class INR(pl.LightningModule):
         loss = self.loss_fn(pred, target)
         self.log("test_mse", loss)
         self.log("test_psnr", mse2psnr(loss))
+
         if self.validation:
             self.log("min_valid_loss", self.min_valid_loss)
+        
+        if self.plot:
+            self.visualize(inputs, target, pred)
         return loss
 
     def configure_optimizers(self):
@@ -81,3 +93,28 @@ class INR(pl.LightningModule):
             "frequency": 1
         }
         return {"optimizer": optimizer, "lr_scheduler": sch_dict}
+
+    def visualize(self, inputs, target, pred):
+        dist = nn.PairwiseDistance(eps=0)
+
+        if self.model != 'shinr':
+            inputs = to_spherical(inputs)
+        if self.dataset not in ['sun360', 'circle']:
+            inputs = inputs[0]
+            target = target[0]
+            pred = pred[0]
+
+        lat = inputs[..., 0].detach().cpu().numpy()
+        lon = inputs[..., 1].detach().cpu().numpy()
+        error = dist(target, pred).detach().cpu().numpy()
+
+        # 그래프 생성
+        plt.tricontourf(
+            x = lat,
+            y = lon,
+            Z = error,
+            cmap = 'hot',
+        )
+
+        plt.show()
+        plt.savefig(f'./figure/{self.dataset}/error.png')
