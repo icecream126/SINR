@@ -3,7 +3,7 @@ import torch
 def to_spherical(points):
     x, y, z = points[..., 0], points[..., 1], points[..., 2]
     
-    theta = torch.arccos(z)  
+    theta = torch.arcsin(z)  
     phi = torch.atan2(y, x)
     return torch.stack([theta, phi], -1)
 

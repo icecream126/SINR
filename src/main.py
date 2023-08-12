@@ -42,14 +42,45 @@ if __name__=='__main__':
     parser.add_argument('--skip', default=False, action='store_true')
     parser.add_argument("--omega", type=float, default=30.)
     parser.add_argument("--sigma", type=float, default=10.)
+
+    parser.add_argument("--plot", default=False, action='store_true')
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr_patience", type=int, default=500)
 
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
+    
     args.validation = False if args.dataset == 'sun360' else True
     args.spherical = True if args.model == 'shinr' else False
 
+    logger = WandbLogger(
+        config=args, 
+        project="SINR",
+        name=args.model+'/'+args.dataset
+    )
+
+    logger.experiment.log(
+        {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}
+    )
+
+    lrmonitor_cb = LearningRateMonitor(logging_interval="step")
+    checkpoint_cb = ModelCheckpoint(
+        monitor="valid_loss" if args.validation else "train_loss",
+        mode="min",
+        filename="best"
+    )
+
+    trainer = pl.Trainer.from_argparse_args(
+        args,
+        max_epochs=args.max_epochs,
+        log_every_n_steps=1,
+        callbacks=[lrmonitor_cb, checkpoint_cb],
+        logger=logger,
+        gpus=torch.cuda.device_count(),
+        strategy="ddp" if torch.cuda.device_count() > 1 else None
+    )
+
+    # Data
     train_dataset = dataset_dict[args.dataset](dataset_type='train', **vars(args))
     test_dataset = dataset_dict[args.dataset](dataset_type='test', **vars(args))
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
@@ -64,34 +95,7 @@ if __name__=='__main__':
     args.output_dim = train_dataset.target_dim
     model = INR(**vars(args))
 
-    # Training
-    lrmonitor_cb = LearningRateMonitor(logging_interval="step")
-    checkpoint_cb = ModelCheckpoint(
-        monitor="valid_loss" if args.validation else "train_loss",
-        mode="min",
-        filename="best"
-    )
-
-    logger = WandbLogger(
-        config=args, 
-        project="SINR",
-        name=args.model+'/'+args.dataset
-    )
-
-    logger.experiment.log(
-        {"CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", None)}
-    )
-
-    trainer = pl.Trainer.from_argparse_args(
-        args,
-        max_epochs=args.max_epochs,
-        log_every_n_steps=1,
-        callbacks=[lrmonitor_cb, checkpoint_cb],
-        logger=logger,
-        gpus=torch.cuda.device_count(),
-        strategy="ddp" if torch.cuda.device_count() > 1 else None
-    )
-
+    # Learning
     if args.validation:
         trainer.fit(model, train_loader, valid_loader)
         model.min_valid_loss = checkpoint_cb.best_model_score

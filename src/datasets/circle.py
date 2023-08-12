@@ -15,17 +15,16 @@ class CIRCLE(Dataset):
 
         self.dataset_type = dataset_type
         self.spherical = spherical
-        self._data = self.generate_data(dataset_type)
+        self._data = [self.generate_data(dataset_type)]
 
     def __getitem__(self, index):
-        # Dictionary containing lat, long and temperature
         data_out = {}
-        data_out['inputs'] = self._data['inputs'][index]
-        data_out['target'] = self._data['target'][index]
+        data_out['inputs'] = self._data[index]['inputs']
+        data_out['target'] = self._data[index]['target']
         return data_out
 
     def __len__(self):
-        return len(self._data['target'])
+        return len(self._data)
     
     @staticmethod
     def deg_to_rad(degrees):

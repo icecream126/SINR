@@ -1,9 +1,12 @@
 import os
+import wandb
 import torch
 import numpy as np
 from PIL import Image
 from torchvision import transforms
 from torch.utils.data import Dataset
+
+from utils.change_coord_sys import to_cartesian
 
 class SUN360(Dataset):
     
@@ -19,14 +22,15 @@ class SUN360(Dataset):
             **kwargs
         ):
         super(SUN360, self).__init__()
+        self.target_dim = 3
+        
         self.dataset_dir = './dataset/' + dataset
         self.sample_fraction = sample_fraction        
         self.dataset_type = dataset_type
         self.panorama_idx = panorama_idx
         self.spherical = spherical
-        self.panorama = self.load_panorama(self.dataset_dir, panorama_idx)
+        self.panorama = [self.load_panorama(self.dataset_dir, panorama_idx)]
         self.sampled_indices = self._get_sampled_indices()
-        self.target_dim = 3
 
     def load_panorama(self, directory, panorama_idx):
         transform = transforms.Compose([
@@ -35,13 +39,13 @@ class SUN360(Dataset):
         
         image_file = os.listdir(directory)[panorama_idx]  # Load the panorama_idx image
         image_path = os.path.join(directory, image_file)
+        wandb.log({"Error Map": wandb.Image(image_path)})
         panorama = transform(Image.open(image_path))
-        
         return panorama
 
 
     def _get_sampled_indices(self):
-        H, W = self.panorama.shape[1:3]
+        H, W = self.panorama[0].shape[1:]
         latitudes = np.linspace(-np.pi/2, np.pi/2, H)
         weights = np.cos(latitudes)
         weight_map = np.tile(weights[:, np.newaxis], (1, W))
@@ -58,36 +62,32 @@ class SUN360(Dataset):
             train_indices = SUN360.train_sampled_indices  # Train indices are stored in SUN360.train_sampled_indices
             test_indices = np.setdiff1d(all_indices, train_indices)
             sampled_indices = np.random.choice(test_indices, num_pixels_to_sample, replace=False)
-        
         return sampled_indices
 
     def __len__(self):
-        return len(self.sampled_indices)
+        return len(self.panorama)
 
-    def __getitem__(self, idx):
-        flat_idx = self.sampled_indices[idx]
-        row = flat_idx // self.panorama.shape[2] # Range : [0, height-1]
-        col = flat_idx % self.panorama.shape[2] # Range : [0, weight -1]
+    def __getitem__(self, index):
+        panorama = self.panorama[index]
+
+        row = self.sampled_indices // panorama.shape[2] # Range : [0, height-1]
+        col = self.sampled_indices % panorama.shape[2] # Range : [0, weight -1]
         
         # Convert pixel position to spherical coordinates
-        theta = row * (np.pi/self.panorama.shape[1])  # Range : [0 , \pi]
-        phi = col * (2*np.pi/self.panorama.shape[2])  # Range : [0, 2\pi]
+        theta = row * (np.pi/panorama.shape[1])  # Range : [0 , \pi]
+        phi = col * (2*np.pi/panorama.shape[2])  # Range : [0, 2\pi]
+
+        theta = torch.tensor(theta, dtype=torch.float32) - np.pi/2
+        phi = torch.tensor(phi, dtype=torch.float32) - np.pi
         
-        spherical_coords = torch.tensor([theta, phi], dtype=torch.float32)
-        rgb_value = self.panorama[:, row, col]
+        inputs = torch.stack([theta, phi], dim=-1)
         
-        if self.spherical:
-            inputs = spherical_coords
-        else:
-            theta = torch.tensor(theta)
-            phi = torch.tensor(phi)
-            x = torch.cos(theta) * torch.cos(phi)
-            y = torch.cos(theta) * torch.sin(phi)
-            z = torch.sin(theta)
-            inputs = torch.tensor([x,y,z], dtype = torch.float32)
+        if not self.spherical:
+            inputs = to_cartesian(inputs)
+
+        rgb_value = panorama[:, row, col].transpose(0, 1)
         
         data_out = dict()
         data_out["inputs"] = inputs
         data_out["target"] = rgb_value
-        
         return data_out

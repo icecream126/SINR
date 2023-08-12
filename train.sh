@@ -86,9 +86,7 @@ CUDA_VISIBLE_DEVICES=4 python src/main.py \
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset circle \
-    --model shinr \
-    --batch_size 256 \
-    --hidden_dim 32 \
+    --model relu \
     --max_epoch 100
 
 # SUN360
@@ -96,6 +94,4 @@ CUDA_VISIBLE_DEVICES=1 python src/main.py \
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset sun360 \
     --model relu \
-    --batch_size 32 \
-    --hidden_dim 512 \
-    --max_epoch 1
+    --max_epoch 100

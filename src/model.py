@@ -1,4 +1,6 @@
+import wandb
 import torch
+from math import pi
 from torch import nn
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
@@ -22,14 +24,15 @@ class INR(pl.LightningModule):
             dataset: str,
             model: str,
             validation: bool,
-            plot: bool,
             lr: float=0.001,
             lr_patience: int=500,
+            plot: bool=False,
             **kwargs
         ):
         super().__init__()
 
         self.dataset = dataset
+        self.name = model
         self.model = model_dict[model].INR(**kwargs)
         self.plot = plot
         self.validation = validation
@@ -70,6 +73,7 @@ class INR(pl.LightningModule):
         pred = self.forward(inputs)
 
         loss = self.loss_fn(pred, target)
+        
         self.log("test_mse", loss)
         self.log("test_psnr", mse2psnr(loss))
 
@@ -77,7 +81,7 @@ class INR(pl.LightningModule):
             self.log("min_valid_loss", self.min_valid_loss)
         
         if self.plot:
-            self.visualize(inputs, target, pred)
+            self.visualize(inputs, target, pred, loss)
         return loss
 
     def configure_optimizers(self):
@@ -94,27 +98,33 @@ class INR(pl.LightningModule):
         }
         return {"optimizer": optimizer, "lr_scheduler": sch_dict}
 
-    def visualize(self, inputs, target, pred):
+    def visualize(self, inputs, target, pred, loss):
         dist = nn.PairwiseDistance(eps=0)
 
-        if self.model != 'shinr':
+        if self.name != 'shinr':
             inputs = to_spherical(inputs)
-        if self.dataset not in ['sun360', 'circle']:
-            inputs = inputs[0]
-            target = target[0]
-            pred = pred[0]
+
+        inputs = inputs[0]
+        target = target[0]
+        pred = pred[0]
 
         lat = inputs[..., 0].detach().cpu().numpy()
         lon = inputs[..., 1].detach().cpu().numpy()
         error = dist(target, pred).detach().cpu().numpy()
 
-        # 그래프 생성
+        fig = plt.figure(figsize=(40, 20))
+
         plt.tricontourf(
-            x = lat,
-            y = lon,
-            Z = error,
+            lon,
+            pi - lat,
+            error,
             cmap = 'hot',
         )
 
+        plt.title(f'{self.name} Error map(PSNR: {mse2psnr(loss):.2f})', fontsize=40)
+        plt.clim(0, 1)
+        plt.colorbar()
         plt.show()
-        plt.savefig(f'./figure/{self.dataset}/error.png')
+        plt.savefig(f'./figure/{self.dataset}_{self.name}.png')
+
+        wandb.log({"Error Map": wandb.Image(fig)})

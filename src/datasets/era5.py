@@ -112,7 +112,7 @@ class ERA5(Dataset):
         # return data_tensor, 0  # Label to ensure consistency with image datasets
 
     def __len__(self):
-        return len(self.filepaths)
+        return len(self.time_idx)
 
     @staticmethod
     def deg_to_rad(degrees):
