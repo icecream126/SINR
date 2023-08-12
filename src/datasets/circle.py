@@ -1,5 +1,7 @@
+import wandb
 import torch
 import numpy as np
+from math import pi
 from torch.utils.data import Dataset
 
 
@@ -28,22 +30,22 @@ class CIRCLE(Dataset):
     
     @staticmethod
     def deg_to_rad(degrees):
-        return np.pi * degrees / 180.
+        return pi * degrees / 180.
 
     def generate_data(self, dataset_type, full_res=0.25):
-        lat = np.arange(0., 180., full_res)
-        lon = np.arange(0., 360., full_res)
+        lat = np.arange(-90., 90., full_res)
+        lon = np.arange(-180., 180., full_res)
 
         lat_rad = self.deg_to_rad(lat)
         lon_rad = self.deg_to_rad(lon)
 
-        lat_grid, lon_grid = np.meshgrid(lat_rad, lon_rad)
+        lon_grid, lat_grid = np.meshgrid(lon_rad, lat_rad)
+        target = ((lat_grid>-pi/4) & (lat_grid<pi/4)).astype(float)
+        wandb.log({"Ground Truth": wandb.Image(target)})
 
         lat = torch.flatten(torch.tensor(lat_grid, dtype=torch.float32))
         lon = torch.flatten(torch.tensor(lon_grid, dtype=torch.float32))
-
-        target = torch.zeros_like(lat, dtype=torch.float32)
-        target[lat<1] = 1.
+        target = torch.flatten(torch.tensor(target, dtype=torch.float32))
 
         if self.spherical:
             inputs = torch.stack([lat, lon], dim=-1)

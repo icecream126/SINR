@@ -16,7 +16,7 @@ hidden_inr_dict = {
 class SphericalGaborLayer(nn.Module):
     def __init__(
             self, 
-            hidden_dim,
+            out_dim,
             time,
             omega,
             sigma,
@@ -27,26 +27,26 @@ class SphericalGaborLayer(nn.Module):
         self.time = time
         self.omega = omega
         self.sigma = sigma
-        self.hidden_dim = hidden_dim
+        self.out_dim = out_dim
 
-        self.dilate = nn.Parameter(torch.empty(1, hidden_dim))
+        self.dilate = nn.Parameter(torch.empty(1, out_dim))
         nn.init.normal_(self.dilate)
 
-        self.u = nn.Parameter(torch.empty(hidden_dim))
-        self.v = nn.Parameter(torch.empty(hidden_dim))
-        self.w = nn.Parameter(torch.empty(hidden_dim))
+        self.u = nn.Parameter(torch.empty(out_dim))
+        self.v = nn.Parameter(torch.empty(out_dim))
+        self.w = nn.Parameter(torch.empty(out_dim))
         nn.init.uniform_(self.u)
         nn.init.uniform_(self.v)
         nn.init.uniform_(self.w)
 
         if time:
-            self.linear = nn.Linear(1, hidden_dim)
+            self.linear = nn.Linear(1, out_dim)
 
     def forward(self, input):
         points = input[..., 0:3]
 
-        zeros = torch.zeros(self.hidden_dim, device=points.device)
-        ones = torch.ones(self.hidden_dim, device=points.device)
+        zeros = torch.zeros(self.out_dim, device=points.device)
+        ones = torch.ones(self.out_dim, device=points.device)
 
         alpha = 2*pi*self.u
         beta = torch.arccos(torch.clamp(2*self.v-1, -1+1e-6, 1-1e-6))
@@ -80,7 +80,7 @@ class SphericalGaborLayer(nn.Module):
         R = torch.bmm(torch.bmm(Rz_gamma, Rx_beta), Rz_alpha)
 
         points = torch.matmul(R, points.unsqueeze(-2).unsqueeze(-1))
-        points = points.squeeze(-1).squeeze(0)
+        points = points.squeeze(-1)
 
         x, z = points[..., 0], points[..., 2]
 

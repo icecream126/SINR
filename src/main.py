@@ -40,8 +40,8 @@ if __name__=='__main__':
     parser.add_argument("--max_order", type=int, default=3)
     parser.add_argument("--hidden_layers", type=int, default=6)
     parser.add_argument('--skip', default=False, action='store_true')
-    parser.add_argument("--omega", type=float, default=30.)
-    parser.add_argument("--sigma", type=float, default=10.)
+    parser.add_argument("--omega", type=float, default=7.)
+    parser.add_argument("--sigma", type=float, default=1.)
 
     parser.add_argument("--plot", default=False, action='store_true')
     parser.add_argument("--lr", type=float, default=0.001)

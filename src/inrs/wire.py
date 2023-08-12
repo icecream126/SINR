@@ -30,7 +30,6 @@ class GaborLayer(nn.Module):
 
         self.omega = omega
         self.sigma = sigma
-        self.input_dim = input_dim
         
         self.linear = nn.Linear(input_dim, output_dim)
     

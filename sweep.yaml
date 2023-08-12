@@ -1,6 +1,6 @@
 program: src/main.py
 project: SINR
-name: swinr/gustsfc
+name: swinr/circle
 entity: postech_sinr
 method: bayes
 metric:
@@ -24,10 +24,7 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset=gustsfc
+  - --dataset=circle
   - --model=swinr
   - --max_epoch=1000
-  - --batch_size=4
-  - --in_memory
-  - --time
   - --skip
