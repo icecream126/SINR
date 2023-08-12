@@ -1,0 +1,35 @@
+program: src/main.py
+project: SINR
+name: sun360/swinr/6
+entity: postech_sinr
+method: bayes
+metric:
+  name: train_psnr
+  goal: maximize
+parameters:
+  omega:
+    min: 0.05
+    max: 20.
+  sigma:
+    min: 0.05
+    max: 20.
+  hidden_dim:
+    values: [64, 128, 256, 512]
+  lr:
+    min: 0.0001
+    max: 0.01
+  hidden_inr:
+    value: 'relu'
+  batch_size:
+    values: [32, 64]
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --dataset=gustsfc
+  - --model=swinr
+  - --max_epoch=120
+  - --in_memory
+  - --time
+  - --skip
+  - --panorama_idx=6
