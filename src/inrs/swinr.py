@@ -1,17 +1,8 @@
 import torch
-import numpy as np
 from torch import nn
 from math import pi, ceil
 
 from .relu import ReLULayer
-from .siren import SineLayer
-from .wire import GaborLayer
-
-hidden_inr_dict = {
-    'relu': ReLULayer,
-    'siren': SineLayer,
-    'wire': GaborLayer,
-}
 
 class SphericalGaborLayer(nn.Module):
     def __init__(
@@ -110,7 +101,6 @@ class INR(nn.Module):
             output_dim,
             hidden_dim, 
             hidden_layers,
-            hidden_inr,
             time,
             skip=True,
             omega=10.,
@@ -127,7 +117,7 @@ class INR(nn.Module):
         self.net = nn.ModuleList()
         self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
 
-        self.nonlin = hidden_inr_dict[hidden_inr]
+        self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
             if skip and i == ceil(hidden_layers/2):
@@ -144,11 +134,6 @@ class INR(nn.Module):
                                             sigma=sigma))
 
         final_linear = nn.Linear(hidden_dim, output_dim) 
-
-        if hidden_inr == 'siren':
-            with torch.no_grad():
-                const = np.sqrt(6/hidden_dim)/max(omega, 1e-12)
-                final_linear.weight.uniform_(-const, const)
         
         self.net.append(final_linear)
     

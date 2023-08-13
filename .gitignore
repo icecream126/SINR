@@ -6,4 +6,5 @@ dataset/
 wandb/
 SINR/
 figure/
+NNCompression/
 __pycache__

@@ -1,10 +1,10 @@
 program: src/main.py
 project: SINR
-name: swinr/sun360
+name: wire/tcdcclm
 entity: postech_sinr
 method: bayes
 metric:
-  name: test_mse
+  name: min_valid_loss
   goal: minimize
 parameters:
   omega:
@@ -18,18 +18,19 @@ parameters:
   lr:
     min: 0.0001
     max: 0.01
-  max_order:
-    values: [1, 2, 3, 4, 5]
-  hidden_inr:
-    values: ['relu', 'siren']
+  # max_order:
+  #   values: [1, 2, 3, 4, 5]
+  # hidden_inr:
+  #   values: ['relu', 'siren']
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset=sun360
-  - --model=swinr
+  - --dataset=tcdcclm
+  - --model=wire
   - --max_epoch=1000
-  - --batch_size 24
+  - --batch_size=4
   - --skip
   - --time
+  - --in_memory
   - --plot

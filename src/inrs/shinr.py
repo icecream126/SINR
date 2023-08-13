@@ -1,18 +1,9 @@
 import torch
-import numpy as np
 from torch import nn
 from math import ceil
 
 from .relu import ReLULayer
-from .siren import SineLayer
-from .wire import GaborLayer
 from utils.spherical_harmonics import get_spherical_harmonics
-
-hidden_inr_dict = {
-    'relu': ReLULayer,
-    'siren': SineLayer,
-    'wire': GaborLayer,
-}
 
 class SphericalHarmonicsLayer(nn.Module):
     def __init__(
@@ -58,7 +49,6 @@ class INR(nn.Module):
             output_dim,
             hidden_dim, 
             hidden_layers,
-            hidden_inr,
             max_order,
             time,
             skip=True,
@@ -76,7 +66,7 @@ class INR(nn.Module):
         self.net = nn.ModuleList()
         self.net.append(self.first_nonlin(max_order, time, omega))
 
-        self.nonlin = hidden_inr_dict[hidden_inr]
+        self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
             if i == 0:
@@ -99,12 +89,7 @@ class INR(nn.Module):
                                                 omega=omega,
                                                 sigma=sigma))
 
-        final_linear = nn.Linear(hidden_dim, output_dim) 
-
-        if hidden_inr == 'siren':
-            with torch.no_grad():
-                const = np.sqrt(6/hidden_dim)/max(omega, 1e-12)
-                final_linear.weight.uniform_(-const, const)
+        final_linear = nn.Linear(hidden_dim, output_dim)
         
         self.net.append(final_linear)
     
