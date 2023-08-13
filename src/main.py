@@ -35,7 +35,6 @@ if __name__=='__main__':
     parser.add_argument("--spatial_res", type=float, default=8)
     parser.add_argument('--panorama_idx',default=0, type=int)
 
-    parser.add_argument("--hidden_inr", type=str, default='relu')
     parser.add_argument("--hidden_dim", type=int, default=512)
     parser.add_argument("--max_order", type=int, default=3)
     parser.add_argument("--hidden_layers", type=int, default=6)
