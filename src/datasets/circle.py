@@ -10,6 +10,7 @@ class CIRCLE(Dataset):
             self, 
             dataset_type,
             spherical=False,
+            train_ratio=0.25,
             **kwargs
         ):
 
@@ -17,6 +18,7 @@ class CIRCLE(Dataset):
 
         self.dataset_type = dataset_type
         self.spherical = spherical
+        self.train_ratio = train_ratio
         self._data = [self.generate_data(dataset_type)]
 
     def __getitem__(self, index):
@@ -36,10 +38,14 @@ class CIRCLE(Dataset):
         lat = np.arange(-90., 90., full_res)
         lon = np.arange(-180., 180., full_res)
 
-        lat_rad = self.deg_to_rad(lat)
-        lon_rad = self.deg_to_rad(lon)
+        lat = self.deg_to_rad(lat)
+        lon = self.deg_to_rad(lon)
 
-        lon_grid, lat_grid = np.meshgrid(lon_rad, lat_rad)
+        weights = np.cos(lat)
+        weight_map = np.tile(weights[:, np.newaxis], (1, len(lon)))
+        probabilities = weight_map.flatten() / np.sum(weight_map)
+
+        lon_grid, lat_grid = np.meshgrid(lon, lat)
         target = ((lat_grid>-pi/4) & (lat_grid<pi/4)).astype(float)
         wandb.log({"Ground Truth": wandb.Image(target)})
 
@@ -55,16 +61,21 @@ class CIRCLE(Dataset):
             z = torch.sin(lat)
             inputs = torch.stack([x, y, z], dim=-1)
 
-        indice = np.random.RandomState(seed=0).permutation(len(lat))
+        total_size = len(lat)
+        train_size = int(self.train_ratio * total_size)
+        valid_size = test_size = 100000
+        sample_size = train_size + valid_size + test_size
 
-        train_size = 100000
-        valid_size = 400000
-        test_size = 400000
+        if sample_size > total_size:
+            raise ValueError('Decrease train ratio')
+        
+        np.random.seed(0)
+        indice = np.random.choice(total_size, sample_size, replace=False, p=probabilities)
 
         idx_dict = {
             'train': indice[:train_size],
             'valid': indice[train_size:train_size+valid_size],
-            'test': indice[train_size+valid_size:train_size+valid_size+test_size]
+            'test': indice[train_size+valid_size]
         }
         
         indice = idx_dict[dataset_type]

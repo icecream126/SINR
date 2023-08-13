@@ -21,8 +21,6 @@ dataset_dict = {
 }
 
 if __name__=='__main__':
-    pl.seed_everything(1234)
-
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default='dpt2m')
     parser.add_argument("--model", type=str, default='relu')
@@ -33,7 +31,8 @@ if __name__=='__main__':
     parser.add_argument('--in_memory', default=False, action='store_true')
     parser.add_argument("--temporal_res", type=int, default=24)
     parser.add_argument("--spatial_res", type=float, default=8)
-    parser.add_argument('--panorama_idx',default=0, type=int)
+    parser.add_argument('--panorama_idx', type=int, default=0)
+    parser.add_argument("--train_ratio", type=float, default=0.25)
 
     parser.add_argument("--hidden_dim", type=int, default=512)
     parser.add_argument("--max_order", type=int, default=3)
@@ -49,7 +48,7 @@ if __name__=='__main__':
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     
-    args.validation = False if args.dataset == 'sun360' else True
+    args.validation = True # False if args.dataset == 'sun360' else True
     args.spherical = True if args.model == 'shinr' else False
 
     logger = WandbLogger(
@@ -88,7 +87,9 @@ if __name__=='__main__':
     if args.validation:
         valid_dataset = dataset_dict[args.dataset](dataset_type='valid', **vars(args))
         valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-
+    
+    pl.seed_everything(1234)
+    
     # Model
     args.input_dim = (2 if args.spherical else 3) + (1 if args.time else 0)
     args.output_dim = train_dataset.target_dim

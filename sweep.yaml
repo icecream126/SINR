@@ -1,6 +1,6 @@
 program: src/main.py
 project: SINR
-name: wire/tcdcclm
+name: swinr/tcdcclm
 entity: postech_sinr
 method: bayes
 metric:
@@ -9,10 +9,10 @@ metric:
 parameters:
   omega:
     min: 1.
-    max: 20.
+    max: 10.
   sigma:
     min: 1.
-    max: 20.
+    max: 10.
   hidden_dim:
     values: [128, 512]
   lr:
@@ -20,14 +20,12 @@ parameters:
     max: 0.01
   # max_order:
   #   values: [1, 2, 3, 4, 5]
-  # hidden_inr:
-  #   values: ['relu', 'siren']
 command:
   - python
   - ${program}
   - ${args}
   - --dataset=tcdcclm
-  - --model=wire
+  - --model=swinr
   - --max_epoch=1000
   - --batch_size=4
   - --skip

@@ -134,8 +134,6 @@ class INR(pl.LightningModule):
             target = target.squeeze(-1).detach().cpu().numpy()
             fig = plt.figure(figsize=(40, 20))
 
-            print(target.shape, lon.shape, lat.shape)
-
             plt.tricontourf(
                 lon,
                 pi - lat,

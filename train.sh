@@ -86,13 +86,14 @@ CUDA_VISIBLE_DEVICES=4 python src/main.py \
 
 CUDA_VISIBLE_DEVICES=3 python src/main.py \
     --dataset circle \
-    --model wire \
+    --model relu \
     --plot \
     --max_epoch 100
 
 # SUN360
 
-CUDA_VISIBLE_DEVICES=1 python src/main.py \
+CUDA_VISIBLE_DEVICES=3 python src/main.py \
     --dataset sun360 \
     --model relu \
+    --plot \
     --max_epoch 100
