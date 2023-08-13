@@ -7,3 +7,5 @@ wandb/
 SINR/
 figure/
 __pycache__
+lightning_logs/
+experiment/
