@@ -143,7 +143,7 @@ class INR(pl.LightningModule):
                 cmap = 'hot',
             )
 
-            plt.title(f'{self.name} Ground Truth)', fontsize=40)
+            plt.title(f'{self.name} Ground Truth', fontsize=40)
             plt.colorbar()
             plt.show()
             plt.savefig(f'./figure/{self.dataset}_{self.name}_gt.png')
