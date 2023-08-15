@@ -8,3 +8,8 @@ SINR/
 figure/
 NNCompression/
 __pycache__
+*.ckpt
+*.out
+SINR-src/
+*.sh
+*_tune/
