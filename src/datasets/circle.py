@@ -13,9 +13,6 @@ class CIRCLE(Dataset):
             train_ratio=0.25,
             **kwargs
         ):
-
-        self.target_dim = 1
-
         self.dataset_type = dataset_type
         self.spherical = spherical
         self.train_ratio = train_ratio
@@ -63,7 +60,7 @@ class CIRCLE(Dataset):
 
         total_size = len(lat)
         train_size = int(self.train_ratio * total_size)
-        valid_size = test_size = 100000
+        valid_size = test_size = int(0.25 * total_size)
         sample_size = train_size + valid_size + test_size
 
         if sample_size > total_size:
@@ -75,7 +72,7 @@ class CIRCLE(Dataset):
         idx_dict = {
             'train': indice[:train_size],
             'valid': indice[train_size:train_size+valid_size],
-            'test': indice[train_size+valid_size]
+            'test': indice[train_size+valid_size:]
         }
         
         indice = idx_dict[dataset_type]

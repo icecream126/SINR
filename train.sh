@@ -6,7 +6,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --batch_size 4 \
     --time \
     --in_memory \
-    --max_epoch 10
+    --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset tcdcclm \
@@ -14,7 +14,7 @@ CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --batch_size 4 \
     --time \
     --in_memory \
-    --max_epoch 1000
+    --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=2 python src/main.py \
     --dataset tcdcclm \
@@ -22,7 +22,7 @@ CUDA_VISIBLE_DEVICES=2 python src/main.py \
     --batch_size 4 \
     --time \
     --in_memory \
-    --max_epoch 1000
+    --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=3 python src/main.py \
     --dataset tcdcclm \
@@ -30,7 +30,7 @@ CUDA_VISIBLE_DEVICES=3 python src/main.py \
     --batch_size 4 \
     --time \
     --in_memory \
-    --max_epoch 1000
+    --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=4 python src/main.py \
     --dataset tcdcclm \
@@ -38,23 +38,20 @@ CUDA_VISIBLE_DEVICES=4 python src/main.py \
     --batch_size 4 \
     --time \
     --in_memory \
-    --max_epoch 1000
+    --max_epochs 1000
 
 # ERA5
 
 CUDA_VISIBLE_DEVICES=0 python src/main.py \
-    --dataset era5 \
+    --dataset era5_temp \
     --model relu \
-    --time \
-    --max_epoch 100 \
-    --temporal_res 6 \
-    --spatial_res 8
+    --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset era5 \
     --model siren \
     --time \
-    --max_epoch 100 \
+    --max_epochs 100 \
     --temporal_res 6 \
     --spatial_res 8
 
@@ -62,7 +59,7 @@ CUDA_VISIBLE_DEVICES=6 python src/main.py \
     --dataset era5 \
     --model shinr \
     --time \
-    --max_epoch 100 \
+    --max_epochs 100 \
     --temporal_res 6 \
     --spatial_res 8
 
@@ -70,7 +67,7 @@ CUDA_VISIBLE_DEVICES=7 python src/main.py \
     --dataset era5 \
     --model swinr \
     --time \
-    --max_epoch 100 \
+    --max_epochs 100 \
     --temporal_res 6 \
     --spatial_res 8
 
@@ -78,17 +75,16 @@ CUDA_VISIBLE_DEVICES=4 python src/main.py \
     --dataset era5 \
     --model wire \
     --time \
-    --max_epoch 100 \
+    --max_epochs 100 \
     --temporal_res 6 \
     --spatial_res 8
 
 # CIRCLE
 
-CUDA_VISIBLE_DEVICES=3 python src/main.py \
+CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --dataset circle \
     --model relu \
-    --plot \
-    --max_epoch 100
+    --max_epochs 1
 
 # SUN360
 
@@ -96,4 +92,4 @@ CUDA_VISIBLE_DEVICES=3 python src/main.py \
     --dataset sun360 \
     --model relu \
     --plot \
-    --max_epoch 100
+    --max_epochs 100

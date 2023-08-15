@@ -18,9 +18,7 @@ class SUN360(Dataset):
             train_ratio=0.25,
             **kwargs
         ):
-        super(SUN360, self).__init__()
-        self.target_dim = 3
-        
+        super(SUN360, self).__init__()        
         self.dataset_dir = './dataset/' + dataset
         self.train_ratio = train_ratio
         self.dataset_type = dataset_type
@@ -50,7 +48,7 @@ class SUN360(Dataset):
         
         total_size = H * W
         train_size = int(self.train_ratio * total_size)
-        valid_size = test_size = 100000
+        valid_size = test_size = int(0.25 * total_size)
         sample_size = train_size + valid_size + test_size
 
         if sample_size > total_size:

@@ -125,7 +125,6 @@ class INR(pl.LightningModule):
         plt.clim(0, 1)
         plt.colorbar()
         plt.show()
-        plt.savefig(f'./figure/{self.dataset}_{self.name}.png')
 
         wandb.log({"Error Map": wandb.Image(fig)})
 
@@ -144,6 +143,5 @@ class INR(pl.LightningModule):
             plt.title(f'{self.name} Ground Truth', fontsize=40)
             plt.colorbar()
             plt.show()
-            plt.savefig(f'./figure/{self.dataset}_{self.name}_gt.png')
 
             wandb.log({"Ground Truth": wandb.Image(fig)})

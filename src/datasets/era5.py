@@ -1,143 +1,107 @@
+import os
 import glob
 
 import torch
 import numpy as np
+from math import pi
 from torch.utils.data import Dataset
 
+TIME_MIN = 692496
+TIME_MAX = 1043135
 
-T_MIN = 202.66
-T_MAX = 320.93
-
+Z_MIN = 42481
+Z_MAX = 59345
 
 class ERA5(Dataset):
-    """ERA5 temperature dataset.
-
-    Args:
-        path_to_data (string): Path to directory where data is stored.
-        transform (torchvision.Transform): Optional transform to apply to data.
-        normalize (bool): Whether to normalize data to lie in [0, 1]. Defaults
-            to True.
-    """
     def __init__(
             self, 
             dataset,
             dataset_type,
-            temporal_res,
-            spatial_res,
-            time,
-            spherical=False,
-            transform=None, 
-            normalize=True, 
+            spherical,
+            sample_ratio,
+            time_scale,
+            z_scale,
             **kwargs
         ):
 
-        self.target_dim = 1
-
-        self.dataset_dir = "./dataset/" + dataset
+        self.dataset_path = 'dataset/' + dataset
         self.dataset_type = dataset_type
-        self.temporal_res = temporal_res
-        self.spatial_res = spatial_res
-        self.time = time
         self.spherical = spherical
-        self.transform = transform
-        self.normalize = normalize
+        self.sample_ratio = sample_ratio
+        self.time_scale = time_scale
+        self.z_scale = z_scale
 
-        self.filepaths = self.get_filenames(self.dataset_dir)
-        self.time_idx = self.get_time_idx(dataset_type, temporal_res, len(self.filepaths))
-        self.filepaths = self.filepaths[self.time_idx]
+        self.filenames = self.get_filenames(self.dataset_path)
 
     def __getitem__(self, index):
         # Dictionary containing latitude, longitude and temperature
 
-        data = np.load(self.filepaths[index])
+        filename = self.filenames[index]
+        data = np.load(filename)
+
         data_out = dict()
 
-        time = torch.tensor(data['time'])
-        temperature = torch.tensor(data['temperature'])  # Shape (num_lats, num_lons)
-        latitude = data['latitude']  # Shape (num_lats,) theta
-        longitude = data['longitude']  # Shape (num_lons,) phi
-
-        full_res = 180/len(latitude)
-
-        if self.dataset_type == 'train':
-            step = int(self.spatial_res/full_res)
-        else:
-            step = int(self.spatial_res/full_res/2) # valid, test는 2배 해상도
+        lat = data['latitude']
+        lon = data['longitude']
+        time = data['time']
+        target = data['z']
         
-        if step < 1:
-            raise ValueError('Exceed full resolution. Increase spatial_res')
+        if self.dataset_type == 'train':
+            start = 0 
+        elif self.dataset_type == 'valid':
+            start = 1
+        else:
+            start = 2
 
-        lat_idx = np.arange(0, len(latitude), step)
-        lon_idx = np.arange(0, len(longitude), step)
+        lat_idx = np.arange(start, len(lat), 3)
+        lon_idx = np.arange(start, len(lon), 3)
+        time_idx = np.arange(start, len(time), 3)
 
-        latitude = latitude[lat_idx]
-        longitude = longitude[lon_idx]
-        temperature = temperature[lat_idx][:, lon_idx]
+        lat_sample_num = int(len(lat_idx)*(self.sample_ratio)**(1/3))
+        lon_sample_num = int(len(lon_idx)*(self.sample_ratio)**(1/3))
+        time_sample_num = int(len(time_idx)*(self.sample_ratio)**(1/3))
 
-        lat_rad = self.deg_to_rad(latitude)
-        lon_rad = self.deg_to_rad(longitude)
+        lat_idx = np.random.permutation(lat_idx)[:lat_sample_num]
+        lon_idx = np.random.permutation(lon_idx)[:lon_sample_num]
+        time_idx = np.random.permutation(time_idx)[:time_sample_num]
 
-        if self.normalize:
-            temperature = (temperature - T_MIN) / (T_MAX - T_MIN)
+        lat = torch.from_numpy(lat[lat_idx])
+        lon = torch.from_numpy(lon[lon_idx])
+        time = torch.from_numpy(time[time_idx])
+        target = torch.from_numpy(target[time_idx][:, lat_idx][:, :, lon_idx]).float()
 
-        longitude_grid, latitude_grid = np.meshgrid(lon_rad, lat_rad)
+        lat = self.deg_to_rad(lat)
+        lon = self.deg_to_rad(lon)
+        time = (time - TIME_MIN) / self.time_scale # (TIME_MAX - TIME_MIN)
+        target = (target - Z_MIN) / self.z_scale # (Z_MAX - Z_MIN)
 
-        latitude = torch.flatten(torch.tensor(latitude_grid))
-        longitude = torch.flatten(torch.tensor(longitude_grid))
-        time = time * torch.ones_like(latitude)
+        time, lat, lon = torch.meshgrid(time, lat, lon)
+
+        lat = lat.flatten()   
+        lon = lon.flatten()   
+        time = time.flatten()   
+        target = target.flatten()
 
         if self.spherical:
-            inputs = torch.stack([latitude, longitude, time], dim=-1)
+            inputs = torch.stack([lat, lon, time], dim=-1)
         else:
-            x = torch.cos(latitude) * torch.cos(longitude)
-            y = torch.cos(latitude) * torch.sin(longitude)
-            z = torch.sin(latitude)
+            x = torch.cos(lat) * torch.cos(lon)
+            y = torch.cos(lat) * torch.sin(lon)
+            z = torch.sin(lat)
             inputs = torch.stack([x, y, z, time], dim=-1)
 
-        data_out["inputs"] = inputs
-        data_out["target"] = torch.flatten(temperature).unsqueeze(-1)
+        data_out['inputs'] = inputs
+        data_out['target'] = target.unsqueeze(-1)
         return data_out
 
-        
-
-        # Create a grid of latitude and longitude values matching the shape
-        # of the temperature grid
-        # longitude_grid, latitude_grid = np.meshgrid(longitude, latitude)
-        # Shape (3, num_lats, num_lons)
-        # data_tensor = np.stack([latitude_grid, longitude_grid, temperature])
-        # data_tensor = torch.Tensor(data_tensor)
-        # Perform optional transform
-        # if self.transform:
-        #     data_tensor = self.transform(data_tensor)
-        # return data_tensor, 0  # Label to ensure consistency with image datasets
-
     def __len__(self):
-        return len(self.time_idx)
+        return len(self.filenames)
 
     @staticmethod
     def deg_to_rad(degrees):
-        return np.pi * degrees / 180.
+        return pi * degrees / 180.
 
     @staticmethod
     def get_filenames(dataset_dir):
-        filenames = glob.glob(dataset_dir+'/*.npz')
-        filenames = sorted(filenames)
-        return np.array(filenames)
-
-    @staticmethod
-    def get_time_idx(dataset_type, temporal_res, length):
-        indice = np.random.RandomState(seed=0).permutation(length)
-
-        train_size = int(length/temporal_res)
-        valid_size = int(2*length/temporal_res)
-        test_size = int(2*length/temporal_res)
-
-        if train_size + valid_size + test_size > length:
-            raise ValueError('Exceed full resolution. Increase temporal_res')
-
-        idx_dict = {
-            'train': indice[:train_size],
-            'valid': indice[train_size:train_size+valid_size],
-            'test': indice[train_size+valid_size:train_size+valid_size+test_size]
-        }
-        return idx_dict[dataset_type]
+        filenames = glob.glob(os.path.join(dataset_dir, "*.npz"))
+        return sorted(filenames)

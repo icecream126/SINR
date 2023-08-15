@@ -14,23 +14,18 @@ class NOAA(Dataset):
         dataset,
         dataset_type,
         spherical=False,
-        time=True,
-        in_memory=True,
         **kwargs,
     ):
         self.dataset_dir = "./dataset/" + dataset
         self.spherical = spherical
-        self.time = time
-        self.in_memory = in_memory
         self.filenames = self.get_filenames(self.dataset_dir, dataset_type)
         self.npzs = [np.load(f) for f in self.filenames]
         self._points_path = os.path.join(self.dataset_dir, dataset_type+"_points.npy")
         self._data = None
         self._points = None
 
-        if in_memory:
-            print(f"Loading {dataset_type} dataset")
-            self._data = [self.load_data(i) for i in tqdm(range(len(self)))]
+        print(f"Loading {dataset_type} dataset")
+        self._data = [self.load_data(i) for i in tqdm(range(len(self)))]
 
     def load_data(self, index):
         data = {}
@@ -53,9 +48,8 @@ class NOAA(Dataset):
 
     def get_inputs(self, index):
         arr = self.get_points(index)
-        if self.time:
-            time = self.get_time(index)
-            arr = self.add_time(arr, time)
+        time = self.get_time(index)
+        arr = self.add_time(arr, time)
         return arr
 
     def get_target(self, index):
@@ -63,20 +57,13 @@ class NOAA(Dataset):
         return torch.from_numpy(arr).float()
 
     def get_data(self, index):
-        if self.in_memory:
-            return self._data[index]
-        else:
-            return self.load_data(index)
+        return self._data[index]
 
     def __getitem__(self, index):
         return self.get_data(index)
 
     def __len__(self):
         return len(self.filenames)
-
-    @property
-    def target_dim(self):
-        return self.get_data(0)["target"].shape[-1]
 
     @staticmethod
     def add_time(points, time):
@@ -89,4 +76,5 @@ class NOAA(Dataset):
         npz_dir = os.path.join(dataset_dir, "npz_files")
         npz_filenames = glob.glob(os.path.join(npz_dir, dataset_type+r"_*.npz"))
         npz_filenames = sorted(npz_filenames, key=lambda s: s.split("/")[-1])
+        print(npz_filenames)
         return npz_filenames
