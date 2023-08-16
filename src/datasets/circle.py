@@ -10,12 +10,12 @@ class CIRCLE(Dataset):
             self, 
             dataset_type,
             spherical=False,
-            train_ratio=0.25,
+            sample_ratio=0.25,
             **kwargs
         ):
         self.dataset_type = dataset_type
         self.spherical = spherical
-        self.train_ratio = train_ratio
+        self.sample_ratio = sample_ratio
         self._data = [self.generate_data(dataset_type)]
 
     def __getitem__(self, index):
@@ -59,7 +59,7 @@ class CIRCLE(Dataset):
             inputs = torch.stack([x, y, z], dim=-1)
 
         total_size = len(lat)
-        train_size = int(self.train_ratio * total_size)
+        train_size = int(self.sample_ratio * total_size)
         valid_size = test_size = int(0.25 * total_size)
         sample_size = train_size + valid_size + test_size
 

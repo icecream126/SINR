@@ -34,10 +34,8 @@ class SphericalGaborLayer(nn.Module):
             self.linear = nn.Linear(1, out_dim)
 
     def forward(self, input):
-        points = input[..., 0:3]
-
-        zeros = torch.zeros(self.out_dim, device=points.device)
-        ones = torch.ones(self.out_dim, device=points.device)
+        zeros = torch.zeros(self.out_dim, device=self.u.device)
+        ones = torch.ones(self.out_dim, device=self.u.device)
 
         alpha = 2*pi*self.u
         beta = torch.arccos(torch.clamp(2*self.v-1, -1+1e-6, 1-1e-6))
@@ -58,8 +56,8 @@ class SphericalGaborLayer(nn.Module):
         
         Rx_beta = torch.stack([
             torch.stack([ ones,     zeros,      zeros], 1), 
-            torch.stack([zeros, cos_beta, -sin_beta], 1), 
-            torch.stack([zeros, sin_beta,  cos_beta], 1)
+            torch.stack([zeros,  cos_beta,  -sin_beta], 1), 
+            torch.stack([zeros,  sin_beta,   cos_beta], 1)
             ], 1)
 
         Rz_gamma = torch.stack([
@@ -70,28 +68,26 @@ class SphericalGaborLayer(nn.Module):
         
         R = torch.bmm(torch.bmm(Rz_gamma, Rx_beta), Rz_alpha)
 
+        points = input[..., 0:3]
         points = torch.matmul(R, points.unsqueeze(-2).unsqueeze(-1))
         points = points.squeeze(-1)
-
+        
         x, z = points[..., 0], points[..., 2]
 
         dilate = torch.exp(self.dilate)
 
-        arg = 4 * dilate * dilate * (1-z) / (1e-6+1+z)
-
-        freq_term = torch.exp(1j*2*self.omega*dilate*x/(1e-6+1+z))
-        gauss_term = torch.exp(-self.sigma*self.sigma*arg)
-
-        out = freq_term * gauss_term
+        freq_arg = 2 * dilate * x / (1e-6+1+z)
+        gauss_arg = 4 * dilate * dilate * (1-z) / (1e-6+1+z)
 
         if self.time:
             time = input[..., 3:]
             lin = self.linear(time)
-            omega = self.omega * lin
-            sigma = self.sigma * lin
-            time_term = torch.exp(1j*omega - sigma.square())
-            out = out * time_term
-        return out.real
+            freq_arg = freq_arg + lin
+            gauss_arg = gauss_arg + lin * lin
+
+        freq_term = torch.cos(self.omega*freq_arg)
+        gauss_term = torch.exp(-self.sigma*self.sigma*gauss_arg)
+        return freq_term * gauss_term
     
 
 class INR(nn.Module):

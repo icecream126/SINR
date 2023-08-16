@@ -3,25 +3,10 @@ from torch import nn
 from math import ceil
 
 class GaborLayer(nn.Module):
-    '''
-        Implicit representation with complex Gabor nonlinearity
-        
-        Inputs;
-            input_dim: Input features
-            output_dim; Output features
-            bias: if True, enable bias for the linear operation
-            is_first: Legacy SIREN parameter
-            omega: Legacy SIREN parameter
-            omega: Frequency of Gabor sinusoid term
-            sigma: Scaling of Gabor Gaussian term
-            trainable: If True, omega and sigma are trainable parameters
-    '''
-    
     def __init__(
             self, 
             input_dim, 
-            output_dim, 
-            is_first, 
+            output_dim,
             omega,
             sigma,
             **kwargs,
@@ -31,14 +16,16 @@ class GaborLayer(nn.Module):
         self.omega = omega
         self.sigma = sigma
         
-        self.linear = nn.Linear(input_dim, output_dim)
+        self.freqs = nn.Linear(input_dim, output_dim)
+        self.scale = nn.Linear(input_dim, output_dim)
     
     def forward(self, input):
-        lin = self.linear(input)
-        omega = self.omega * lin
-        sigma = self.sigma * lin
-        out = torch.exp(1j*omega - sigma.abs().square())
-        return out.real
+        omega = self.omega * self.freqs(input)
+        scale = self.scale(input) * self.sigma
+
+        freq_term = torch.cos(omega)
+        gauss_term = torch.exp(-(scale**2))
+        return freq_term * gauss_term
     
 class INR(nn.Module):
     def __init__(
@@ -62,7 +49,6 @@ class INR(nn.Module):
         self.net = nn.ModuleList()
         self.net.append(self.nonlin(input_dim,
                                     hidden_dim, 
-                                    is_first=True,
                                     omega=omega,
                                     sigma=sigma))
 
@@ -70,13 +56,11 @@ class INR(nn.Module):
             if skip and i == ceil(hidden_layers/2):
                 self.net.append(self.nonlin(hidden_dim+input_dim,
                                             hidden_dim,
-                                            is_first=False,
                                             omega=omega,
                                             sigma=sigma))
             else:
                 self.net.append(self.nonlin(hidden_dim,
                                             hidden_dim,
-                                            is_first=False,
                                             omega=omega,
                                             sigma=sigma))
 

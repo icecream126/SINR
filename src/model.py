@@ -80,6 +80,10 @@ class INR(pl.LightningModule):
         if self.validation:
             self.log("min_valid_loss", self.min_valid_loss)
         
+        wandb.run.summary["test_mse"] = loss
+        wandb.run.summary["test_psnr"] = mse2psnr(loss)
+        wandb.run.summary["min_valid_loss"] = self.min_valid_loss
+        
         if self.plot:
             self.visualize(inputs, target, pred, loss)
         return loss
