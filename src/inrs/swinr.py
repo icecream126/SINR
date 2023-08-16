@@ -6,8 +6,8 @@ from .relu import ReLULayer
 
 class SphericalGaborLayer(nn.Module):
     def __init__(
-            self, 
-            out_dim,
+            self,
+            output_dim,
             time,
             omega,
             sigma,
@@ -18,24 +18,24 @@ class SphericalGaborLayer(nn.Module):
         self.time = time
         self.omega = omega
         self.sigma = sigma
-        self.out_dim = out_dim
+        self.output_dim = output_dim
 
-        self.dilate = nn.Parameter(torch.empty(1, out_dim))
+        self.dilate = nn.Parameter(torch.empty(1, output_dim))
         nn.init.normal_(self.dilate)
 
-        self.u = nn.Parameter(torch.empty(out_dim))
-        self.v = nn.Parameter(torch.empty(out_dim))
-        self.w = nn.Parameter(torch.empty(out_dim))
+        self.u = nn.Parameter(torch.empty(output_dim))
+        self.v = nn.Parameter(torch.empty(output_dim))
+        self.w = nn.Parameter(torch.empty(output_dim))
         nn.init.uniform_(self.u)
         nn.init.uniform_(self.v)
         nn.init.uniform_(self.w)
 
         if time:
-            self.linear = nn.Linear(1, out_dim)
+            self.linear = nn.Linear(1, output_dim)
 
     def forward(self, input):
-        zeros = torch.zeros(self.out_dim, device=self.u.device)
-        ones = torch.ones(self.out_dim, device=self.u.device)
+        zeros = torch.zeros(self.output_dim, device=self.u.device)
+        ones = torch.ones(self.output_dim, device=self.u.device)
 
         alpha = 2*pi*self.u
         beta = torch.arccos(torch.clamp(2*self.v-1, -1+1e-6, 1-1e-6))

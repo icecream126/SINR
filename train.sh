@@ -4,80 +4,58 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --dataset tcdcclm \
     --model relu \
     --batch_size 4 \
-    --time \
-    --in_memory \
     --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
     --dataset tcdcclm \
     --model siren \
     --batch_size 4 \
-    --time \
-    --in_memory \
     --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=2 python src/main.py \
     --dataset tcdcclm \
     --model shinr \
     --batch_size 4 \
-    --time \
-    --in_memory \
     --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=3 python src/main.py \
     --dataset tcdcclm \
     --model swinr \
     --batch_size 4 \
-    --time \
-    --in_memory \
     --max_epochs 1000
 
 CUDA_VISIBLE_DEVICES=4 python src/main.py \
     --dataset tcdcclm \
     --model wire \
     --batch_size 4 \
-    --time \
-    --in_memory \
     --max_epochs 1000
 
 # ERA5
 
 CUDA_VISIBLE_DEVICES=0 python src/main.py \
-    --dataset era5_temp \
+    --dataset era5_spa \
     --model relu \
-    --max_epochs 1000
+    --max_epochs 100
 
 CUDA_VISIBLE_DEVICES=1 python src/main.py \
-    --dataset era5 \
+    --dataset era5_spa \
     --model siren \
-    --time \
-    --max_epochs 100 \
-    --temporal_res 6 \
-    --spatial_res 8
+    --max_epochs 100 
 
 CUDA_VISIBLE_DEVICES=6 python src/main.py \
-    --dataset era5 \
+    --dataset era5_spa \
     --model shinr \
-    --time \
-    --max_epochs 100 \
-    --temporal_res 6 \
-    --spatial_res 8
+    --max_epochs 100 
 
 CUDA_VISIBLE_DEVICES=7 python src/main.py \
-    --dataset era5 \
+    --dataset era5_spa \
     --model swinr \
-    --time \
-    --max_epochs 100 \
-    --temporal_res 6 \
-    --spatial_res 8
+    --max_epochs 100 
 
-CUDA_VISIBLE_DEVICES=4 python src/main.py \
-    --dataset era5 \
+CUDA_VISIBLE_DEVICES=0 python src/main.py \
+    --dataset era5_spa \
     --model wire \
-    --time \
-    --max_epochs 100 \
-    --temporal_res 6 \
-    --spatial_res 8
+    --max_epochs 100 
 
 # CIRCLE
 

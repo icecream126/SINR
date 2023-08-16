@@ -1,3 +1,3 @@
 wandb sweep --project SINR sweep.yaml
 
-CUDA_VISIBLE_DEVICES=6
+CUDA_VISIBLE_DEVICES=7

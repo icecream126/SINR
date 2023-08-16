@@ -1,33 +1,33 @@
 program: src/main.py
 project: SINR
-name: era5_spa/swinr/SR
+name: era5_temp/shinr/SR
 entity: postech_sinr
 method: bayes
 metric:
   name: min_valid_loss
   goal: minimize
 parameters:
-  # train_ratio:
-  #   values: [0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2, 0.22, 0.24, 0.26]
   omega:
     min: 0.01
     max: 1.
-  sigma:
-    min: 0.01
-    max: 1.
+  # sigma:
+  #   min: 0.01
+  #   max: 1.
   lr:
     min: 0.0001
     max: 0.01
   hidden_dim:
-    values: [64, 128]
-  # max_order:
-  #   values: [1, 2, 3, 4, 5, 6]
+    values: [32, 64, 128]
+  hidden_layers:
+    values: [4, 6, 8]
+  max_order:
+    values: [1, 2, 3, 4]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset=era5_spa
-  - --model=swinr
+  - --dataset=era5_temp
+  - --model=shinr
   - --max_epoch=100
-  - --sample_ratio=0.02
+  - --sample_ratio=0.04
   - --skip
