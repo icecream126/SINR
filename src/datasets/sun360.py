@@ -14,7 +14,7 @@ class SUN360(Dataset):
             dataset,
             dataset_type, 
             panorama_idx=0, 
-            spherical=False, 
+            spherical=False,
             train_ratio=0.25,
             **kwargs
         ):
@@ -34,8 +34,9 @@ class SUN360(Dataset):
         
         image_file = os.listdir(directory)[panorama_idx]  # Load the panorama_idx image
         image_path = os.path.join(directory, image_file)
-        wandb.log({"Ground Truth": wandb.Image(image_path)})
         panorama = transform(Image.open(image_path))
+        
+        wandb.log({"Ground Truth": wandb.Image(image_path)})
         return panorama
 
 
@@ -77,8 +78,8 @@ class SUN360(Dataset):
         theta = row * (np.pi/panorama.shape[1])  # Range : [0 , \pi]
         phi = col * (2*np.pi/panorama.shape[2])  # Range : [0, 2\pi]
 
-        theta = torch.tensor(theta, dtype=torch.float32) - np.pi/2
-        phi = torch.tensor(phi, dtype=torch.float32) - np.pi
+        theta = torch.from_numpy(theta).float() - np.pi/2
+        phi = torch.from_numpy(phi).float() - np.pi
         
         inputs = torch.stack([theta, phi], dim=-1)
         

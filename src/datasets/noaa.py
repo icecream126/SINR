@@ -76,5 +76,4 @@ class NOAA(Dataset):
         npz_dir = os.path.join(dataset_dir, "npz_files")
         npz_filenames = glob.glob(os.path.join(npz_dir, dataset_type+r"_*.npz"))
         npz_filenames = sorted(npz_filenames, key=lambda s: s.split("/")[-1])
-        print(npz_filenames)
         return npz_filenames

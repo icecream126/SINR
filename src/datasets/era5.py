@@ -6,6 +6,8 @@ import numpy as np
 from math import pi
 from torch.utils.data import Dataset
 
+from utils.change_coord_sys import to_cartesian
+
 TIME_MIN = 692496
 TIME_MAX = 1043135
 
@@ -45,6 +47,11 @@ class ERA5(Dataset):
         lon = data['longitude']
         time = data['time']
         target = data['z']
+
+        lat = self.deg_to_rad(lat)
+        lon = self.deg_to_rad(lon)
+        time = (time - TIME_MIN) / self.time_scale # (TIME_MAX - TIME_MIN)
+        target = (target - Z_MIN) / self.z_scale # (Z_MAX - Z_MIN)
         
         if self.dataset_type == 'train':
             start = 0 
@@ -61,19 +68,17 @@ class ERA5(Dataset):
         lon_sample_num = int(len(lon_idx)*(self.sample_ratio)**(1/3))
         time_sample_num = int(len(time_idx)*(self.sample_ratio)**(1/3))
 
-        lat_idx = np.random.permutation(lat_idx)[:lat_sample_num]
-        lon_idx = np.random.permutation(lon_idx)[:lon_sample_num]
-        time_idx = np.random.permutation(time_idx)[:time_sample_num]
+        weight = np.cos(lat[lat_idx]) + 1e-6
+        p = weight/np.sum(weight)
 
-        lat = torch.from_numpy(lat[lat_idx])
-        lon = torch.from_numpy(lon[lon_idx])
-        time = torch.from_numpy(time[time_idx])
+        lat_idx = np.random.choice(lat_idx, lat_sample_num, replace=False, p=p)
+        lon_idx = np.random.choice(lon_idx, lon_sample_num, replace=False)
+        time_idx = np.random.choice(time_idx, time_sample_num, replace=False)
+
+        lat = torch.from_numpy(lat[lat_idx]).float()
+        lon = torch.from_numpy(lon[lon_idx]).float()
+        time = torch.from_numpy(time[time_idx]).float()
         target = torch.from_numpy(target[time_idx][:, lat_idx][:, :, lon_idx]).float()
-
-        lat = self.deg_to_rad(lat)
-        lon = self.deg_to_rad(lon)
-        time = (time - TIME_MIN) / self.time_scale # (TIME_MAX - TIME_MIN)
-        target = (target - Z_MIN) / self.z_scale # (Z_MAX - Z_MIN)
 
         time, lat, lon = torch.meshgrid(time, lat, lon)
 
@@ -82,13 +87,12 @@ class ERA5(Dataset):
         time = time.flatten()   
         target = target.flatten()
 
-        if self.spherical:
-            inputs = torch.stack([lat, lon, time], dim=-1)
-        else:
-            x = torch.cos(lat) * torch.cos(lon)
-            y = torch.cos(lat) * torch.sin(lon)
-            z = torch.sin(lat)
-            inputs = torch.stack([x, y, z, time], dim=-1)
+        inputs = torch.stack([lat, lon], dim=-1)
+        
+        if not self.spherical:
+            inputs = to_cartesian(inputs)
+
+        inputs = torch.cat([inputs, time.unsqueeze(-1)], dim=-1)
 
         data_out['inputs'] = inputs
         data_out['target'] = target.unsqueeze(-1)

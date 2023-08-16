@@ -1,22 +1,21 @@
-import wandb
 import torch
 import numpy as np
 from math import pi
 from torch.utils.data import Dataset
 
+from utils.change_coord_sys import to_cartesian
+
 
 class CIRCLE(Dataset):
     def __init__(
-            self, 
+            self,
             dataset_type,
             spherical=False,
-            sample_ratio=0.25,
             **kwargs
         ):
         self.dataset_type = dataset_type
         self.spherical = spherical
-        self.sample_ratio = sample_ratio
-        self._data = [self.generate_data(dataset_type)]
+        self._data = [self.generate_data()]
 
     def __getitem__(self, index):
         data_out = {}
@@ -26,59 +25,46 @@ class CIRCLE(Dataset):
 
     def __len__(self):
         return len(self._data)
-    
+
     @staticmethod
     def deg_to_rad(degrees):
         return pi * degrees / 180.
 
-    def generate_data(self, dataset_type, full_res=0.25):
-        lat = np.arange(-90., 90., full_res)
-        lon = np.arange(-180., 180., full_res)
+    def generate_data(self, res=0.25):
+
+        lat = np.arange(-90, 90, res)
+        lon = np.arange(-180, 180, res)
 
         lat = self.deg_to_rad(lat)
         lon = self.deg_to_rad(lon)
 
-        weights = np.cos(lat)
-        weight_map = np.tile(weights[:, np.newaxis], (1, len(lon)))
-        probabilities = weight_map.flatten() / np.sum(weight_map)
-
-        lon_grid, lat_grid = np.meshgrid(lon, lat)
-        target = ((lat_grid>-pi/4) & (lat_grid<pi/4)).astype(float)
-        wandb.log({"Ground Truth": wandb.Image(target)})
-
-        lat = torch.flatten(torch.tensor(lat_grid, dtype=torch.float32))
-        lon = torch.flatten(torch.tensor(lon_grid, dtype=torch.float32))
-        target = torch.flatten(torch.tensor(target, dtype=torch.float32))
-
-        if self.spherical:
-            inputs = torch.stack([lat, lon], dim=-1)
+        if self.dataset_type == 'train':
+            start = 0 
+        elif self.dataset_type == 'valid':
+            start = 1
         else:
-            x = torch.cos(lat) * torch.cos(lon)
-            y = torch.cos(lat) * torch.sin(lon)
-            z = torch.sin(lat)
-            inputs = torch.stack([x, y, z], dim=-1)
+            start = 2
 
-        total_size = len(lat)
-        train_size = int(self.sample_ratio * total_size)
-        valid_size = test_size = int(0.25 * total_size)
-        sample_size = train_size + valid_size + test_size
+        lat_idx = np.arange(start, len(lat), 3)
+        lon_idx = np.arange(start, len(lon), 3)
 
-        if sample_size > total_size:
-            raise ValueError('Decrease train ratio')
+        lat = torch.from_numpy(lat[lat_idx]).float()
+        lon = torch.from_numpy(lon[lon_idx]).float()
+
+        lat, lon = torch.meshgrid(lat, lon)
+        target = torch.logical_and(lat>-pi/4, lat<pi/4).float()
+
+        lat = lat.flatten()
+        lon = lon.flatten()
+        target = target.flatten()
+
+        inputs = torch.stack([lat, lon], dim=-1)
         
-        np.random.seed(0)
-        indice = np.random.choice(total_size, sample_size, replace=False, p=probabilities)
-
-        idx_dict = {
-            'train': indice[:train_size],
-            'valid': indice[train_size:train_size+valid_size],
-            'test': indice[train_size+valid_size:]
-        }
-        
-        indice = idx_dict[dataset_type]
+        if not self.spherical:
+            inputs = to_cartesian(inputs)
         
         data = {}
-        data['inputs'] = inputs[indice]
-        data['target'] = target[indice].unsqueeze(-1)
+        data['inputs'] = inputs
+        data['target'] = target.unsqueeze(-1)
         return data
 
