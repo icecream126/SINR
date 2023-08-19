@@ -8,3 +8,6 @@ SINR/
 figure/
 NNCompression/
 __pycache__
+lightning_logs/
+experiment/
+SINR-src/
