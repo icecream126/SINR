@@ -5,9 +5,8 @@ launch.json
 dataset/
 wandb/
 SINR/
-figure/
-NNCompression/
 __pycache__
 lightning_logs/
 experiment/
 SINR-src/
+figure/

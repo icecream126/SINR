@@ -2,8 +2,11 @@ import torch
 from torch import nn
 from math import ceil
 
+from .model import MODEL
 from .relu import ReLULayer
+
 from utils.spherical_harmonics import get_spherical_harmonics
+
 
 class SphericalHarmonicsLayer(nn.Module):
     def __init__(
@@ -14,10 +17,14 @@ class SphericalHarmonicsLayer(nn.Module):
             **kwargs,
         ):
         super().__init__()
+
         self.max_order = max_order
         self.hidden_dim = (max_order+1)**2
         self.time = time
         self.omega = omega
+
+        self.W = nn.Parameter(torch.empty(3, self.hidden_dim))
+        torch.nn.init.xavier_normal_(self.W)
 
         if time:
             self.linear = nn.Linear(1, self.hidden_dim)
@@ -28,21 +35,29 @@ class SphericalHarmonicsLayer(nn.Module):
         theta = input[..., 0]
         phi = input[..., 1]
 
+        x = torch.cos(theta) * torch.cos(phi)
+        y = torch.cos(theta) * torch.sin(phi)
+        z = torch.sin(theta)
+
+        coord = torch.stack([x, y, z], dim=-1)
+
+        gauss = torch.matmul(coord, self.W) - torch.norm(self.W, dim=0, keepdim=True)
+
         sh_list = []
         for l in range(self.max_order+1):
             sh = get_spherical_harmonics(l, phi, theta)
             sh_list.append(sh)
 
-        out = torch.cat(sh_list, dim=-1)
+        freq = torch.cat(sh_list, dim=-1)
 
         if self.time:
             time = input[..., 2:]
             lin = self.linear(time)
             omega = self.omega * lin
-            out = out * torch.sin(omega)
-        return out
+            freq = freq * torch.sin(omega)
+        return freq * gauss
 
-class INR(nn.Module):
+class INR(MODEL):
     def __init__(
             self, 
             input_dim, 
@@ -51,13 +66,14 @@ class INR(nn.Module):
             hidden_layers,
             max_order,
             time,
-            skip=True,
-            omega=10.,
-            sigma=10.,
+            skip,
+            omega,
+            sigma,
             **kwargs,
         ):
-        super().__init__()
+        super().__init__(**kwargs)
 
+        self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
 

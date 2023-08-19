@@ -1,34 +1,29 @@
 program: src/main.py
 project: SINR
-name: swinr/tcdcclm
+name: SR/swinr/sun360/0
 entity: postech_sinr
 method: bayes
 metric:
-  name: min_valid_loss
+  name: best_valid_loss
   goal: minimize
 parameters:
   omega:
-    min: 1.
-    max: 10.
+    min: 1
+    max: 20
   sigma:
-    min: 1.
-    max: 10.
-  hidden_dim:
-    values: [128, 512]
+    min: 1
+    max: 20
   lr:
     min: 0.0001
     max: 0.01
   # max_order:
-  #   values: [1, 2, 3, 4, 5]
+  #   values: [1, 2, 3, 4]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset=tcdcclm
+  - --dataset_path=dataset/spatial/sun360/0.jpg
   - --model=swinr
-  - --max_epoch=1000
-  - --batch_size=4
+  - --max_epoch=500
   - --skip
-  - --time
-  - --in_memory
   - --plot
