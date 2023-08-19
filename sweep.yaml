@@ -1,6 +1,6 @@
 program: src/main.py
 project: SINR
-name: SR/swinr/sun360/2
+name: SR/swinr/sun360/0
 entity: postech_sinr
 method: bayes
 metric:
@@ -22,7 +22,7 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_path=dataset/spatial/sun360/2.jpg
+  - --dataset_path=dataset/spatial/sun360/0.jpg
   - --model=swinr
   - --max_epoch=500
   - --skip

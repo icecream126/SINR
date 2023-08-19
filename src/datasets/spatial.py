@@ -5,21 +5,17 @@ import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
 
-from utils.change_coord_sys import to_cartesian
-
 class Dataset(Dataset):
     def __init__(
             self,
             dataset_path,
             dataset_type,
             output_dim,
-            spherical,
             **kwargs
         ):
         self.dataset_path = dataset_path
         self.dataset_type = dataset_type
         self.output_dim = output_dim
-        self.spherical = spherical
         self._data = self.load_data()
 
     def __getitem__(self, index):
@@ -89,9 +85,6 @@ class Dataset(Dataset):
         target = target.reshape(-1, self.output_dim)
 
         inputs = torch.stack([lat, lon], dim=-1)
-
-        if not self.spherical:
-            inputs = to_cartesian(inputs)
 
         data_out['inputs'] = inputs
         data_out['target'] = target

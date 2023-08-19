@@ -73,6 +73,7 @@ class INR(MODEL):
         ):
         super().__init__(**kwargs)
 
+        self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
 

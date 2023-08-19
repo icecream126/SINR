@@ -14,13 +14,18 @@ class MODEL(pl.LightningModule):
 
         self.lr = lr
         self.lr_patience = lr_patience
-        self.loss_fn = nn.MSELoss()
     
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
 
+        weights = torch.cos(inputs[..., :1])
+        weights = weights / sum(weights)
+
         pred = self.forward(inputs)
-        loss = self.loss_fn(pred, target)
+
+        error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
+        error = weights * error
+        loss = torch.sum(error)
 
         self.log("train_loss", loss, prog_bar=True)
         return loss
@@ -28,8 +33,14 @@ class MODEL(pl.LightningModule):
     def validation_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
 
+        weights = torch.cos(inputs[..., :1])
+        weights = weights / sum(weights)
+
         pred = self.forward(inputs)
-        loss = self.loss_fn(pred, target)
+
+        error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
+        error = weights * error
+        loss = torch.sum(error)
 
         self.log("valid_loss", loss, prog_bar=True)
         return loss
@@ -37,8 +48,14 @@ class MODEL(pl.LightningModule):
     def test_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
 
+        weights = torch.cos(inputs[..., :1])
+        weights = weights / sum(weights)
+
         pred = self.forward(inputs)
-        loss = self.loss_fn(pred, target)
+
+        error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
+        error = weights * error
+        loss = torch.sum(error)
 
         self.log("test_mse", loss)
         return loss

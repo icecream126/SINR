@@ -4,6 +4,8 @@ from math import ceil
 
 from .model import MODEL
 
+from utils.utils import to_cartesian
+
 class GaborLayer(nn.Module):
     def __init__(
             self, 
@@ -36,6 +38,7 @@ class INR(MODEL):
             output_dim,
             hidden_dim, 
             hidden_layers, 
+            time,
             skip,
             omega,
             sigma,
@@ -43,6 +46,7 @@ class INR(MODEL):
         ):
         super().__init__(**kwargs)
 
+        self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
 
@@ -71,6 +75,10 @@ class INR(MODEL):
         self.net.append(final_linear)
     
     def forward(self, x):
+        if self.time:
+            x = torch.cat([to_cartesian(x[..., :2]), x[..., 2:]], dim=-1)
+        else:
+            x = to_cartesian(x[..., :2]) 
         x_in = x
         for i, layer in enumerate(self.net):
             if self.skip and i == ceil(self.hidden_layers/2)+1:

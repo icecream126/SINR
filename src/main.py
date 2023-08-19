@@ -8,7 +8,7 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from visualize import error_map
-from utils.psnr import mse2psnr
+from utils.utils import mse2psnr
 
 from datasets import spatial, temporal
 from models import relu, swinr, shwinr, siren, wire, shinr
@@ -49,9 +49,8 @@ if __name__=='__main__':
 
     pl.seed_everything(0)
     
-    args.spherical = True if args.model == 'shinr' else False
     args.time = True if 'temporal' in args.dataset_path else False
-    args.input_dim = (2 if args.spherical else 3) + (1 if args.time else 0)
+    args.input_dim = (2 if args.model in ['shinr', 'shwinr'] else 3) + (1 if args.time else 0)
     args.output_dim = 3 if 'sun360' in args.dataset_path else 1
 
     # Log
@@ -97,9 +96,9 @@ if __name__=='__main__':
     res = trainer.test(model, test_loader, 'best')[0]
 
     wandb.log({
-        "test_psnr": mse2psnr(res['test_mse']),
-        "best_valid_loss": checkpoint_cb.best_model_score.item(),
-        "best_valid_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
+        "test_psnr": mse2psnr(torch.tensor(res['test_mse'])),
+        "best_valid_loss": checkpoint_cb.best_model_score,
+        "best_valid_psnr": mse2psnr(checkpoint_cb.best_model_score),
     })
 
     if args.plot:

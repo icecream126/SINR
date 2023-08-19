@@ -7,22 +7,18 @@ from math import pi
 import netCDF4 as nc
 from torch.utils.data import Dataset
 
-from utils.change_coord_sys import to_cartesian
-
 class Dataset(Dataset):
     def __init__(
             self,
             dataset_path,
             dataset_type,
             output_dim,
-            spherical,
             sample_ratio,
             **kwargs
         ):
         self.dataset_path = dataset_path
         self.dataset_type = dataset_type
         self.output_dim = output_dim
-        self.spherical = spherical
         self.sample_ratio = sample_ratio
         self.filenames = self.get_filenames()
 
@@ -77,12 +73,7 @@ class Dataset(Dataset):
         time = time.flatten()
         target = target.reshape(-1, self.output_dim)
 
-        inputs = torch.stack([lat, lon], dim=-1)
-        
-        if not self.spherical:
-            inputs = to_cartesian(inputs)
-
-        inputs = torch.cat([inputs, time.unsqueeze(-1)], dim=-1)
+        inputs = torch.stack([lat, lon, time], dim=-1)
 
         data_out['inputs'] = inputs
         data_out['target'] = target
