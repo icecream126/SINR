@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from math import ceil
 
+from .model import MODEL
+
 class GaborLayer(nn.Module):
     def __init__(
             self, 
@@ -27,19 +29,19 @@ class GaborLayer(nn.Module):
         gauss_term = torch.exp(-(scale**2))
         return freq_term * gauss_term
     
-class INR(nn.Module):
+class INR(MODEL):
     def __init__(
             self, 
             input_dim, 
-            hidden_dim, 
             output_dim,
+            hidden_dim, 
             hidden_layers, 
-            skip=True,
-            omega=10.,
-            sigma=10.,
+            skip,
+            omega,
+            sigma,
             **kwargs,
         ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.skip = skip
         self.hidden_layers = hidden_layers

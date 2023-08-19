@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from torch import nn
 from math import ceil
+
+from .model import MODEL
     
 class SineLayer(nn.Module):
     '''
@@ -44,18 +46,18 @@ class SineLayer(nn.Module):
     def forward(self, input):
         return torch.sin(self.omega * self.linear(input))
     
-class INR(nn.Module):
+class INR(MODEL):
     def __init__(
             self, 
             input_dim, 
             output_dim,
             hidden_dim, 
             hidden_layers, 
-            skip=True,
-            omega=10.,
+            skip,
+            omega,
             **kwargs,
         ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.skip = skip
         self.hidden_layers = hidden_layers

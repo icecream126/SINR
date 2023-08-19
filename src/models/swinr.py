@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from math import pi, ceil
 
+from .model import MODEL
 from .relu import ReLULayer
 
 class SphericalGaborLayer(nn.Module):
@@ -90,7 +91,7 @@ class SphericalGaborLayer(nn.Module):
         return freq_term * gauss_term
     
 
-class INR(nn.Module):
+class INR(MODEL):
     def __init__(
             self, 
             input_dim, 
@@ -98,12 +99,12 @@ class INR(nn.Module):
             hidden_dim, 
             hidden_layers,
             time,
-            skip=True,
-            omega=10.,
-            sigma=10.,
+            skip,
+            omega,
+            sigma,
             **kwargs,
         ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.skip = skip
         self.hidden_layers = hidden_layers

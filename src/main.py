@@ -1,62 +1,86 @@
 from argparse import ArgumentParser
 
+import wandb
 import torch
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from datasets import noaa, era5, sun360, circle
-from model import INR
+from visualize import error_map
+from utils.psnr import mse2psnr
 
-dataset_dict = {
-    'dpt2m': noaa.NOAA,
-    'gustsfc': noaa.NOAA,
-    'tcdcclm': noaa.NOAA,
-    'era5_spa': era5.ERA5,
-    'era5_temp': era5.ERA5,
-    'sun360': sun360.SUN360,
-    'circle': circle.CIRCLE,
+from datasets import spatial, temporal
+from models import relu, swinr, shwinr, siren, wire, shinr
+
+model_dict = {
+    'relu': relu,
+    'siren': siren,
+    'wire': wire,
+    'shinr': shinr,
+    'swinr': swinr,
+    'shwinr': shwinr,
 }
 
 if __name__=='__main__':
     parser = ArgumentParser()
-    parser.add_argument("--model", type=str, default='relu')
-    parser.add_argument("--dataset", type=str, default='dpt2m')
+    parser.add_argument("--dataset_path", type=str)
+    parser.add_argument("--model", type=str, default='shinr')
 
-    parser.add_argument("--batch_size", type=int, default=1)
-    parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--sample_ratio", type=float, default=0.05)
-    parser.add_argument("--time_scale", type=float, default=60.)
-    parser.add_argument("--z_scale", type=float, default=100.)
-    parser.add_argument('--panorama_idx', type=int, default=0)
+    # Dataset argument
+    parser.add_argument("--sample_ratio", type=float, default=0.1)
 
-    parser.add_argument("--hidden_dim", type=int, default=512)
-    parser.add_argument("--max_order", type=int, default=3)
+    # Model argument
+    parser.add_argument("--hidden_dim", type=int, default=128)
     parser.add_argument("--hidden_layers", type=int, default=6)
     parser.add_argument('--skip', default=False, action='store_true')
-    parser.add_argument("--omega", type=float, default=20.)
+    parser.add_argument("--omega", type=float, default=10.)
     parser.add_argument("--sigma", type=float, default=10.)
+    parser.add_argument("--max_order", type=int, default=4)
 
+    # Learning argument
+    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--max_epochs", type=int, default=1000)
     parser.add_argument("--lr", type=float, default=0.0001)
-    parser.add_argument("--lr_patience", type=int, default=500)
+    parser.add_argument("--lr_patience", type=int, default=1000)
+
     parser.add_argument("--plot", default=False, action='store_true')
     args = parser.parse_args()
-    
-    args.validation = True # False if args.dataset == 'sun360' else True
-    args.spherical = True if args.model == 'shinr' else False
-    args.time = False if args.dataset in ['sun360', 'circle'] else True
 
+    pl.seed_everything(0)
+    
+    args.spherical = True if args.model == 'shinr' else False
+    args.time = True if 'temporal' in args.dataset_path else False
+    args.input_dim = (2 if args.spherical else 3) + (1 if args.time else 0)
+    args.output_dim = 3 if 'sun360' in args.dataset_path else 1
+
+    # Log
     logger = WandbLogger(
         config=args,
         project="SINR",
-        name=f'{args.dataset}/{args.model}/SR'
+        name=f'{args.dataset_path.split("/")[2]}/{args.model}/SR'
     )
 
+    # Dataset
+    dataset = temporal if args.time else spatial
+
+    train_dataset = dataset.Dataset(dataset_type='train', **vars(args))
+    valid_dataset = dataset.Dataset(dataset_type='valid', **vars(args))
+    test_dataset = dataset.Dataset(dataset_type='test', **vars(args))
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    
+    # Model
+    model = model_dict[args.model].INR(**vars(args))
+
+    # Learning
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
+
     checkpoint_cb = ModelCheckpoint(
-        monitor="valid_loss" if args.validation else "train_loss",
+        monitor="valid_loss",
         mode="min",
         filename="best"
     )
@@ -68,28 +92,16 @@ if __name__=='__main__':
         callbacks=[lrmonitor_cb, checkpoint_cb],
         logger=logger,
         gpus=torch.cuda.device_count(),
-        strategy="ddp" if torch.cuda.device_count() > 1 else None
     )
 
-    # Data
-    train_dataset = dataset_dict[args.dataset](dataset_type='train', **vars(args))
-    valid_dataset = dataset_dict[args.dataset](dataset_type='valid', **vars(args))
-    test_dataset = dataset_dict[args.dataset](dataset_type='test', **vars(args))
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-    
-    pl.seed_everything(1234)
-    
-    # Model
-    args.input_dim = (2 if args.spherical else 3) + (1 if args.time else 0)
-    args.output_dim = 3 if args.dataset=='sun360' else 1
-    model = INR(**vars(args))
+    trainer.fit(model, train_loader, valid_loader)
+    res = trainer.test(model, test_loader, 'best')[0]
 
-    # Learning
-    if args.validation:
-        trainer.fit(model, train_loader, valid_loader)
-        model.min_valid_loss = checkpoint_cb.best_model_score
-    else:
-        trainer.fit(model, train_loader)
-    trainer.test(model, test_loader, 'best')
+    wandb.log({
+        "test_psnr": mse2psnr(res['test_mse']),
+        "best_valid_loss": checkpoint_cb.best_model_score.item(),
+        "best_valid_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
+    })
+
+    if args.plot:
+        error_map(test_dataset, model, args)

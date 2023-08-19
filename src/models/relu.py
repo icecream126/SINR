@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 from math import ceil
+
+from .model import MODEL
     
 class ReLULayer(nn.Module):
     def __init__(
@@ -10,13 +12,14 @@ class ReLULayer(nn.Module):
             **kwargs,
         ):
         super().__init__()
+        
         self.input_dim = input_dim
         self.linear = nn.Linear(input_dim, output_dim)
         
     def forward(self, input):
         return nn.functional.relu(self.linear(input))
     
-class INR(nn.Module):
+class INR(MODEL):
     def __init__(
             self, 
             input_dim, 
@@ -26,7 +29,7 @@ class INR(nn.Module):
             skip=True,
             **kwargs,
         ):
-        super().__init__()
+        super().__init__(**kwargs)
 
         self.skip = skip
         self.hidden_layers = hidden_layers

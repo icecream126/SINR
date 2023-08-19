@@ -4,54 +4,47 @@ import glob
 import torch
 import numpy as np
 from math import pi
+import netCDF4 as nc
 from torch.utils.data import Dataset
 
 from utils.change_coord_sys import to_cartesian
 
-TIME_MIN = 692496
-TIME_MAX = 1043135
-
-Z_MIN = 42481
-Z_MAX = 59345
-
-class ERA5(Dataset):
+class Dataset(Dataset):
     def __init__(
-            self, 
-            dataset,
+            self,
+            dataset_path,
             dataset_type,
+            output_dim,
             spherical,
             sample_ratio,
-            time_scale,
-            z_scale,
             **kwargs
         ):
-
-        self.dataset_path = 'dataset/' + dataset
+        self.dataset_path = dataset_path
         self.dataset_type = dataset_type
+        self.output_dim = output_dim
         self.spherical = spherical
         self.sample_ratio = sample_ratio
-        self.time_scale = time_scale
-        self.z_scale = z_scale
-
-        self.filenames = self.get_filenames(self.dataset_path)
+        self.filenames = self.get_filenames()
 
     def __getitem__(self, index):
-        # Dictionary containing latitude, longitude and temperature
-
-        filename = self.filenames[index]
-        data = np.load(filename)
-
         data_out = dict()
 
-        lat = data['latitude']
-        lon = data['longitude']
-        time = data['time']
-        target = data['z']
+        if 'era5' in self.filenames[index]:
+            with nc.Dataset(self.filenames[index], 'r') as f:
+                for variable in f.variables:
+                    if variable == 'latitude':
+                        lat = f.variables[variable][:]
+                    elif variable == 'longitude':
+                        lon = f.variables[variable][:]
+                    elif variable == 'time':
+                        time = f.variables[variable][:]
+                    elif variable in ['z', 't']:
+                        target = f.variables[variable]
 
         lat = self.deg_to_rad(lat)
         lon = self.deg_to_rad(lon)
-        time = (time - TIME_MIN) / self.time_scale # (TIME_MAX - TIME_MIN)
-        target = (target - Z_MIN) / self.z_scale # (Z_MAX - Z_MIN)
+        time = (time - time.min()) / (time.max() - time.min())
+        target = (target - target.min()) / (target.max() - target.min())
         
         if self.dataset_type == 'train':
             start = 0 
@@ -68,10 +61,7 @@ class ERA5(Dataset):
         lon_sample_num = int(len(lon_idx)*(self.sample_ratio)**(1/3))
         time_sample_num = int(len(time_idx)*(self.sample_ratio)**(1/3))
 
-        weight = np.cos(lat[lat_idx]) + 1e-6
-        p = weight/np.sum(weight)
-
-        lat_idx = np.random.choice(lat_idx, lat_sample_num, replace=False, p=p)
+        lat_idx = np.random.choice(lat_idx, lat_sample_num, replace=False)
         lon_idx = np.random.choice(lon_idx, lon_sample_num, replace=False)
         time_idx = np.random.choice(time_idx, time_sample_num, replace=False)
 
@@ -82,10 +72,10 @@ class ERA5(Dataset):
 
         time, lat, lon = torch.meshgrid(time, lat, lon)
 
-        lat = lat.flatten()   
-        lon = lon.flatten()   
-        time = time.flatten()   
-        target = target.flatten()
+        lat = lat.flatten()
+        lon = lon.flatten()
+        time = time.flatten()
+        target = target.reshape(-1, self.output_dim)
 
         inputs = torch.stack([lat, lon], dim=-1)
         
@@ -95,17 +85,16 @@ class ERA5(Dataset):
         inputs = torch.cat([inputs, time.unsqueeze(-1)], dim=-1)
 
         data_out['inputs'] = inputs
-        data_out['target'] = target.unsqueeze(-1)
+        data_out['target'] = target
         return data_out
 
     def __len__(self):
         return len(self.filenames)
+    
+    def get_filenames(self):
+        filenames = glob.glob(os.path.join(self.dataset_path, "*.npz"))
+        return sorted(filenames)
 
     @staticmethod
     def deg_to_rad(degrees):
         return pi * degrees / 180.
-
-    @staticmethod
-    def get_filenames(dataset_dir):
-        filenames = glob.glob(os.path.join(dataset_dir, "*.npz"))
-        return sorted(filenames)
