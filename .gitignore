@@ -6,3 +6,7 @@ dataset/
 wandb/
 SINR/
 __pycache__
+lightning_logs/
+experiment/
+SINR-src/
+figure/
