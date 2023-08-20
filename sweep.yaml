@@ -1,6 +1,6 @@
 program: src/main.py
 project: SINR
-name: SR/swinr/sun360/0
+name: SR/siren/spatial/era5_temperature
 entity: postech_sinr
 method: bayes
 metric:
@@ -8,11 +8,11 @@ metric:
   goal: minimize
 parameters:
   omega:
-    min: 1
-    max: 20
-  sigma:
-    min: 1
-    max: 20
+    min: 0.01
+    max: 2.
+  # sigma:
+  #   min: 0.01
+  #   max: 2.
   lr:
     min: 0.0001
     max: 0.01
@@ -22,8 +22,8 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_path=dataset/spatial/sun360/0.jpg
-  - --model=swinr
+  - --dataset_path=dataset/spatial/era5_temperature/data.nc
+  - --model=siren
   - --max_epoch=500
   - --skip
   - --plot

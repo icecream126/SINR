@@ -1,6 +1,5 @@
 import wandb
 import torch
-from math import pi
 import matplotlib.pyplot as plt
 
 from utils.utils import mse2psnr
@@ -11,17 +10,17 @@ def error_map(dataset, model, args):
     inputs, target = data["inputs"], data["target"]
 
     weights = torch.cos(inputs[..., :1])
-    weights = weights / torch.sum(weights)
+    weights = weights / weights.mean()
 
     pred = model(inputs)
 
     error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
     error = weights * error
-    loss = torch.sum(error)
+    loss = error.mean()
 
     lat = inputs[..., 0].detach().cpu().numpy()
     lon = inputs[..., 1].detach().cpu().numpy()
-    error = torch.sqrt(error).squeeze(-1).detach().cpu().numpy()
+    error = torch.log10(error+1e-6).squeeze(-1).detach().cpu().numpy()
 
     if 'spatial' in args.dataset_path:
         fig = plt.figure(figsize=(40, 20))
@@ -29,7 +28,7 @@ def error_map(dataset, model, args):
 
         plt.tricontourf(
             lon,
-            pi/2 - lat,
+            -lat,
             error,
             cmap = 'hot',
         )
@@ -38,7 +37,7 @@ def error_map(dataset, model, args):
         cbar.ax.tick_params(labelsize=50)
 
         plt.title(f'{args.model} (PSNR: {mse2psnr(loss):.2f})', fontsize=60)
-        plt.clim(0, 1e-2)
+        plt.clim(-5, -1)
         plt.show()
 
         wandb.log({"Error Map": wandb.Image(fig)})
@@ -54,7 +53,7 @@ def error_map(dataset, model, args):
 
             plt.tricontourf(
                 lon,
-                pi/2 - lat,
+                -lat,
                 target,
                 cmap = 'hot',
             )

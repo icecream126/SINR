@@ -1,5 +1,4 @@
 import torch
-from torch import nn
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
 
@@ -19,13 +18,13 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
 
         weights = torch.cos(inputs[..., :1])
-        weights = weights / sum(weights)
+        weights = weights / weights.mean()
 
         pred = self.forward(inputs)
 
         error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
         error = weights * error
-        loss = torch.sum(error)
+        loss = error.mean()
 
         self.log("train_loss", loss, prog_bar=True)
         return loss
@@ -34,13 +33,13 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
 
         weights = torch.cos(inputs[..., :1])
-        weights = weights / sum(weights)
+        weights = weights / weights.mean()
 
         pred = self.forward(inputs)
 
         error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
         error = weights * error
-        loss = torch.sum(error)
+        loss = error.mean()
 
         self.log("valid_loss", loss, prog_bar=True)
         return loss
@@ -49,13 +48,13 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
 
         weights = torch.cos(inputs[..., :1])
-        weights = weights / sum(weights)
+        weights = weights / weights.mean()
 
         pred = self.forward(inputs)
 
         error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
         error = weights * error
-        loss = torch.sum(error)
+        loss = error.mean()
 
         self.log("test_mse", loss)
         return loss
