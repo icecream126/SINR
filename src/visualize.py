@@ -23,7 +23,7 @@ def error_map(dataset, model, args):
     lon = inputs[..., 1].detach().cpu().numpy()
     error = torch.log10(error+1e-6).squeeze(-1).detach().cpu().numpy()
 
-    if 'spatial' in args.dataset_path:
+    if 'spatial' in args.dataset_dir:
         fig = plt.figure(figsize=(40, 20))
         plt.rcParams.update({'font.size': 50})
 
@@ -43,8 +43,8 @@ def error_map(dataset, model, args):
 
         wandb.log({"Error Map": wandb.Image(fig)})
 
-        if 'sun360' in args.dataset_path:
-            wandb.log({"Ground Truth": wandb.Image(args.dataset_path)})
+        if 'sun360' in args.dataset_dir:
+            wandb.log({"Ground Truth": wandb.Image(args.dataset_dir)})
 
         else:
             plt.clf()
@@ -68,5 +68,5 @@ def error_map(dataset, model, args):
 
             wandb.log({"Ground Truth": wandb.Image(fig)})
     
-    elif 'temporal' in args.dataset_path:
+    elif 'temporal' in args.dataset_dir:
         pass # TODO: make error map video

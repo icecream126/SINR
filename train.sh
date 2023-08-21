@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=2 python src/main.py \
-    --dataset_path dataset/temporal/era5_geopotential \
+CUDA_VISIBLE_DEVICES=0 python src/main.py \
+    --dataset_dir dataset/temporal/era5_geopotential \
     --model shinr \
     --max_epochs 1 \
     --skip \

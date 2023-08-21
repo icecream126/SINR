@@ -9,16 +9,14 @@ from torch.utils.data import Dataset
 class Dataset(Dataset):
     def __init__(
             self,
-            dataset_path,
+            dataset_dir,
             dataset_type,
             output_dim,
-            sample_ratio,
             **kwargs
         ):
-        self.dataset_path = dataset_path
+        self.dataset_dir = dataset_dir
         self.dataset_type = dataset_type
         self.output_dim = output_dim
-        self.sample_ratio = sample_ratio
         self.filenames = self.get_filenames()
         self._data = [self.load_data(filename) for filename in self.filenames]
 
@@ -26,7 +24,7 @@ class Dataset(Dataset):
         return len(self.filenames)
 
     def get_filenames(self):
-        filenames = glob.glob(os.path.join(self.dataset_path, "*"))
+        filenames = glob.glob(os.path.join(self.dataset_dir, "*"))
         return sorted(filenames)
 
     def __getitem__(self, index):

@@ -24,11 +24,11 @@ model_dict = {
 
 if __name__=='__main__':
     parser = ArgumentParser()
-    parser.add_argument("--dataset_path", type=str)
+    parser.add_argument("--dataset_dir", type=str)
     parser.add_argument("--model", type=str, default='shinr')
 
     # Dataset argument
-    parser.add_argument("--sample_ratio", type=float, default=0.1)
+    parser.add_argument("--panorama_idx", type=int, default=0)
 
     # Model argument
     parser.add_argument("--hidden_dim", type=int, default=128)
@@ -49,15 +49,15 @@ if __name__=='__main__':
 
     pl.seed_everything(0)
     
-    args.time = True if 'temporal' in args.dataset_path else False
+    args.time = True if 'temporal' in args.dataset_dir else False
     args.input_dim = (2 if args.model in ['shinr', 'shwinr'] else 3) + (1 if args.time else 0)
-    args.output_dim = 3 if 'sun360' in args.dataset_path else 1
+    args.output_dim = 3 if 'sun360' in args.dataset_dir else 1
 
     # Log
     logger = WandbLogger(
         config=args,
         project="SINR",
-        name=f'{args.dataset_path.split("/")[2]}/{args.model}/SR'
+        name=f'{args.dataset_dir.split("/")[2]}/{args.model}/SR'
     )
 
     # Dataset
