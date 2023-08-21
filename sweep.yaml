@@ -1,6 +1,6 @@
 program: src/main.py
 project: SINR
-name: SR/siren/spatial/era5_temperature
+name: SR/siren/temporal/era5_geopotential
 entity: postech_sinr
 method: bayes
 metric:
@@ -16,14 +16,17 @@ parameters:
   lr:
     min: 0.0001
     max: 0.01
-  # max_order:
-  #   values: [1, 2, 3, 4]
+  hidden_dim:
+    values: [64, 128, 256, 512]
+  max_order:
+    values: [1, 2, 3, 4]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_path=dataset/spatial/era5_temperature/data.nc
+  - --dataset_path=dataset/temporal/era5_geopotential
   - --model=siren
-  - --max_epoch=500
+  - --max_epoch=100
+  - --batch_size=1
   - --skip
-  - --plot
+  # - --plot

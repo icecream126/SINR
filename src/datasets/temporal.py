@@ -3,7 +3,6 @@ import glob
 
 import torch
 import numpy as np
-from math import pi
 import netCDF4 as nc
 from torch.utils.data import Dataset
 
@@ -22,6 +21,13 @@ class Dataset(Dataset):
         self.sample_ratio = sample_ratio
         self.filenames = self.get_filenames()
 
+    def __len__(self):
+        return len(self.filenames)
+
+    def get_filenames(self):
+        filenames = glob.glob(os.path.join(self.dataset_path, "data*.nc"))
+        return sorted(filenames)
+
     def __getitem__(self, index):
         data_out = dict()
 
@@ -35,12 +41,13 @@ class Dataset(Dataset):
                     elif variable == 'time':
                         time = f.variables[variable][:]
                     elif variable in ['z', 't']:
-                        target = f.variables[variable]
-
-        lat = self.deg_to_rad(lat)
-        lon = self.deg_to_rad(lon)
+                        target = f.variables[variable][:]
+                        
+        lat = np.deg2rad(lat)
+        lon = np.deg2rad(lon)
         time = (time - time.min()) / (time.max() - time.min())
         target = (target - target.min()) / (target.max() - target.min())
+        mean_lat_weight = np.cos(lat).mean()
         
         if self.dataset_type == 'train':
             start = 0 
@@ -65,6 +72,7 @@ class Dataset(Dataset):
         lon = torch.from_numpy(lon[lon_idx]).float()
         time = torch.from_numpy(time[time_idx]).float()
         target = torch.from_numpy(target[time_idx][:, lat_idx][:, :, lon_idx]).float()
+        mean_lat_weight = torch.tensor(mean_lat_weight).float()
 
         time, lat, lon = torch.meshgrid(time, lat, lon)
 
@@ -77,15 +85,5 @@ class Dataset(Dataset):
 
         data_out['inputs'] = inputs
         data_out['target'] = target
+        data_out['mean_lat_weight'] = mean_lat_weight
         return data_out
-
-    def __len__(self):
-        return len(self.filenames)
-    
-    def get_filenames(self):
-        filenames = glob.glob(os.path.join(self.dataset_path, "*.npz"))
-        return sorted(filenames)
-
-    @staticmethod
-    def deg_to_rad(degrees):
-        return pi * degrees / 180.

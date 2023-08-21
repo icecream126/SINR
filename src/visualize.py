@@ -8,9 +8,10 @@ from utils.utils import mse2psnr
 def error_map(dataset, model, args):
     data = dataset[:]
     inputs, target = data["inputs"], data["target"]
+    mean_lat_weight = data['mean_lat_weight']
 
     weights = torch.cos(inputs[..., :1])
-    weights = weights / weights.mean()
+    weights = weights / mean_lat_weight
 
     pred = model(inputs)
 

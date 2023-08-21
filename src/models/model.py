@@ -16,9 +16,10 @@ class MODEL(pl.LightningModule):
     
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+        mean_lat_weight = data['mean_lat_weight']
 
         weights = torch.cos(inputs[..., :1])
-        weights = weights / weights.mean()
+        weights = weights / mean_lat_weight
 
         pred = self.forward(inputs)
 
@@ -31,9 +32,10 @@ class MODEL(pl.LightningModule):
     
     def validation_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+        mean_lat_weight = data['mean_lat_weight']
 
         weights = torch.cos(inputs[..., :1])
-        weights = weights / weights.mean()
+        weights = weights / mean_lat_weight
 
         pred = self.forward(inputs)
 
@@ -46,9 +48,10 @@ class MODEL(pl.LightningModule):
 
     def test_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+        mean_lat_weight = data['mean_lat_weight']
 
         weights = torch.cos(inputs[..., :1])
-        weights = weights / weights.mean()
+        weights = weights / mean_lat_weight
 
         pred = self.forward(inputs)
 
@@ -57,6 +60,7 @@ class MODEL(pl.LightningModule):
         loss = error.mean()
 
         self.log("test_mse", loss)
+        self.log("test_rmse", torch.sqrt(loss))
         return loss
 
     def configure_optimizers(self):

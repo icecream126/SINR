@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from math import pi
 import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
@@ -17,20 +16,17 @@ class Dataset(Dataset):
         self.dataset_type = dataset_type
         self.output_dim = output_dim
         self._data = self.load_data()
+    
+    def __len__(self):
+        return self._data['inputs'].size(0)
 
     def __getitem__(self, index):
         data_out = dict()
 
         data_out['inputs'] = self._data['inputs'][index]
         data_out['target'] = self._data['target'][index]
+        data_out['mean_lat_weight'] = self._data['mean_lat_weight']
         return data_out
-    
-    def __len__(self):
-        return self._data['inputs'].size(0)
-    
-    @staticmethod
-    def deg_to_rad(degrees):
-        return pi * degrees / 180.
 
     def load_data(self):
         data_out = dict()
@@ -60,9 +56,10 @@ class Dataset(Dataset):
             lon = data['longitude']
             target = data['target']
 
-        lat = self.deg_to_rad(lat)
-        lon = self.deg_to_rad(lon)
+        lat = np.deg2rad(lat)
+        lon = np.deg2rad(lon)
         target = (target - target.min()) / (target.max() - target.min())
+        mean_lat_weight = np.cos(lat).mean()
 
         if self.dataset_type == 'train':
             start = 0 
@@ -77,6 +74,7 @@ class Dataset(Dataset):
         lat = torch.from_numpy(lat[lat_idx]).float()
         lon = torch.from_numpy(lon[lon_idx]).float()
         target = torch.from_numpy(target[lat_idx][:, lon_idx]).float()
+        mean_lat_weight = torch.tensor(mean_lat_weight).float()
 
         lat, lon = torch.meshgrid(lat, lon)
 
@@ -88,4 +86,5 @@ class Dataset(Dataset):
 
         data_out['inputs'] = inputs
         data_out['target'] = target
+        data_out['mean_lat_weight'] = mean_lat_weight
         return data_out

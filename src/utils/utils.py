@@ -1,4 +1,5 @@
 import torch
+from math import pi
 
 def to_cartesian(points):
     theta, phi = points[..., 0], points[..., 1]
@@ -9,10 +10,7 @@ def to_cartesian(points):
     return torch.stack([x, y, z], dim=-1)
 
 def mse2psnr(mse):
-    """Computes PSNR from MSE, assuming the MSE was calculated between signals
-    lying in [0, 1].
-
-    Args:
-        mse (torch.Tensor or float):
-    """
     return -10.0 * torch.log10(mse)
+
+def deg_to_rad(degrees):
+    return pi * degrees / 180.
