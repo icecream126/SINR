@@ -12,11 +12,13 @@ class Dataset(Dataset):
             dataset_dir,
             dataset_type,
             output_dim,
+            normalize,
             **kwargs
         ):
         self.dataset_dir = dataset_dir
         self.dataset_type = dataset_type
         self.output_dim = output_dim
+        self.normalize = normalize
         self.filenames = self.get_filenames()
         self._data = [self.load_data(filename) for filename in self.filenames]
 
@@ -53,7 +55,8 @@ class Dataset(Dataset):
         lat = np.deg2rad(lat)
         lon = np.deg2rad(lon)
         time = (time - time.min()) / (time.max() - time.min())
-        target = (target - target.min()) / (target.max() - target.min())
+        if self.normalize:
+            target = (target - target.min()) / (target.max() - target.min())
         mean_lat_weight = np.cos(lat).mean()
         
         if self.dataset_type == 'train':
@@ -66,14 +69,6 @@ class Dataset(Dataset):
         lat_idx = np.arange(start, len(lat), 3)
         lon_idx = np.arange(start, len(lon), 3)
         time_idx = np.arange(start, len(time), 3)
-
-        # lat_sample_num = int(len(lat_idx)*(self.sample_ratio)**(1/3))
-        # lon_sample_num = int(len(lon_idx)*(self.sample_ratio)**(1/3))
-        # time_sample_num = int(len(time_idx)*(self.sample_ratio)**(1/3))
-
-        # lat_idx = np.random.choice(lat_idx, lat_sample_num, replace=False)
-        # lon_idx = np.random.choice(lon_idx, lon_sample_num, replace=False)
-        # time_idx = np.random.choice(time_idx, time_sample_num, replace=False)
 
         lat = torch.from_numpy(lat[lat_idx]).float()
         lon = torch.from_numpy(lon[lon_idx]).float()

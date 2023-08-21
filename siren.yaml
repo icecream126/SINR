@@ -8,25 +8,19 @@ metric:
   goal: minimize
 parameters:
   omega:
-    min: 0.01
-    max: 2.
-  # sigma:
-  #   min: 0.01
-  #   max: 2.
+    values: [0.01, 0.05, 0.1, 0.5, 1, 5, 10]
   lr:
     min: 0.0001
     max: 0.01
   hidden_dim:
     values: [64, 128, 256, 512]
-  max_order:
-    values: [1, 2, 3, 4]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_path=dataset/temporal/era5_geopotential
+  - --dataset_dir=dataset/temporal/era5_geopotential
   - --model=siren
-  - --max_epoch=100
-  - --batch_size=1
   - --skip
-  # - --plot
+  # - --max_epoch=100 # depend on dataset
+  - --batch_size=1 # only for temporal
+  # - --plot # only for spatial     

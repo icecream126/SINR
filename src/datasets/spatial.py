@@ -13,12 +13,14 @@ class Dataset(Dataset):
             dataset_dir,
             dataset_type,
             output_dim,
+            normalize,
             panorama_idx,
             **kwargs
         ):
         self.dataset_dir = dataset_dir
         self.dataset_type = dataset_type
         self.output_dim = output_dim
+        self.normalize = normalize
         self.panorama_idx = panorama_idx
         self.filename = self.get_filenames()
         self._data = self.load_data()
@@ -68,7 +70,8 @@ class Dataset(Dataset):
 
         lat = np.deg2rad(lat)
         lon = np.deg2rad(lon)
-        target = (target - target.min()) / (target.max() - target.min())
+        if self.normalize:
+            target = (target - target.min()) / (target.max() - target.min())
         mean_lat_weight = np.cos(lat).mean()
 
         if self.dataset_type == 'train':

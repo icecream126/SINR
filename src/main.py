@@ -25,22 +25,23 @@ model_dict = {
 if __name__=='__main__':
     parser = ArgumentParser()
     parser.add_argument("--dataset_dir", type=str)
-    parser.add_argument("--model", type=str, default='shinr')
+    parser.add_argument("--model", type=str, default='swinr')
 
     # Dataset argument
     parser.add_argument("--panorama_idx", type=int, default=0)
+    parser.add_argument("--normalize", default=False, action='store_true')
 
     # Model argument
-    parser.add_argument("--hidden_dim", type=int, default=128)
+    parser.add_argument("--hidden_dim", type=int, default=256)
     parser.add_argument("--hidden_layers", type=int, default=6)
     parser.add_argument('--skip', default=False, action='store_true')
-    parser.add_argument("--omega", type=float, default=10.)
-    parser.add_argument("--sigma", type=float, default=10.)
-    parser.add_argument("--max_order", type=int, default=4)
+    parser.add_argument("--omega", type=float, default=1.)
+    parser.add_argument("--sigma", type=float, default=1.)
+    parser.add_argument("--max_order", type=int, default=3)
 
     # Learning argument
-    parser.add_argument("--batch_size", type=int, default=256)
-    parser.add_argument("--max_epochs", type=int, default=1000)
+    parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--max_epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
