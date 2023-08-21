@@ -20,28 +20,37 @@ class Dataset(Dataset):
         self.output_dim = output_dim
         self.sample_ratio = sample_ratio
         self.filenames = self.get_filenames()
+        self._data = [self.load_data(filename) for filename in self.filenames]
 
     def __len__(self):
         return len(self.filenames)
 
     def get_filenames(self):
-        filenames = glob.glob(os.path.join(self.dataset_path, "data*.nc"))
+        filenames = glob.glob(os.path.join(self.dataset_path, "*"))
         return sorted(filenames)
 
     def __getitem__(self, index):
         data_out = dict()
 
-        if 'era5' in self.filenames[index]:
-            with nc.Dataset(self.filenames[index], 'r') as f:
-                for variable in f.variables:
-                    if variable == 'latitude':
-                        lat = f.variables[variable][:]
-                    elif variable == 'longitude':
-                        lon = f.variables[variable][:]
-                    elif variable == 'time':
-                        time = f.variables[variable][:]
-                    elif variable in ['z', 't']:
-                        target = f.variables[variable][:]
+        data = self._data[index]
+        data_out['inputs'] = data['inputs']
+        data_out['target'] = data['target']
+        data_out['mean_lat_weight'] = data['mean_lat_weight']
+        return data_out
+
+    def load_data(self, filename):
+        data_out = dict()
+        
+        with nc.Dataset(filename, 'r') as f:
+            for variable in f.variables:
+                if variable == 'latitude':
+                    lat = f.variables[variable][:]
+                elif variable == 'longitude':
+                    lon = f.variables[variable][:]
+                elif variable == 'time':
+                    time = f.variables[variable][:]
+                elif variable in ['z', 't']:
+                    target = f.variables[variable][:]
                         
         lat = np.deg2rad(lat)
         lon = np.deg2rad(lon)
@@ -60,13 +69,13 @@ class Dataset(Dataset):
         lon_idx = np.arange(start, len(lon), 3)
         time_idx = np.arange(start, len(time), 3)
 
-        lat_sample_num = int(len(lat_idx)*(self.sample_ratio)**(1/3))
-        lon_sample_num = int(len(lon_idx)*(self.sample_ratio)**(1/3))
-        time_sample_num = int(len(time_idx)*(self.sample_ratio)**(1/3))
+        # lat_sample_num = int(len(lat_idx)*(self.sample_ratio)**(1/3))
+        # lon_sample_num = int(len(lon_idx)*(self.sample_ratio)**(1/3))
+        # time_sample_num = int(len(time_idx)*(self.sample_ratio)**(1/3))
 
-        lat_idx = np.random.choice(lat_idx, lat_sample_num, replace=False)
-        lon_idx = np.random.choice(lon_idx, lon_sample_num, replace=False)
-        time_idx = np.random.choice(time_idx, time_sample_num, replace=False)
+        # lat_idx = np.random.choice(lat_idx, lat_sample_num, replace=False)
+        # lon_idx = np.random.choice(lon_idx, lon_sample_num, replace=False)
+        # time_idx = np.random.choice(time_idx, time_sample_num, replace=False)
 
         lat = torch.from_numpy(lat[lat_idx]).float()
         lon = torch.from_numpy(lon[lon_idx]).float()
