@@ -57,8 +57,7 @@ if __name__=='__main__':
     # Log
     logger = WandbLogger(
         config=args,
-        project="SINR",
-        name=f'{args.dataset_dir.split("/")[2]}/{args.model}/SR'
+        name=args.model
     )
 
     # Dataset

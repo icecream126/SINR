@@ -1,6 +1,5 @@
 program: src/main.py
-project: SINR
-name: SR/swinr/temporal/era5_geopotential
+name: swinr
 entity: postech_sinr
 method: bayes
 metric:
@@ -20,9 +19,11 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/temporal/era5_geopotential
+  - --dataset_dir=dataset/spatial/circle
   - --model=swinr
   - --skip
-  # - --max_epoch=100 # depend on dataset
-  - --batch_size=1 # only for temporal
-  # - --plot # only for spatial     
+  - --max_epoch=500 # depend on dataset
+  # - --panorama_idx=7
+  # - --normalize
+  # - --batch_size=1 # only for temporal
+  - --plot # only for spatial     
