@@ -60,7 +60,6 @@ class MODEL(pl.LightningModule):
         loss = error.mean()
 
         self.log("test_mse", loss)
-        self.log("test_rmse", torch.sqrt(loss))
         return loss
 
     def configure_optimizers(self):
