@@ -46,6 +46,7 @@ if __name__=='__main__':
     parser.add_argument("--lr_patience", type=int, default=1000)
 
     parser.add_argument("--plot", default=False, action='store_true')
+    parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
 
     pl.seed_everything(0)
@@ -67,10 +68,11 @@ if __name__=='__main__':
     train_dataset = dataset.Dataset(dataset_type='train', **vars(args))
     valid_dataset = dataset.Dataset(dataset_type='valid', **vars(args))
     test_dataset = dataset.Dataset(dataset_type='test', **vars(args))
+    
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers = args.num_workers)
+    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
     
     # Model
     model = model_dict[args.model].INR(**vars(args))
@@ -91,6 +93,7 @@ if __name__=='__main__':
         callbacks=[lrmonitor_cb, checkpoint_cb],
         logger=logger,
         gpus=torch.cuda.device_count(),
+        strategy="ddp" if torch.cuda.device_count() > 1 else None,
     )
 
     trainer.fit(model, train_loader, valid_loader)
