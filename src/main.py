@@ -2,13 +2,14 @@ from argparse import ArgumentParser
 
 import wandb
 import torch
+import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from visualize import error_map
 from utils.utils import mse2psnr
+from utils.visualize import visualize
 
 from datasets import spatial, temporal
 from models import relu, swinr, shwinr, siren, wire, shinr
@@ -58,8 +59,8 @@ if __name__=='__main__':
     # Log
     logger = WandbLogger(
         config=args,
-        project="SINR",
-        name=f'{args.dataset_dir.split("/")[2]}/{args.model}/SR'
+        project='SINR',
+        name=args.model,
     )
 
     # Dataset
@@ -100,10 +101,13 @@ if __name__=='__main__':
     res = trainer.test(model, test_loader, 'best')[0]
 
     wandb.log({
-        "test_psnr": mse2psnr(torch.tensor(res['test_mse'])),
-        "best_valid_loss": checkpoint_cb.best_model_score,
-        "best_valid_psnr": mse2psnr(checkpoint_cb.best_model_score),
+        "test_rmse": np.sqrt(res['test_mse']),
+        "test_psnr": mse2psnr(res['test_mse']),
+        "best_valid_loss": checkpoint_cb.best_model_score.item(),
+        "best_valid_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
     })
 
-    if args.plot:
-        error_map(test_dataset, model, args)
+    if args.plot and 'spatial' in args.dataset_dir:
+        dataset = dataset.Dataset(dataset_type='all', **vars(args))
+        visualize(dataset, model, args, 'HR')
+        visualize(train_dataset, model, args, 'LR')

@@ -9,11 +9,12 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
 
 # ERA5 Spatial
 
-CUDA_VISIBLE_DEVICES=0 python src/main.py \
-    --dataset_dir dataset/spatial/era5_geopotential \
+CUDA_VISIBLE_DEVICES=2 python src/main.py \
+    --dataset_dir dataset/spatial/era5_temperature \
     --model swinr \
-    --max_epochs 100 \
-    --skip 
+    --skip \
+    --plot
+
 
 # CIRCLE
 
@@ -27,8 +28,10 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
 # SUN360
 
 CUDA_VISIBLE_DEVICES=0 python src/main.py \
-    --dataset_dir dataset/spatial/circle \
+    --dataset_dir dataset/spatial/sun360 \
     --model swinr \
     --panorama_idx 0 \
-    --max_epochs 100 \
-    --skip 
+    --skip \
+    --omega 20 \
+    --sigma 10 \
+    --plot

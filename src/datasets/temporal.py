@@ -35,6 +35,7 @@ class Dataset(Dataset):
         data = self._data[index]
         data_out['inputs'] = data['inputs']
         data_out['target'] = data['target']
+        data_out['target_shape'] = data['target_shape']
         data_out['mean_lat_weight'] = data['mean_lat_weight']
         return data_out
 
@@ -57,24 +58,27 @@ class Dataset(Dataset):
         time = (time - time.min()) / (time.max() - time.min())
         if self.normalize:
             target = (target - target.min()) / (target.max() - target.min())
-        mean_lat_weight = np.cos(lat).mean()
         
-        if self.dataset_type == 'train':
-            start = 0 
+        if self.dataset_type == 'all':
+            start, step = 0, 1
+        elif self.dataset_type == 'train':
+            start, step = 0, 3 
         elif self.dataset_type == 'valid':
-            start = 1
+            start, step = 1, 3 
         else:
-            start = 2
+            start, step = 2, 3 
 
-        lat_idx = np.arange(start, len(lat), 3)
-        lon_idx = np.arange(start, len(lon), 3)
-        time_idx = np.arange(start, len(time), 3)
+        lat_idx = np.arange(start, len(lat), step)
+        lon_idx = np.arange(start, len(lon), step)
+        time_idx = np.arange(start, len(time), step)
 
         lat = torch.from_numpy(lat[lat_idx]).float()
         lon = torch.from_numpy(lon[lon_idx]).float()
         time = torch.from_numpy(time[time_idx]).float()
         target = torch.from_numpy(target[time_idx][:, lat_idx][:, :, lon_idx]).float()
-        mean_lat_weight = torch.tensor(mean_lat_weight).float()
+    
+        mean_lat_weight = torch.cos(lat).mean().float()
+        target_shape = target.shape
 
         time, lat, lon = torch.meshgrid(time, lat, lon)
 
@@ -87,5 +91,6 @@ class Dataset(Dataset):
 
         data_out['inputs'] = inputs
         data_out['target'] = target
+        data_out['target_shape'] = target_shape
         data_out['mean_lat_weight'] = mean_lat_weight
         return data_out

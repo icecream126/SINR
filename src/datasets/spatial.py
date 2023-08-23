@@ -24,7 +24,7 @@ class Dataset(Dataset):
         self.panorama_idx = panorama_idx
         self.filename = self.get_filenames()
         self._data = self.load_data()
-    
+        
     def __len__(self):
         return self._data['inputs'].size(0)
 
@@ -37,6 +37,7 @@ class Dataset(Dataset):
 
         data_out['inputs'] = self._data['inputs'][index]
         data_out['target'] = self._data['target'][index]
+        data_out['target_shape'] = self._data['target_shape']
         data_out['mean_lat_weight'] = self._data['mean_lat_weight']
         return data_out
 
@@ -60,7 +61,6 @@ class Dataset(Dataset):
                         lon = f.variables[variable][:]
                     elif variable in ['z', 't']:
                         target = f.variables[variable][0]
-        
         else:
             data = np.load(self.filename)
 
@@ -70,24 +70,28 @@ class Dataset(Dataset):
 
         lat = np.deg2rad(lat)
         lon = np.deg2rad(lon)
+
         if self.normalize:
             target = (target - target.min()) / (target.max() - target.min())
-        mean_lat_weight = np.cos(lat).mean()
 
-        if self.dataset_type == 'train':
-            start = 0 
+        if self.dataset_type == 'all':
+            start, step = 0, 1
+        elif self.dataset_type == 'train':
+            start, step = 0, 3 
         elif self.dataset_type == 'valid':
-            start = 1
+            start, step = 1, 3 
         else:
-            start = 2
+            start, step = 2, 3 
 
-        lat_idx = np.arange(start, len(lat), 3)
-        lon_idx = np.arange(start, len(lon), 3)
+        lat_idx = np.arange(start, len(lat), step)
+        lon_idx = np.arange(start, len(lon), step)
 
         lat = torch.from_numpy(lat[lat_idx]).float()
         lon = torch.from_numpy(lon[lon_idx]).float()
         target = torch.from_numpy(target[lat_idx][:, lon_idx]).float()
-        mean_lat_weight = torch.tensor(mean_lat_weight).float()
+
+        mean_lat_weight = torch.cos(lat).mean()
+        target_shape = target.shape
 
         lat, lon = torch.meshgrid(lat, lon)
 
@@ -99,5 +103,6 @@ class Dataset(Dataset):
 
         data_out['inputs'] = inputs
         data_out['target'] = target
+        data_out['target_shape'] = target_shape
         data_out['mean_lat_weight'] = mean_lat_weight
         return data_out

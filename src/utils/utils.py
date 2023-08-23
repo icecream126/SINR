@@ -1,5 +1,5 @@
 import torch
-from math import pi
+import numpy as np
 
 def to_cartesian(points):
     theta, phi = points[..., 0], points[..., 1]
@@ -10,7 +10,7 @@ def to_cartesian(points):
     return torch.stack([x, y, z], dim=-1)
 
 def mse2psnr(mse):
-    return -10.0 * torch.log10(mse)
+    return -10.0 * np.log10(mse)
 
 def deg_to_rad(degrees):
-    return pi * degrees / 180.
+    return np.pi * degrees / 180.
