@@ -10,3 +10,12 @@ lightning_logs/
 experiment/
 SINR-src/
 figure/
+temp_agent/
+*.out
+era5_SR_temparature/
+era5_SR_geopotential/
+geopotential/
+geo_agent/
+temperature/
+temp_agent/
+*.sh
