@@ -10,5 +10,5 @@ lightning_logs/
 experiment/
 SINR-src/
 figure/
-sun*/
-circle/
+_sun*/
+_circle/

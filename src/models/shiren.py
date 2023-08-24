@@ -5,21 +5,23 @@ from math import pi, ceil
 from .model import MODEL
 from .relu import ReLULayer
 
-class SphericalGaborLayer(nn.Module):
+from utils.spherical_harmonics import components_from_spherical_harmonics
+
+class SphericalHarmonicsLayer(nn.Module):
     def __init__(
             self,
             output_dim,
+            levels,
             time,
             omega,
-            sigma,
             **kwargs,
         ):
         super().__init__()
 
+        self.output_dim = output_dim
+        self.levels = levels
         self.time = time
         self.omega = omega
-        self.sigma = sigma
-        self.output_dim = output_dim
 
         self.dilate = nn.Parameter(torch.empty(1, output_dim))
         nn.init.normal_(self.dilate)
@@ -32,7 +34,7 @@ class SphericalGaborLayer(nn.Module):
         nn.init.uniform_(self.w)
 
         if time:
-            self.linear = nn.Linear(1, output_dim)
+            self.linear = nn.Linear(1, output_dim*levels**2)
 
     def forward(self, input):
         zeros = torch.zeros(self.output_dim, device=self.u.device)
@@ -66,29 +68,30 @@ class SphericalGaborLayer(nn.Module):
             torch.stack([sin_gamma,  cos_gamma, zeros], 1), 
             torch.stack([    zeros,      zeros,  ones], 1)
             ], 1)
-        
+
         R = torch.bmm(torch.bmm(Rz_gamma, Rx_beta), Rz_alpha)
 
         points = input[..., 0:3]
         points = torch.matmul(R, points.unsqueeze(-2).unsqueeze(-1))
         points = points.squeeze(-1)
         
-        x, z = points[..., 0], points[..., 2]
+        x, y, z = points[..., 0], points[..., 1], points[..., 2]
 
-        dilate = torch.exp(self.dilate)
+        a = torch.exp(self.dilate)
+        A = a*a*(1-z)+(1+z)
 
-        freq_arg = 2 * dilate * x / (1e-6+1+z)
-        gauss_arg = 4 * dilate * dilate * (1-z) / (1e-6+1+z)
+        x, y, z = 2*a*x/A, 2*a*y/A, 2*(1+z)/A
 
+        coord = torch.stack([x, y, z], dim=-1)
+
+        out = components_from_spherical_harmonics(self.levels, coord).view(*input.shape[:-1], -1)
+        
         if self.time:
             time = input[..., 3:]
             lin = self.linear(time)
-            freq_arg = freq_arg + lin
-            gauss_arg = gauss_arg + lin * lin
-
-        freq_term = torch.cos(self.omega*freq_arg)
-        gauss_term = torch.exp(-self.sigma*self.sigma*gauss_arg)
-        return freq_term * gauss_term
+            omega = self.omega * lin
+            out = out * torch.sin(omega)
+        return out
     
 
 class INR(MODEL):
@@ -98,10 +101,10 @@ class INR(MODEL):
             output_dim,
             hidden_dim, 
             hidden_layers,
+            levels,
             time,
             skip,
             omega,
-            sigma,
             **kwargs,
         ):
         super().__init__(**kwargs)
@@ -110,15 +113,19 @@ class INR(MODEL):
         self.skip = skip
         self.hidden_layers = hidden_layers
 
-        self.first_nonlin = SphericalGaborLayer
+        self.first_nonlin = SphericalHarmonicsLayer
+
+        first_hidden_dim = hidden_dim//levels**2
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
+        self.net.append(self.first_nonlin(first_hidden_dim, levels, time, omega))
 
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
-            if skip and i == ceil(hidden_layers/2):
+            if i == 0:
+                self.net.append(self.nonlin(first_hidden_dim*levels**2, hidden_dim))
+            elif skip and i == ceil(hidden_layers/2):
                 self.net.append(self.nonlin(hidden_dim+input_dim, hidden_dim))
             else:
                 self.net.append(self.nonlin(hidden_dim, hidden_dim))

@@ -1,9 +1,11 @@
-wandb sweep --project circle siren.yaml
+wandb sweep --project _circle relu.yaml
 
-wandb sweep --project circle wire.yaml
+wandb sweep --project _circle siren.yaml
 
-wandb sweep --project circle swinr.yaml
+wandb sweep --project _circle wire.yaml
 
-wandb sweep --project sun360_4 shinr.yaml
+wandb sweep --project _circle swinr.yaml
 
-CUDA_VISIBLE_DEVICES=4
+wandb sweep --project _circle shinr.yaml
+
+CUDA_VISIBLE_DEVICES=7

@@ -9,6 +9,13 @@ def to_cartesian(points):
     z = torch.sin(theta)
     return torch.stack([x, y, z], dim=-1)
 
+def to_spherical(points):
+    x, y, z = points[..., 0], points[..., 1], points[..., 2]
+
+    theta = torch.acos(z)
+    phi = torch.atan2(y, x)
+    return torch.stack([theta, phi], dim=-1)
+
 def mse2psnr(mse):
     return -10.0 * np.log10(mse)
 
