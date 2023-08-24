@@ -42,12 +42,12 @@ if __name__=='__main__':
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--max_epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
     parser.add_argument("--plot", default=False, action='store_true')
-    parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
 
     pl.seed_everything(0)
