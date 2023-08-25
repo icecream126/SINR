@@ -20,8 +20,7 @@ CUDA_VISIBLE_DEVICES=2 python src/main.py \
 
 CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --dataset_dir dataset/spatial/circle \
-    --model swinr \
-    --batch_size 1 \
+    --model shiren \
     --max_epochs 100 \
     --skip 
 
@@ -29,9 +28,8 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
 
 CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --dataset_dir dataset/spatial/sun360 \
-    --model swinr \
-    --panorama_idx 0 \
+    --model shiren \
     --skip \
-    --omega 20 \
-    --sigma 10 \
+    --normalize \
+    --max_epochs 10 \
     --plot

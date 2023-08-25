@@ -1,0 +1,29 @@
+program: src/main.py
+name: shiren
+entity: postech_sinr
+method: bayes
+metric:
+  name: best_valid_loss
+  goal: minimize
+parameters:
+  # omega: # only for temporal
+  #   values: [0.001, 0.01, 0.1, 1, 10, 20, 30]
+  lr:
+    min: 0.0001
+    max: 0.01
+  hidden_dim:
+    values: [64, 128, 256, 512]
+  levels:
+    values: [2, 3, 4, 5]
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --dataset_dir=dataset/spatial/sun360
+  - --model=shiren
+  - --skip
+  - --max_epoch=500 # depend on dataset
+  # - --panorama_idx=6
+  # - --normalize
+  # - --batch_size=1 # only for temporal
+  - --plot # only for spatial

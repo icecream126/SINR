@@ -12,7 +12,7 @@ from utils.utils import mse2psnr
 from utils.visualize import visualize
 
 from datasets import spatial, temporal
-from models import relu, swinr, shwinr, siren, wire, shinr
+from models import relu, siren, wire, shinr, swinr, shiren
 
 model_dict = {
     'relu': relu,
@@ -20,7 +20,7 @@ model_dict = {
     'wire': wire,
     'shinr': shinr,
     'swinr': swinr,
-    'shwinr': shwinr,
+    'shiren': shiren,
 }
 
 if __name__=='__main__':
@@ -38,28 +38,27 @@ if __name__=='__main__':
     parser.add_argument('--skip', default=False, action='store_true')
     parser.add_argument("--omega", type=float, default=1.)
     parser.add_argument("--sigma", type=float, default=1.)
-    parser.add_argument("--max_order", type=int, default=3)
+    parser.add_argument("--levels", type=int, default=4)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--max_epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
     parser.add_argument("--plot", default=False, action='store_true')
-    parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
 
     pl.seed_everything(0)
     
     args.time = True if 'temporal' in args.dataset_dir else False
-    args.input_dim = (2 if args.model in ['shinr', 'shwinr'] else 3) + (1 if args.time else 0)
+    args.input_dim = 3 + (1 if args.time else 0)
     args.output_dim = 3 if 'sun360' in args.dataset_dir else 1
 
     # Log
     logger = WandbLogger(
         config=args,
-        project='SINR',
         name=args.model,
     )
 

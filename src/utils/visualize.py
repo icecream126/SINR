@@ -3,6 +3,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+from utils.utils import to_spherical
+
 def visualize(dataset, model, args, mode):
     data = dataset[:]
 
@@ -24,6 +26,8 @@ def visualize(dataset, model, args, mode):
     target = (target - target_min) / (target_max - target_min)
     pred = (pred - target_min) / (target_max - target_min)
     pred = torch.clip(pred, 0, 1)
+
+    inputs = to_spherical(inputs[..., :3])
 
     lat = inputs[..., 0].detach().cpu().numpy()
     lon = inputs[..., 1].detach().cpu().numpy()

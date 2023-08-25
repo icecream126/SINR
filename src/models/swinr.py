@@ -5,8 +5,6 @@ from math import pi, ceil
 from .model import MODEL
 from .relu import ReLULayer
 
-from utils.utils import to_cartesian
-
 class SphericalGaborLayer(nn.Module):
     def __init__(
             self,
@@ -121,27 +119,15 @@ class INR(MODEL):
 
         for i in range(hidden_layers):
             if skip and i == ceil(hidden_layers/2):
-                self.net.append(self.nonlin(hidden_dim+input_dim,
-                                            hidden_dim,
-                                            is_first=False,
-                                            omega=omega,
-                                            sigma=sigma))
+                self.net.append(self.nonlin(hidden_dim+input_dim, hidden_dim))
             else:
-                self.net.append(self.nonlin(hidden_dim,
-                                            hidden_dim,
-                                            is_first=False,
-                                            omega=omega,
-                                            sigma=sigma))
+                self.net.append(self.nonlin(hidden_dim, hidden_dim))
 
         final_linear = nn.Linear(hidden_dim, output_dim) 
         
         self.net.append(final_linear)
     
     def forward(self, x):
-        if self.time:
-            x = torch.cat([to_cartesian(x[..., :2]), x[..., 2:]], dim=-1)
-        else:
-            x = to_cartesian(x[..., :2]) 
         x_in = x
         for i, layer in enumerate(self.net):
             if self.skip and i == ceil(self.hidden_layers/2)+1:

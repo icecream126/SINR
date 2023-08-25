@@ -1,9 +1,3 @@
-wandb sweep --project circle siren.yaml
+wandb sweep --project era5_SR_geopotential shiren.yaml
 
-wandb sweep --project circle wire.yaml
-
-wandb sweep --project circle swinr.yaml
-
-wandb sweep --project sun360_4 shinr.yaml
-
-CUDA_VISIBLE_DEVICES=4
+CUDA_VISIBLE_DEVICES=0

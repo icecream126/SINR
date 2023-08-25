@@ -7,6 +7,8 @@ import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
 
+from utils.utils import to_cartesian
+
 class Dataset(Dataset):
     def __init__(
             self,
@@ -100,6 +102,7 @@ class Dataset(Dataset):
         target = target.reshape(-1, self.output_dim)
 
         inputs = torch.stack([lat, lon], dim=-1)
+        inputs = to_cartesian(inputs)
 
         data_out['inputs'] = inputs
         data_out['target'] = target

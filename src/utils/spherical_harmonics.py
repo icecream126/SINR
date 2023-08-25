@@ -1,113 +1,64 @@
-from math import pi, sqrt
-from functools import reduce
-from operator import mul
 import torch
 
-# constants
-
-def lpmv_cache_key_fn(l, m, x):
-    return (l, m)
-
-# spherical harmonics
-
-def semifactorial(x):
-    return reduce(mul, range(x, 1, -2), 1.)
-
-def pochhammer(x, k):
-    return reduce(mul, range(x + 1, x + k), float(x))
-
-def negative_lpmv(l, m, y):
-    if m < 0:
-        y *= ((-1) ** m / pochhammer(l + m + 1, -2 * m))
-    return y
-
-
-def lpmv(l, m, x):
-    """Associated Legendre function including Condon-Shortley phase.
+def components_from_spherical_harmonics(levels, directions):
+    """
+    Returns value for each component of spherical harmonics.
 
     Args:
-        m: int order 
-        l: int degree
-        x: float argument tensor
-    Returns:
-        tensor of x-shape
+        levels: Number of spherical harmonic levels to compute.
+        directions: Spherical hamonic coefficients
     """
-    # Check memoized versions
-    m_abs = abs(m)
+    num_components = levels**2
+    components = torch.zeros((*directions.shape[:-1], num_components), device=directions.device)
 
-    if m_abs > l:
-        return None
+    assert 1 <= levels <= 5, f"SH levels must be in [1,4], got {levels}"
+    assert directions.shape[-1] == 3, f"Direction input should have three dimensions. Got {directions.shape[-1]}"
 
-    if l == 0:
-        return torch.ones_like(x)
-    
-    # Check if on boundary else recurse solution down to boundary
-    if m_abs == l:
-        # Compute P_m^m
-        y = (-1)**m_abs * semifactorial(2*m_abs-1)
-        y *= torch.pow(1-x*x, m_abs/2)
-        return negative_lpmv(l, m, y)
+    x = directions[..., 0]
+    y = directions[..., 1]
+    z = directions[..., 2]
 
-    # Recursively precompute lower degree harmonics
-    lpmv(l-1, m, x)
+    xx = x**2
+    yy = y**2
+    zz = z**2
 
-    # Compute P_{l}^m from recursion in P_{l-1}^m and P_{l-2}^m
-    # Inplace speedup
-    y = ((2*l-1) / (l-m_abs)) * x * lpmv(l-1, m_abs, x)
+    # l0
+    components[..., 0] = 0.28209479177387814
 
-    if l - m_abs > 1:
-        y -= ((l+m_abs-1)/(l-m_abs)) * lpmv(l-2, m_abs, x)
-    
-    if m < 0:
-        y = negative_lpmv(l, m, y)
-    return y
+    # l1
+    if levels > 1:
+        components[..., 1] = 0.4886025119029199 * y
+        components[..., 2] = 0.4886025119029199 * z
+        components[..., 3] = 0.4886025119029199 * x
 
-def get_spherical_harmonics_element(l, m, theta, phi):
-    """Tesseral spherical harmonic with Condon-Shortley phase.
+    # l2
+    if levels > 2:
+        components[..., 4] = 1.0925484305920792 * x * y
+        components[..., 5] = 1.0925484305920792 * y * z
+        components[..., 6] = 0.9461746957575601 * zz - 0.31539156525251999
+        components[..., 7] = 1.0925484305920792 * x * z
+        components[..., 8] = 0.5462742152960396 * (xx - yy)
 
-    The Tesseral spherical harmonics are also known as the real spherical
-    harmonics.
+    # l3
+    if levels > 3:
+        components[..., 9] = 0.5900435899266435 * y * (3 * xx - yy)
+        components[..., 10] = 2.890611442640554 * x * y * z
+        components[..., 11] = 0.4570457994644658 * y * (5 * zz - 1)
+        components[..., 12] = 0.3731763325901154 * z * (5 * zz - 3)
+        components[..., 13] = 0.4570457994644658 * x * (5 * zz - 1)
+        components[..., 14] = 1.445305721320277 * z * (xx - yy)
+        components[..., 15] = 0.5900435899266435 * x * (xx - 3 * yy)
 
-    Args:
-        l: int for degree
-        m: int for order, where -l <= m < l
-        theta: collatitude or polar angle
-        phi: longitude or azimuth
-    Returns:
-        tensor of shape theta
-    """
-    m_abs = abs(m)
-    assert m_abs <= l, "absolute value of order m must be <= degree l"
+    # l4
+    if levels > 4:
+        components[..., 16] = 2.5033429417967046 * x * y * (xx - yy)
+        components[..., 17] = 1.7701307697799304 * y * z * (3 * xx - yy)
+        components[..., 18] = 0.9461746957575601 * x * y * (7 * zz - 1)
+        components[..., 19] = 0.6690465435572892 * y * (7 * zz - 3)
+        components[..., 20] = 0.10578554691520431 * (35 * zz * zz - 30 * zz + 3)
+        components[..., 21] = 0.6690465435572892 * x * z * (7 * zz - 3)
+        components[..., 22] = 0.47308734787878004 * (xx - yy) * (7 * zz - 1)
+        components[..., 23] = 1.7701307697799304 * x * z * (xx - 3 * yy)
+        components[..., 24] = 0.4425326924449826 * (xx * (xx - 3 * yy) - yy * (3 * xx - yy))
 
-    N = sqrt((2*l + 1) / (4 * pi))
-    leg = lpmv(l, m_abs, torch.cos(theta))
-
-    if m == 0:
-        return N * leg
-
-    if m > 0:
-        Y = torch.cos(m * phi)
-    else:
-        Y = torch.sin(m_abs * phi)
-
-    Y *= leg
-    N *= sqrt(2. / pochhammer(l - m_abs + 1, 2 * m_abs))
-    Y *= N
-    return Y
-
-def get_spherical_harmonics(l, theta, phi):
-    """ Tesseral harmonic with Condon-Shortley phase.
-
-    The Tesseral spherical harmonics are also known as the real spherical
-    harmonics.
-
-    Args:
-        l: int for degree
-        theta: collatitude or polar angle
-        phi: longitude or azimuth
-    Returns:
-        tensor of shape [*theta.shape, 2*l+1]
-    """
-    return torch.stack([ get_spherical_harmonics_element(l, m, theta, phi) \
-                         for m in range(-l, l+1) ],
-                        dim = -1)
+    return components
