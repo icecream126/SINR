@@ -1,7 +1,7 @@
 import torch
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
-
+import pytorch_ssim
 
 class MODEL(pl.LightningModule):
     def __init__(
@@ -84,6 +84,7 @@ class DENOISING_MODEL(pl.LightningModule):
 
         self.lr = lr
         self.lr_patience = lr_patience
+        self.ssim_loss = pytorch_ssim.SSIM(window_size=11)
     
     def training_step(self, data, batch_idx):
         inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
@@ -103,6 +104,7 @@ class DENOISING_MODEL(pl.LightningModule):
 
         self.log("train_loss", loss, prog_bar=True)
         self.log("train_loss_orig",loss_orig, prog_bar=True)
+        # self.log("train_ssim",self.ssim_loss(pred, target))
         
         return loss
     
@@ -124,6 +126,7 @@ class DENOISING_MODEL(pl.LightningModule):
 
         self.log("valid_loss", loss, prog_bar=True)
         self.log("valid_loss_orig",loss_orig, prog_bar=True)
+        # self.log("valid_ssim",self.ssim_loss(pred, target))
         return loss
 
     def test_step(self, data, batch_idx):
@@ -143,7 +146,8 @@ class DENOISING_MODEL(pl.LightningModule):
         loss_orig = error_orig.mean()
 
         self.log("test_mse", loss)
-        self.log("test_mse_orig", loss)
+        self.log("test_mse_orig", loss_orig)
+        # self.log("test_ssim",self.ssim_loss(pred, target))
         return loss
 
     def configure_optimizers(self):

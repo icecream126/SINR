@@ -8,10 +8,10 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from utils.utils import mse2psnr
+from utils.utils import mse2psnr, calculate_ssim
 from utils.visualize import visualize
 
-from datasets import spatial, temporal
+from datasets import spatial, temporal, denoising
 from models import relu, siren, wire, shinr, swinr, shiren
 
 model_dict = {
@@ -31,6 +31,7 @@ if __name__=='__main__':
     # Dataset argument
     parser.add_argument("--panorama_idx", type=int, default=0)
     parser.add_argument("--normalize", default=False, action='store_true')
+    parser.add_argument("--task", type=str, default='denoising')
 
     # Model argument
     parser.add_argument("--hidden_dim", type=int, default=256)
@@ -54,7 +55,7 @@ if __name__=='__main__':
     
     args.time = True if 'temporal' in args.dataset_dir else False
     args.input_dim = 3 + (1 if args.time else 0)
-    args.output_dim = 3 if 'sun360' in args.dataset_dir else 1
+    args.output_dim = 3 if '360' in args.dataset_dir else 1 # sun360, flickr360 takes 3 else 1
 
     # Log
     logger = WandbLogger(
@@ -63,7 +64,12 @@ if __name__=='__main__':
     )
 
     # Dataset
-    dataset = temporal if args.time else spatial
+    if args.time:
+        dataset=temporal
+    elif args.task=='denoising':
+        dataset=denoising
+    else:
+        dataset=spatial
 
     train_dataset = dataset.Dataset(dataset_type='train', **vars(args))
     valid_dataset = dataset.Dataset(dataset_type='valid', **vars(args))
@@ -75,7 +81,10 @@ if __name__=='__main__':
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers = args.num_workers)
     
     # Model
-    model = model_dict[args.model].INR(**vars(args))
+    if args.task=='denoising':
+        model = model_dict[args.model].DENOISING_INR(**vars(args))
+    else:
+        model = model_dict[args.model].INR(**vars(args))
 
     # Learning
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
@@ -99,12 +108,16 @@ if __name__=='__main__':
     trainer.fit(model, train_loader, valid_loader)
     res = trainer.test(model, test_loader, 'best')[0]
 
-    wandb.log({
+    logger.experiment.log({
         "test_rmse": np.sqrt(res['test_mse']),
         "test_psnr": mse2psnr(res['test_mse']),
         "best_valid_loss": checkpoint_cb.best_model_score.item(),
         "best_valid_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
     })
+    
+    if args.task=='denoising':
+        dataset = dataset.Dataset(dataset_type='all', **vars(args))
+        logger.experiment.log({"test_ssim" : calculate_ssim(model, dataset)})
 
     if args.plot and 'spatial' in args.dataset_dir:
         dataset = dataset.Dataset(dataset_type='all', **vars(args))

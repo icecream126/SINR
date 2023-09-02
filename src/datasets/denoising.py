@@ -45,6 +45,8 @@ class Dataset(Dataset):
         data_out['g_target'] = self._data['g_target'][index]
         data_out['target_shape'] = self._data['target_shape']
         data_out['mean_lat_weight'] = self._data['mean_lat_weight']
+        data_out['height'] = self._data['height']
+        data_out['width'] = self._data['width']
         return data_out
 
     def load_data(self):
@@ -78,4 +80,6 @@ class Dataset(Dataset):
         data_out['g_target'] = img # ground truth image pixel value [2097152,3]
         data_out['target_shape'] = noisy_img.shape # 2097152,3
         data_out['mean_lat_weight'] = mean_lat_weight # 0.6360
+        data_out['height'] = H
+        data_out['width'] = W
         return data_out

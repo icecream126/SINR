@@ -20,3 +20,4 @@ temperature/
 temp_agent/
 *.sh
 ERA5_SR/
+*.ckpt

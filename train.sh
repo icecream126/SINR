@@ -43,4 +43,5 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoise.py \
     --normalize \
     --max_epochs 10 \
     --plot
+    --panorama_idx 0
 
