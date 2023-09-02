@@ -33,3 +33,14 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --normalize \
     --max_epochs 10 \
     --plot
+
+# Flickr360
+
+CUDA_VISIBLE_DEVICES=0 python src/main_denoise.py \
+    --dataset_dir dataset/flickr360 \
+    --model swinr \
+    --skip \
+    --normalize \
+    --max_epochs 10 \
+    --plot
+
