@@ -47,12 +47,12 @@ class Dataset(Dataset):
         data_out = dict()
 
         if 'sun360' in self.dataset_dir:
-            target = np.array(Image.open(self.filename))
+            target = np.array(Image.open(self.filename)) # [512, 1024, 3]
 
-            H, W = target.shape[:2]
+            H, W = target.shape[:2] # H : 512, W : 1024
 
-            lat = np.linspace(-90, 90, H)
-            lon = np.linspace(-180, 180, W)
+            lat = np.linspace(-90, 90, H) # 512
+            lon = np.linspace(-180, 180, W) # 1024
         
         elif 'era5' in self.dataset_dir:
             with nc.Dataset(self.filename, 'r') as f:
@@ -70,8 +70,8 @@ class Dataset(Dataset):
             lon = data['longitude']
             target = data['target']
 
-        lat = np.deg2rad(lat)
-        lon = np.deg2rad(lon)
+        lat = np.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
+        lon = np.deg2rad(lon) # 1024 (min : -3.14, max : 3.14)
 
         if self.normalize:
             target = (target - target.min()) / (target.max() - target.min())
@@ -88,24 +88,24 @@ class Dataset(Dataset):
         lat_idx = np.arange(start, len(lat), step)
         lon_idx = np.arange(start, len(lon), step)
 
-        lat = torch.from_numpy(lat[lat_idx]).float()
-        lon = torch.from_numpy(lon[lon_idx]).float()
-        target = torch.from_numpy(target[lat_idx][:, lon_idx]).float()
+        lat = torch.from_numpy(lat[lat_idx]).float() # 171
+        lon = torch.from_numpy(lon[lon_idx]).float() # 342
+        target = torch.from_numpy(target[lat_idx][:, lon_idx]).float() # [171, 342, 3]
 
-        mean_lat_weight = torch.cos(lat).mean()
-        target_shape = target.shape
+        mean_lat_weight = torch.cos(lat).mean() # 0.6341
+        target_shape = target.shape # [171, 342, 3]
 
-        lat, lon = torch.meshgrid(lat, lon)
+        lat, lon = torch.meshgrid(lat, lon) # [171, 342] for each
 
-        lat = lat.flatten()
-        lon = lon.flatten()
-        target = target.reshape(-1, self.output_dim)
+        lat = lat.flatten() # [58482]
+        lon = lon.flatten() # ""
+        target = target.reshape(-1, self.output_dim) # [58482, 3]
 
-        inputs = torch.stack([lat, lon], dim=-1)
-        inputs = to_cartesian(inputs)
+        inputs = torch.stack([lat, lon], dim=-1) # [58482, 2]
+        inputs = to_cartesian(inputs) # [58482, 3]
 
-        data_out['inputs'] = inputs
-        data_out['target'] = target
-        data_out['target_shape'] = target_shape
-        data_out['mean_lat_weight'] = mean_lat_weight
+        data_out['inputs'] = inputs  # [58482, 3]
+        data_out['target'] = target # [58482, 3]
+        data_out['target_shape'] = target_shape # [171, 342, 3]
+        data_out['mean_lat_weight'] = mean_lat_weight # 0.6341
         return data_out

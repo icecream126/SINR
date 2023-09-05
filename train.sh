@@ -36,12 +36,13 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
 
 # Flickr360
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoise.py \
+CUDA_VISIBLE_DEVICES=0 python src/main.py \
     --dataset_dir dataset/flickr360 \
     --model swinr \
     --skip \
     --normalize \
-    --max_epochs 10 \
+    --max_epochs 2000 \
     --plot
     --panorama_idx 0
+    --task denoising
 

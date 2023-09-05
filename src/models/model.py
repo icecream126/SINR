@@ -1,7 +1,7 @@
 import torch
 import pytorch_lightning as pl
 from torch.optim import lr_scheduler
-import pytorch_ssim
+
 
 class MODEL(pl.LightningModule):
     def __init__(
@@ -16,17 +16,17 @@ class MODEL(pl.LightningModule):
         self.lr_patience = lr_patience
     
     def training_step(self, data, batch_idx):
-        inputs, target = data["inputs"], data["target"]
-        mean_lat_weight = data['mean_lat_weight']
+        inputs, target = data["inputs"], data["target"] # [512, 3], [512, 3]
+        mean_lat_weight = data['mean_lat_weight'] # [512] with 0.6341
 
-        weights = torch.cos(inputs[..., :1])
-        weights = weights / mean_lat_weight
+        weights = torch.cos(inputs[..., :1]) # [512, 1]
+        weights = weights / mean_lat_weight # [512, 512]
 
-        pred = self.forward(inputs)
+        pred = self.forward(inputs) # [512, 3]
 
-        error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
-        error = weights * error
-        loss = error.mean()
+        error = torch.sum((pred-target)**2, dim=-1, keepdim=True) # [512, 1] with 0.9419
+        error = weights * error # [512, 512] with 1.2535
+        loss = error.mean() # 1.2346
 
         self.log("train_loss", loss, prog_bar=True)
         return loss
@@ -84,14 +84,13 @@ class DENOISING_MODEL(pl.LightningModule):
 
         self.lr = lr
         self.lr_patience = lr_patience
-        self.ssim_loss = pytorch_ssim.SSIM(window_size=11)
     
     def training_step(self, data, batch_idx):
-        inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
-        mean_lat_weight = data['mean_lat_weight']
+        inputs, target, g_target = data["inputs"], data["target"], data["g_target"] # [512, 3] for each
+        mean_lat_weight = data['mean_lat_weight'] # 512
 
-        weights = torch.cos(inputs[..., :1])
-        weights = weights / mean_lat_weight
+        weights = torch.cos(inputs[..., :1]) # [512, 1]
+        weights = weights / mean_lat_weight  # [512, 512]
 
         pred = self.forward(inputs)
 
@@ -139,7 +138,7 @@ class DENOISING_MODEL(pl.LightningModule):
         pred = self.forward(inputs)
 
         error = torch.sum((pred-target)**2, dim=-1, keepdim=True)
-        error_orig = torch.sum((pred-target)**2, dim=-1, keepdim=True)
+        error_orig = torch.sum((pred-g_target)**2, dim=-1, keepdim=True)
         error = weights * error
         error_orig = weights * error_orig
         loss = error.mean()
@@ -157,5 +156,5 @@ class DENOISING_MODEL(pl.LightningModule):
             optimizer, factor=0.5, patience=self.lr_patience, verbose=True
         )
 
-        sch_dict = {"scheduler": scheduler, "monitor": 'valid_loss', "frequency": 1}
+        sch_dict = {"scheduler": scheduler, "monitor": 'train_loss_orig', "frequency": 1}
         return {"optimizer": optimizer, "lr_scheduler": sch_dict}
