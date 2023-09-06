@@ -26,12 +26,12 @@ CUDA_VISIBLE_DEVICES=0 python src/main.py \
 
 # SUN360
 
-CUDA_VISIBLE_DEVICES=0 python src/main.py \
-    --dataset_dir dataset/spatial/sun360 \
-    --model shiren \
+CUDA_VISIBLE_DEVICES=4,5,6,7 python src/main.py \
+    --dataset_dir dataset/sun360 \
+    --model swinr \
     --skip \
     --normalize \
-    --max_epochs 10 \
+    --max_epochs 4000 \
     --plot
 
 # Flickr360

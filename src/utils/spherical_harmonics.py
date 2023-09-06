@@ -1,5 +1,6 @@
 import torch
 
+
 def components_from_spherical_harmonics(levels, directions):
     """
     Returns value for each component of spherical harmonics.
@@ -9,10 +10,14 @@ def components_from_spherical_harmonics(levels, directions):
         directions: Spherical hamonic coefficients
     """
     num_components = levels**2
-    components = torch.zeros((*directions.shape[:-1], num_components), device=directions.device)
+    components = torch.zeros(
+        (*directions.shape[:-1], num_components), device=directions.device
+    )
 
     assert 1 <= levels <= 5, f"SH levels must be in [1,4], got {levels}"
-    assert directions.shape[-1] == 3, f"Direction input should have three dimensions. Got {directions.shape[-1]}"
+    assert (
+        directions.shape[-1] == 3
+    ), f"Direction input should have three dimensions. Got {directions.shape[-1]}"
 
     x = directions[..., 0]
     y = directions[..., 1]
@@ -59,6 +64,8 @@ def components_from_spherical_harmonics(levels, directions):
         components[..., 21] = 0.6690465435572892 * x * z * (7 * zz - 3)
         components[..., 22] = 0.47308734787878004 * (xx - yy) * (7 * zz - 1)
         components[..., 23] = 1.7701307697799304 * x * z * (xx - 3 * yy)
-        components[..., 24] = 0.4425326924449826 * (xx * (xx - 3 * yy) - yy * (3 * xx - yy))
+        components[..., 24] = 0.4425326924449826 * (
+            xx * (xx - 3 * yy) - yy * (3 * xx - yy)
+        )
 
     return components

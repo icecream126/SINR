@@ -5,15 +5,16 @@ from math import pi, ceil
 from .model import MODEL, DENOISING_MODEL
 from .relu import ReLULayer
 
+
 class SphericalGaborLayer(nn.Module):
     def __init__(
-            self,
-            output_dim,
-            time,
-            omega,
-            sigma,
-            **kwargs,
-        ):
+        self,
+        output_dim,
+        time,
+        omega,
+        sigma,
+        **kwargs,
+    ):
         super().__init__()
 
         self.time = time
@@ -38,10 +39,10 @@ class SphericalGaborLayer(nn.Module):
         zeros = torch.zeros(self.output_dim, device=self.u.device)
         ones = torch.ones(self.output_dim, device=self.u.device)
 
-        alpha = 2*pi*self.u
-        beta = torch.arccos(torch.clamp(2*self.v-1, -1+1e-6, 1-1e-6))
-        gamma = 2*pi*self.w
-        
+        alpha = 2 * pi * self.u
+        beta = torch.arccos(torch.clamp(2 * self.v - 1, -1 + 1e-6, 1 - 1e-6))
+        gamma = 2 * pi * self.w
+
         cos_alpha = torch.cos(alpha)
         cos_beta = torch.cos(beta)
         cos_gamma = torch.cos(gamma)
@@ -49,39 +50,48 @@ class SphericalGaborLayer(nn.Module):
         sin_beta = torch.sin(beta)
         sin_gamma = torch.sin(gamma)
 
-        Rz_alpha = torch.stack([
-            torch.stack([cos_alpha, -sin_alpha, zeros], 1), 
-            torch.stack([sin_alpha,  cos_alpha, zeros], 1), 
-            torch.stack([    zeros,      zeros,  ones], 1)
-            ], 1)
-        
-        Rx_beta = torch.stack([
-            torch.stack([ ones,     zeros,      zeros], 1), 
-            torch.stack([zeros,  cos_beta,  -sin_beta], 1), 
-            torch.stack([zeros,  sin_beta,   cos_beta], 1)
-            ], 1)
+        Rz_alpha = torch.stack(
+            [
+                torch.stack([cos_alpha, -sin_alpha, zeros], 1),
+                torch.stack([sin_alpha, cos_alpha, zeros], 1),
+                torch.stack([zeros, zeros, ones], 1),
+            ],
+            1,
+        )
 
-        Rz_gamma = torch.stack([
-            torch.stack([cos_gamma, -sin_gamma, zeros], 1), 
-            torch.stack([sin_gamma,  cos_gamma, zeros], 1), 
-            torch.stack([    zeros,      zeros,  ones], 1)
-            ], 1)
-        
+        Rx_beta = torch.stack(
+            [
+                torch.stack([ones, zeros, zeros], 1),
+                torch.stack([zeros, cos_beta, -sin_beta], 1),
+                torch.stack([zeros, sin_beta, cos_beta], 1),
+            ],
+            1,
+        )
+
+        Rz_gamma = torch.stack(
+            [
+                torch.stack([cos_gamma, -sin_gamma, zeros], 1),
+                torch.stack([sin_gamma, cos_gamma, zeros], 1),
+                torch.stack([zeros, zeros, ones], 1),
+            ],
+            1,
+        )
+
         R = torch.bmm(torch.bmm(Rz_gamma, Rx_beta), Rz_alpha)
-        
+
         # points.shape : [ 1,2097125,3 ] / [512, 3]
         # inputs.shape : [ 1,2097125,3] / [512, 3]
         # R.shape : [256, 3, 3] / [256, 3, 3]
         points = input[..., 0:3]
         points = torch.matmul(R, points.unsqueeze(-2).unsqueeze(-1))
         points = points.squeeze(-1)
-        
+
         x, z = points[..., 0], points[..., 2]
 
         dilate = torch.exp(self.dilate)
 
-        freq_arg = 2 * dilate * x / (1e-6+1+z)
-        gauss_arg = 4 * dilate * dilate * (1-z) / (1e-6+1+z)
+        freq_arg = 2 * dilate * x / (1e-6 + 1 + z)
+        gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
 
         if self.time:
             time = input[..., 3:]
@@ -89,24 +99,24 @@ class SphericalGaborLayer(nn.Module):
             freq_arg = freq_arg + lin
             gauss_arg = gauss_arg + lin * lin
 
-        freq_term = torch.cos(self.omega*freq_arg)
-        gauss_term = torch.exp(-self.sigma*self.sigma*gauss_arg)
+        freq_term = torch.cos(self.omega * freq_arg)
+        gauss_term = torch.exp(-self.sigma * self.sigma * gauss_arg)
         return freq_term * gauss_term
-    
+
 
 class INR(MODEL):
     def __init__(
-            self, 
-            input_dim, 
-            output_dim,
-            hidden_dim, 
-            hidden_layers,
-            time,
-            skip,
-            omega,
-            sigma,
-            **kwargs,
-        ):
+        self,
+        input_dim,
+        output_dim,
+        hidden_dim,
+        hidden_layers,
+        time,
+        skip,
+        omega,
+        sigma,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.time = time
@@ -121,36 +131,37 @@ class INR(MODEL):
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
-            if skip and i == ceil(hidden_layers/2):
-                self.net.append(self.nonlin(hidden_dim+input_dim, hidden_dim))
+            if skip and i == ceil(hidden_layers / 2):
+                self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:
                 self.net.append(self.nonlin(hidden_dim, hidden_dim))
 
-        final_linear = nn.Linear(hidden_dim, output_dim) 
-        
+        final_linear = nn.Linear(hidden_dim, output_dim)
+
         self.net.append(final_linear)
-    
+
     def forward(self, x):
         x_in = x
         for i, layer in enumerate(self.net):
-            if self.skip and i == ceil(self.hidden_layers/2)+1:
+            if self.skip and i == ceil(self.hidden_layers / 2) + 1:
                 x = torch.cat([x, x_in], dim=-1)
             x = layer(x)
         return x
-    
+
+
 class DENOISING_INR(DENOISING_MODEL):
     def __init__(
-            self, 
-            input_dim, 
-            output_dim,
-            hidden_dim, 
-            hidden_layers,
-            time,
-            skip,
-            omega,
-            sigma,
-            **kwargs,
-        ):
+        self,
+        input_dim,
+        output_dim,
+        hidden_dim,
+        hidden_layers,
+        time,
+        skip,
+        omega,
+        sigma,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.time = time
@@ -165,19 +176,19 @@ class DENOISING_INR(DENOISING_MODEL):
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
-            if skip and i == ceil(hidden_layers/2):
-                self.net.append(self.nonlin(hidden_dim+input_dim, hidden_dim))
+            if skip and i == ceil(hidden_layers / 2):
+                self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:
                 self.net.append(self.nonlin(hidden_dim, hidden_dim))
 
-        final_linear = nn.Linear(hidden_dim, output_dim) 
-        
+        final_linear = nn.Linear(hidden_dim, output_dim)
+
         self.net.append(final_linear)
-    
+
     def forward(self, x):
         x_in = x
         for i, layer in enumerate(self.net):
-            if self.skip and i == ceil(self.hidden_layers/2)+1:
+            if self.skip and i == ceil(self.hidden_layers / 2) + 1:
                 x = torch.cat([x, x_in], dim=-1)
             x = layer(x)
         return x
