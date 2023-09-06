@@ -8,4 +8,4 @@ python src/datasets/generation/era5.py --variable=temperature --mode=separate --
 
 # CIRCLE
 
-python src/datasets/generation/circle.py --res=0.25 --radius=45 --custom_fn=data.npz --output_dir=dataset/spatial/circle
+python src/datasets/generation/circle.py --res=0.25 --radius=45 --custom_fn=data.npz --output_dir=dataset/circle

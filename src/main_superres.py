@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser.add_argument("--omega", type=float, default=1.0)
     parser.add_argument("--sigma", type=float, default=1.0)
     parser.add_argument("--levels", type=int, default=4)
+    parser.add_argument("--posenc_freq", type=int, default=10)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     logger = WandbLogger(
         config=args,
         name=args.model,
-        # mode='disabled'
+        mode='disabled'
     )
 
     # Dataset
@@ -119,12 +120,15 @@ if __name__ == "__main__":
         {
             "test_rmse": np.sqrt(res["test_mse"]),
             "test_psnr": mse2psnr(res["test_mse"]),
-            "best_valid_loss": checkpoint_cb.best_model_score.item(),
-            "best_valid_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
+            "best_orig_loss": checkpoint_cb.best_model_score.item(),
+            "best_orig_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
         }
     )
+    
+    dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
+    logger.experiment.log({"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)})
 
     if args.plot:
-        dataset = dataset.Dataset(dataset_type="all", **vars(args))
-        visualize(dataset, model, args, "HR")
-        visualize(train_dataset, model, args, "LR")
+        dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
+        visualize(dataset_all, model, args, "HR", logger=logger)
+        visualize(train_dataset, model, args, "LR", logger=logger)

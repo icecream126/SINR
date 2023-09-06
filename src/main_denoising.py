@@ -117,9 +117,9 @@ if __name__ == "__main__":
         }
     )
 
-    dataset = dataset.Dataset(dataset_type="all", **vars(args))
-    logger.experiment.log({"test_ssim": calculate_ssim(model, dataset)})
+    dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
+    logger.experiment.log({"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)})
 
     if args.plot:
-        dataset = denoising.Dataset(dataset_type="all", **vars(args))
-        visualize_denoising(dataset, model, args, logger=logger)
+        dataset_all = denoising.Dataset(dataset_type="all", **vars(args))
+        visualize_denoising(dataset_all, model, args, logger=logger)

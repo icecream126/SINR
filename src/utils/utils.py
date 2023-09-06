@@ -113,13 +113,13 @@ def add_noise(img, noise_snr, tau):
     return img_meas
 
 
-def calculate_ssim(model, dataset):
+def calculate_ssim(model, dataset, output_dim):
     data = dataset[:]
 
     inputs, target = data["inputs"], data["target"]
     mean_lat_weight = data["mean_lat_weight"]
     target_shape = data["target_shape"]
-    H, W = data["height"], data["width"]
+    H, W = target_shape[:2]
 
     pred = model(inputs)
 
@@ -129,8 +129,8 @@ def calculate_ssim(model, dataset):
 
     pred = pred.detach().cpu().numpy()
     target = target.detach().cpu().numpy()
-    pred = pred.reshape(H, W, 3)
-    target = target.reshape(H, W, 3)
+    pred = pred.reshape(H, W, output_dim)
+    target = target.reshape(H, W, output_dim)
 
     win_size = 7
     ssim, diff = ssim_func(target, pred, channel_axis=2, full=True, win_size=win_size)
@@ -139,7 +139,7 @@ def calculate_ssim(model, dataset):
     diff = diff * weights
 
     ssim = 0
-    for i in range(3):
+    for i in range(output_dim):
         ssim += crop(diff[..., i], pad).mean()
     ssim = ssim / 3
 

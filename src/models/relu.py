@@ -58,8 +58,8 @@ class INR(MODEL):
         self.net.append(final_linear)
 
     def forward(self, x):
-        x_in = x
         x = self.posenc(x)
+        x_in = x
         for i, layer in enumerate(self.net):
             if self.skip and i == ceil(self.hidden_layers / 2) + 1:
                 x = torch.cat([x, x_in], dim=-1)

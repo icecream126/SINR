@@ -45,7 +45,7 @@ class Dataset(Dataset):
     def load_data(self):
         data_out = dict()
 
-        if "sun360" in self.dataset_dir:
+        if "360" in self.dataset_dir:
             target = np.array(Image.open(self.filename))  # [512, 1024, 3]
 
             H, W = target.shape[:2]  # H : 512, W : 1024

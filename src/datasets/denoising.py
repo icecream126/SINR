@@ -40,26 +40,33 @@ class Dataset(Dataset):
         data_out["g_target"] = self._data["g_target"][index]
         data_out["target_shape"] = self._data["target_shape"]
         data_out["mean_lat_weight"] = self._data["mean_lat_weight"]
-        data_out["height"] = self._data["height"]
-        data_out["width"] = self._data["width"]
         return data_out
 
     def load_data(self):
         data_out = dict()
+        if "360" in self.dataset_dir:
+            g_target = np.array(Image.open(self.filename))  # [1024, 2048, 3]
 
-        img = np.array(Image.open(self.filename))  # [1024, 2048, 3]
+            target_shape = g_target.shape
+            H, W = g_target.shape[:2]  # H : 1024, W : 2048
 
-        target_shape = img.shape
-        H, W = img.shape[:2]  # H : 1024, W : 2048
-
+            lat = np.linspace(-90, 90, H)  # 1024
+            lon = np.linspace(-180, 180, W)  # 2048
+        # Circle
+        else:
+            data = np.load(self.filename)
+            lat = data['latitude']
+            lon = data['longitude']
+            g_target = data['target'] # [720, 1440]
+            
+            target_shape = g_target.shape
+            
         if self.normalize:
-            img = (img - img.min()) / (img.max() - img.min())
-        noisy_img = add_noise(img, NOISE_SNR, TAU)
-        img = torch.from_numpy(img)
-        noisy_img = torch.from_numpy(noisy_img)
-
-        lat = np.linspace(-90, 90, H)  # 1024
-        lon = np.linspace(-180, 180, W)  # 2048
+            g_target = (g_target - g_target.min()) / (g_target.max() - g_target.min())
+        noisy_target = add_noise(g_target, NOISE_SNR, TAU)
+        
+        g_target = torch.from_numpy(g_target)
+        noisy_target = torch.from_numpy(noisy_target)
 
         lat = torch.from_numpy(np.deg2rad(lat)).float()
         lon = torch.from_numpy(np.deg2rad(lon)).float()
@@ -73,16 +80,12 @@ class Dataset(Dataset):
         inputs = torch.stack([lat, lon], dim=-1)
         inputs = to_cartesian(inputs)  # [2097152, 3]
 
-        # img = np.tensor(img).reshape(H*W,3)# [None,...] # [2097152, 3]
-        # noisy_img = np.tensor(noisy_img).reshape(H*W,3)# [None,...] # [2097152, 3]
-        img = img.reshape(-1, self.output_dim)
-        noisy_img = noisy_img.reshape(-1, self.output_dim)
+        g_target = g_target.reshape(-1, self.output_dim)
+        noisy_target = noisy_target.reshape(-1, self.output_dim)
 
         data_out["inputs"] = inputs  # input coordinate [2097152,3]
-        data_out["target"] = noisy_img  # noisy image pixel value [2097152,3]
-        data_out["g_target"] = img  # ground truth image pixel value [2097152,3]
+        data_out["target"] = noisy_target  # noisy image pixel value [2097152,3]
+        data_out["g_target"] = g_target  # ground truth image pixel value [2097152,3]
         data_out["target_shape"] = target_shape  # 2097152,3
         data_out["mean_lat_weight"] = mean_lat_weight  # 0.6360
-        data_out["height"] = H
-        data_out["width"] = W
         return data_out

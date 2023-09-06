@@ -8,7 +8,7 @@ from PIL import Image as PILImage
 import math
 
 
-def visualize(dataset, model, args, mode):
+def visualize(dataset, model, args, mode, logger):
     data = dataset[:]
 
     inputs, target = data["inputs"], data["target"]
@@ -52,7 +52,7 @@ def visualize(dataset, model, args, mode):
     )
     plt.colorbar()
 
-    wandb.log(
+    logger.experiment.log(
         {
             mode
             + " Error Map": wandb.Image(fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"),
