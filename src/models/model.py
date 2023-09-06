@@ -27,7 +27,12 @@ class MODEL(pl.LightningModule):
         loss = error.mean()  # 1.2346
 
         self.log("train_loss", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_train_psnr", mse2psnr(loss), prog_bar=True, sync_dist=True)
+        self.log(
+            "batch_train_psnr",
+            mse2psnr(loss.detach().cpu().numpy()),
+            prog_bar=True,
+            sync_dist=True,
+        )
         return loss
 
     def validation_step(self, data, batch_idx):
@@ -44,7 +49,7 @@ class MODEL(pl.LightningModule):
         loss = error.mean()
 
         self.log("valid_loss", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_valid_psnr", mse2psnr(loss))
+        self.log("batch_valid_psnr", mse2psnr(loss.detach().cpu().numpy()))
         return loss
 
     def test_step(self, data, batch_idx):
@@ -104,8 +109,8 @@ class DENOISING_MODEL(pl.LightningModule):
 
         self.log("train_loss", loss, prog_bar=True)
         self.log("train_loss_orig", loss_orig, prog_bar=True)
-        self.log("batch_train_psnr", mse2psnr(loss))
-        self.log("batch_train_psnr_orig", mse2psnr(loss_orig))
+        self.log("batch_train_psnr", mse2psnr(loss.detach().cpu().numpy()))
+        self.log("batch_train_psnr_orig", mse2psnr(loss_orig.detach().cpu().numpy()))
         # self.log("train_ssim",self.ssim_loss(pred, target))
 
         return loss
@@ -128,8 +133,8 @@ class DENOISING_MODEL(pl.LightningModule):
 
         self.log("valid_loss", loss, prog_bar=True)
         self.log("valid_loss_orig", loss_orig, prog_bar=True)
-        self.log("batch_valid_psnr", mse2psnr(loss))
-        self.log("batch_valid_psnr_orig", mse2psnr(loss_orig))
+        self.log("batch_valid_psnr", mse2psnr(loss.detach().cpu().numpy()))
+        self.log("batch_valid_psnr_orig", mse2psnr(loss_orig.detach().cpu().numpy()))
         # self.log("valid_ssim",self.ssim_loss(pred, target))
         return loss
 
@@ -151,8 +156,8 @@ class DENOISING_MODEL(pl.LightningModule):
 
         self.log("test_mse", loss)
         self.log("test_mse_orig", loss_orig)
-        self.log("batch_test_psnr", mse2psnr(loss))
-        self.log("batch_test_psnr_orig", mse2psnr(loss_orig))
+        self.log("batch_test_psnr", mse2psnr(loss.detach().cpu().numpy()))
+        self.log("batch_test_psnr_orig", mse2psnr(loss_orig.detach().cpu().numpy()))
         # self.log("test_ssim",self.ssim_loss(pred, target))
         return loss
 

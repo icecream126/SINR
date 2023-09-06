@@ -58,7 +58,7 @@ class Dataset(Dataset):
         img = torch.from_numpy(img)
         noisy_img = torch.from_numpy(noisy_img)
 
-        lat = np.linspace(-90, 90, H)  # 1024 # 0, 180시도해보기
+        lat = np.linspace(-90, 90, H)  # 1024
         lon = np.linspace(-180, 180, W)  # 2048
 
         lat = torch.from_numpy(np.deg2rad(lat)).float()
