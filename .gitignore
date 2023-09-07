@@ -22,3 +22,4 @@ temp_agent/
 ERA5_SR/
 *.ckpt
 *.png
+final_superres/

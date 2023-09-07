@@ -1,8 +1,25 @@
 import torch
 import numpy as np
 from skimage.metrics import structural_similarity as ssim_func
+from skimage.metrics import peak_signal_noise_ratio as psnr_func
 from numbers import Integral
-import functools
+import math
+
+seed = 0
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
+
+
+def mse2psnr(mse):
+    return -10.0 * np.log10(mse)
+
+
+def image_psnr(gt_image, noisy_image, weights):
+    error = np.sum((gt_image - noisy_image) ** 2, axis=-1).flatten()
+    mse = np.mean(weights * error)
+    psnr = mse2psnr(mse)
+    return psnr
 
 
 def crop(ar, crop_width, copy=False, order="K"):
@@ -82,11 +99,8 @@ def to_spherical(points):
 
     theta = torch.acos(z)
     phi = torch.atan2(y, x)
+    theta = theta - math.pi / 2
     return torch.stack([theta, phi], dim=-1)
-
-
-def mse2psnr(mse):
-    return -10.0 * np.log10(mse)
 
 
 def deg_to_rad(degrees):
@@ -117,6 +131,7 @@ def calculate_ssim(model, dataset, output_dim):
     data = dataset[:]
 
     inputs, target = data["inputs"], data["target"]
+    inputs = to_cartesian(inputs)
     mean_lat_weight = data["mean_lat_weight"]
     target_shape = data["target_shape"]
     H, W = target_shape[:2]

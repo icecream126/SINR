@@ -10,6 +10,10 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from utils.utils import mse2psnr, calculate_ssim
 from utils.visualize import visualize, visualize_denoising
+import os
+
+os.environ["WANDB__SERVICE_WAIT"] = "300"
+
 
 from datasets import denoising
 from models import relu, siren, wire, shinr, swinr, shiren
@@ -31,6 +35,8 @@ if __name__ == "__main__":
     # Dataset argument
     parser.add_argument("--panorama_idx", type=int, default=0)
     parser.add_argument("--normalize", default=False, action="store_true")
+    parser.add_argument("--tau", type=float, default=9e1)
+    parser.add_argument("--snr", type=float, default=2)
 
     # Model argument
     parser.add_argument("--hidden_dim", type=int, default=256)
@@ -63,7 +69,8 @@ if __name__ == "__main__":
     logger = WandbLogger(
         config=args,
         name=args.model,
-        # mode='disabled'
+        project="final_denoising",
+        # mode='disabled',
     )
 
     # Dataset
@@ -118,7 +125,9 @@ if __name__ == "__main__":
     )
 
     dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
-    logger.experiment.log({"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)})
+    logger.experiment.log(
+        {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
+    )
 
     if args.plot:
         dataset_all = denoising.Dataset(dataset_type="all", **vars(args))
