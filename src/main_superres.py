@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     # Log
     logger = WandbLogger(
-        config=args, name=args.model, mode="disabled", project="final_superres"
+        config=args, name=args.model, project="final_superres"
     )
 
     # Dataset

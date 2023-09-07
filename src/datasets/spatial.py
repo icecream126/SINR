@@ -101,7 +101,7 @@ class Dataset(Dataset):
         target = target.reshape(-1, self.output_dim)  # [58482, 3]
 
         inputs = torch.stack([lat, lon], dim=-1)  # [58482, 2]
-        inputs = to_cartesian(inputs)  # [58482, 3]
+        # inputs = to_cartesian(inputs)  # [58482, 3]
 
         data_out["inputs"] = inputs  # [58482, 3]
         data_out["target"] = target  # [58482, 3]
