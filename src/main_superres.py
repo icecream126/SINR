@@ -10,6 +10,9 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from utils.utils import mse2psnr, calculate_ssim
 from utils.visualize import visualize, visualize_denoising
+import os
+
+os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 from datasets import spatial, temporal
 from models import relu, siren, wire, shinr, swinr, shiren
@@ -61,9 +64,7 @@ if __name__ == "__main__":
 
     # Log
     logger = WandbLogger(
-        config=args,
-        name=args.model,
-        mode='disabled'
+        config=args, name=args.model, mode="disabled", project="final_superres"
     )
 
     # Dataset
@@ -124,9 +125,11 @@ if __name__ == "__main__":
             "best_orig_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
         }
     )
-    
+
     dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
-    logger.experiment.log({"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)})
+    logger.experiment.log(
+        {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
+    )
 
     if args.plot:
         dataset_all = dataset.Dataset(dataset_type="all", **vars(args))

@@ -7,15 +7,20 @@ import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
 
-from utils.utils import to_cartesian, add_noise
-
-TAU = 3e1  # Photon noise
-NOISE_SNR = 2
+from utils.utils import to_cartesian, add_noise, image_psnr
 
 
 class Dataset(Dataset):
     def __init__(
-        self, dataset_dir, dataset_type, output_dim, normalize, panorama_idx, **kwargs
+        self,
+        dataset_dir,
+        dataset_type,
+        output_dim,
+        normalize,
+        panorama_idx,
+        tau,
+        snr,
+        **kwargs
     ):
         self.dataset_dir = dataset_dir
         self.dataset_type = dataset_type
@@ -23,6 +28,8 @@ class Dataset(Dataset):
         self.normalize = normalize
         self.panorama_idx = panorama_idx
         self.filename = self.get_filenames()
+        self.tau = tau
+        self.snr = snr
         self._data = self.load_data()
 
     def __len__(self):
@@ -55,30 +62,32 @@ class Dataset(Dataset):
         # Circle
         else:
             data = np.load(self.filename)
-            lat = data['latitude']
-            lon = data['longitude']
-            g_target = data['target'] # [720, 1440]
-            
+            lat = data["latitude"]
+            lon = data["longitude"]
+            g_target = data["target"]  # [720, 1440]
+
             target_shape = g_target.shape
-            
+
         if self.normalize:
             g_target = (g_target - g_target.min()) / (g_target.max() - g_target.min())
-        noisy_target = add_noise(g_target, NOISE_SNR, TAU)
-        
-        g_target = torch.from_numpy(g_target)
-        noisy_target = torch.from_numpy(noisy_target)
+        noisy_target = add_noise(g_target, self.snr, self.tau)
 
         lat = torch.from_numpy(np.deg2rad(lat)).float()
         lon = torch.from_numpy(np.deg2rad(lon)).float()
 
-        mean_lat_weight = torch.cos(lat).mean()
+        mean_lat_weight = torch.cos(lat).mean()  # 0.6354
 
         lat, lon = torch.meshgrid(lat, lon)  # [2048, 1024]for each
         lat = lat.flatten()
         lon = lon.flatten()
+        weights = torch.cos(lat) / mean_lat_weight
         # coords = np.hstack((lat.reshape(-1,1), lon.reshape(-1,1)))  # [2097152, 2]
         inputs = torch.stack([lat, lon], dim=-1)
-        inputs = to_cartesian(inputs)  # [2097152, 3]
+        # inputs = to_cartesian(inputs)  # [2097152, 3]
+        # print('noisy img psnr : ',image_psnr(g_target, noisy_target, weights.numpy()))
+
+        g_target = torch.from_numpy(g_target)
+        noisy_target = torch.from_numpy(noisy_target)
 
         g_target = g_target.reshape(-1, self.output_dim)
         noisy_target = noisy_target.reshape(-1, self.output_dim)

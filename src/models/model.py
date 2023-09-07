@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from utils.utils import mse2psnr
+from utils.utils import mse2psnr, to_cartesian
 from torch.optim import lr_scheduler
 
 
@@ -15,9 +15,10 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]  # [512, 3], [512, 3]
         mean_lat_weight = data["mean_lat_weight"]  # [512] with 0.6341
 
-        weights = torch.cos(inputs[..., :1])  # [512, 1]
+        weights = torch.cos(inputs[..., 0])  # [512, 1]
         weights = weights / mean_lat_weight  # [512, 512]
 
+        inputs = to_cartesian(inputs)
         pred = self.forward(inputs)  # [512, 3]
 
         error = torch.sum(
@@ -39,9 +40,10 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., :1])
+        weights = torch.cos(inputs[..., 0])
         weights = weights / mean_lat_weight
 
+        inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
@@ -56,9 +58,10 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., :1])
+        weights = torch.cos(inputs[..., 0])
         weights = weights / mean_lat_weight
 
+        inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
@@ -81,11 +84,12 @@ class MODEL(pl.LightningModule):
 
 
 class DENOISING_MODEL(pl.LightningModule):
-    def __init__(self, lr, lr_patience, **kwargs):
+    def __init__(self, lr, lr_patience, model, **kwargs):
         super().__init__()
 
         self.lr = lr
         self.lr_patience = lr_patience
+        self.model = model
 
     def training_step(self, data, batch_idx):
         inputs, target, g_target = (
@@ -95,9 +99,10 @@ class DENOISING_MODEL(pl.LightningModule):
         )  # [512, 3] for each
         mean_lat_weight = data["mean_lat_weight"]  # 512
 
-        weights = torch.cos(inputs[..., :1])  # [512, 1]
+        weights = torch.cos(inputs[..., 0])  # [512, 1]
         weights = weights / mean_lat_weight  # [512, 512]
 
+        inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
@@ -114,35 +119,14 @@ class DENOISING_MODEL(pl.LightningModule):
 
         return loss
 
-    def validation_step(self, data, batch_idx):
-        inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
-        mean_lat_weight = data["mean_lat_weight"]
-
-        weights = torch.cos(inputs[..., :1])
-        weights = weights / mean_lat_weight
-
-        pred = self.forward(inputs)
-
-        error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
-        error_orig = torch.sum((pred - g_target) ** 2, dim=-1, keepdim=True)
-        error = weights * error
-        error_orig = weights * error_orig
-        loss = error.mean()
-        loss_orig = error_orig.mean()
-
-        self.log("valid_loss", loss, prog_bar=True)
-        self.log("valid_loss_orig", loss_orig, prog_bar=True)
-        self.log("batch_valid_psnr", mse2psnr(loss.detach().cpu().numpy()))
-        self.log("batch_valid_psnr_orig", mse2psnr(loss_orig.detach().cpu().numpy()))
-        return loss
-
     def test_step(self, data, batch_idx):
         inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., :1])
+        weights = torch.cos(inputs[..., 0])
         weights = weights / mean_lat_weight
 
+        inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
