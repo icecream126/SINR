@@ -18,7 +18,7 @@ geopotential/
 geo_agent/
 temperature/
 temp_agent/
-
+final_superres/
 ERA5_SR/
 *.ckpt
 *.png
