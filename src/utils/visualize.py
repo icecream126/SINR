@@ -22,6 +22,8 @@ def visualize(dataset, model, args, mode, logger):
 
         weights = torch.cos(inputs[..., :1])
         weights = weights / mean_lat_weight
+        if weights.shape[-1]==1:
+            weights = weights.squeeze(-1)
 
         error = torch.sum((pred - target) ** 2, dim=-1)
         error = weights * error
@@ -32,8 +34,6 @@ def visualize(dataset, model, args, mode, logger):
         target = (target - target_min) / (target_max - target_min)
         pred = (pred - target_min) / (target_max - target_min)
         pred = torch.clip(pred, 0, 1)
-
-        inputs = to_spherical(inputs[..., :3])
 
         lat = inputs[..., 0].detach().cpu().numpy()
         lon = inputs[..., 1].detach().cpu().numpy()
@@ -100,6 +100,8 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
 
         # Noisy - Prediction Error
         error = torch.sum((pred - target) ** 2, dim=-1)
+        if weights.shape[-1]==1:
+            weights = weights.squeeze(-1)
         error = weights * error
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
@@ -119,8 +121,6 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         # Ground Truth normalization
         g_target_min, g_target_max = g_target.min(), g_target.max()
         g_target = (g_target - g_target_min) / (g_target_max - g_target_min)
-
-        # inputs = to_spherical(inputs[..., :3])
 
         lat = inputs[..., 0].detach().cpu().numpy()
         lon = inputs[..., 1].detach().cpu().numpy()
