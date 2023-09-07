@@ -22,4 +22,12 @@ temp_agent/
 ERA5_SR/
 *.ckpt
 *.png
-final_superres/
+bash_denoising/
+bash_superres/
+flickr_agent/
+flickr_best/
+runs/geo/
+runs/temp/
+sweep/
+temporal_geopotential.sh
+temporal_temperature.sh
