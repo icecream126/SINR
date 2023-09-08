@@ -69,7 +69,7 @@ if __name__ == "__main__":
     logger = WandbLogger(
         config=args,
         name=args.model,
-        project="final_denoising",
+        project="denoising",
         # mode='disabled',
     )
 

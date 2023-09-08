@@ -140,7 +140,7 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         fig1 = plt.figure(figsize=(40, 20))
         plt.tricontourf(
             lon,
-            lat,
+            -lat,
             error,
             levels=100,
             cmap="hot",
@@ -159,7 +159,7 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         fig2 = plt.figure(figsize=(40, 20))
         plt.tricontourf(
             lon,
-            lat,
+            -lat,
             g_error,
             levels=100,
             cmap="hot",
