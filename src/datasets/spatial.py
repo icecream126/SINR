@@ -26,10 +26,10 @@ class Dataset(Dataset):
         return self._data["inputs"].size(0)
 
     def get_filenames(self):
-        filenames = glob.glob(os.path.join(self.dataset_dir, "*"))
+        filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*")))
         return (
             filenames[self.panorama_idx]
-            if "sun360" in self.dataset_dir
+            if "360" in self.dataset_dir
             else filenames[0]
         )
 
