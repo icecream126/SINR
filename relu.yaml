@@ -1,9 +1,9 @@
-program: src/main.py
+program: src/main_superres.py
 name: relu
 entity: postech_sinr
 method: bayes
 metric:
-  name: best_valid_loss
+  name: avg_valid_mse
   goal: minimize
 parameters:
   lr:
@@ -15,11 +15,11 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/spatial/sun360
+  - --dataset_dir=dataset/spatial/era5_geopotential
   - --model=relu
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=6
+  # - --panorama_idx=6
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial           

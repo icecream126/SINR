@@ -7,14 +7,34 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --batch_size 1 \
     --skip 
 
-# ERA5 Spatial
+# ERA5 Spatial Geopotential
 
-CUDA_VISIBLE_DEVICES=2 python src/main_superres.py \
-    --dataset_dir dataset/spatial/era5_temperature \
+CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+    --dataset_dir dataset/spatial/era5_geopotential \
     --model swinr \
+    --omega 5 \
+    --sigma 5 \
+    --lr 0.003 \
     --skip \
     --plot
 
+CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+    --dataset_dir dataset/spatial/era5_geopotential \
+    --model relu \
+    --omega 5 \
+    --sigma 5 \
+    --skip \
+    --plot
+
+# ERA5 Spatial Wind
+
+CUDA_VISIBLE_DEVICES=7 python src/main_superres.py \
+    --dataset_dir dataset/spatial/era5_wind \
+    --model swinr \
+    --omega 5 \
+    --sigma 5 \
+    --skip \
+    --plot
 
 # CIRCLE
 

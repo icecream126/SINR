@@ -1,7 +1,8 @@
 import cdsapi
 import argparse
 import os
-
+URL = ''
+KEY = ''
 all_years = [
     "1979",
     "1980",
@@ -134,7 +135,7 @@ def download_single_file(
 
     fn = custom_fn or ("_".join(variable + pressure_level + year) + "_raw.nc")
 
-    c = cdsapi.Client()
+    c = cdsapi.Client(url = URL, key = KEY)
 
     request_parameters = {
         "product_type": "reanalysis",

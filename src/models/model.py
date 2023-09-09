@@ -2,7 +2,7 @@ from typing import List, Union
 from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 import torch
 import pytorch_lightning as pl
-from utils.utils import to_cartesian, psnr
+from utils.utils import to_cartesian, psnr, mse2psnr
 from torch.optim import lr_scheduler
 
 
@@ -65,6 +65,7 @@ class MODEL(pl.LightningModule):
             [torch.tensor(x["batch_valid_mse"]) for x in outputs]
         ).mean()
         self.log("avg_valid_mse", avg_valid_mse)
+        self.log("final_valid_psnr", mse2psnr(avg_valid_mse), prog_bar=True, sync_dist=True)
 
     def test_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
@@ -98,6 +99,7 @@ class MODEL(pl.LightningModule):
         # Log the computed averages
         self.log("avg_test_mse", avg_test_mse, prog_bar=True, sync_dist=True)
         self.log("avg_test_psnr", avg_test_psnr, prog_bar=True, sync_dist=True)
+        self.log("final_test_psnr", mse2psnr(avg_test_mse), prog_bar=True, sync_dist=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
@@ -132,8 +134,8 @@ class DENOISING_MODEL(pl.LightningModule):
         inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
-        error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
-        error_orig = torch.sum((pred - g_target) ** 2, dim=-1, keepdim=True)
+        error = torch.sum((pred - target) ** 2, dim=-1)# , keepdim=True)
+        error_orig = torch.sum((pred - g_target) ** 2, dim=-1)# , keepdim=True)
         error = weights * error
         error_orig = weights * error_orig
         loss = error.mean()
@@ -149,13 +151,14 @@ class DENOISING_MODEL(pl.LightningModule):
         self.log("batch_train_psnr", w_psnr_val)
         self.log("batch_train_psnr_orig", g_w_psnr_val)
 
-        return {"batch_train_mse_orig": loss_orig}
+        return {"loss":loss, "batch_train_mse_orig": loss_orig}
 
     def training_epoch_end(self, outputs):
         avg_train_mse_orig = torch.stack(
             [torch.tensor(x["batch_train_mse_orig"]) for x in outputs]
         ).mean()
         self.log("avg_train_mse_orig", avg_train_mse_orig)
+        self.log("final_train_psnr_orig", mse2psnr(avg_train_mse_orig), prog_bar=True, sync_dist=True)
 
     def test_step(self, data, batch_idx):
         inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
@@ -167,8 +170,8 @@ class DENOISING_MODEL(pl.LightningModule):
         inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
-        error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
-        error_orig = torch.sum((pred - g_target) ** 2, dim=-1, keepdim=True)
+        error = torch.sum((pred - target) ** 2, dim=-1)# , keepdim=True)
+        error_orig = torch.sum((pred - g_target) ** 2, dim=-1)# , keepdim=True)
         error = weights * error
         error_orig = weights * error_orig
         loss = error.mean()
@@ -209,12 +212,9 @@ class DENOISING_MODEL(pl.LightningModule):
         self.log("avg_test_mse", avg_test_mse, prog_bar=True, sync_dist=True)
         self.log("avg_test_mse_orig", avg_test_mse_orig, prog_bar=True, sync_dist=True)
         self.log("avg_test_psnr", avg_batch_test_psnr, prog_bar=True, sync_dist=True)
-        self.log(
-            "avg_test_psnr_orig",
-            avg_batch_test_psnr_orig,
-            prog_bar=True,
-            sync_dist=True,
-        )
+        self.log("avg_test_psnr_orig", avg_batch_test_psnr_orig, prog_bar=True, sync_dist=True)
+        self.log("final_test_psnr", mse2psnr(avg_test_mse), prog_bar=True, sync_dist=True)
+        self.log("final_test_psnr_orig", mse2psnr(avg_test_mse_orig), prog_bar=True, sync_dist=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)

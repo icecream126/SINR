@@ -58,7 +58,7 @@ class Dataset(Dataset):
                         lat = f.variables[variable][:]
                     elif variable == "longitude":
                         lon = f.variables[variable][:]
-                    elif variable in ["z", "t"]:
+                    else :
                         target = f.variables[variable][0]
         else:
             data = np.load(self.filename)

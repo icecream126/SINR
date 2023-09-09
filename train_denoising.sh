@@ -58,7 +58,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
 
 # SUN360 (Need search)
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=3 python src/main_denoising.py \
     --dataset_dir dataset/sun360 \
     --model swinr \
     --max_epochs 2000 \
@@ -70,7 +70,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
     --hidden_dim 512 \
     --lr 0.0002
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=4 python src/main_denoising.py \
     --dataset_dir dataset/sun360 \
     --model shinr \
     --max_epochs 2000 \
@@ -81,7 +81,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
     --hidden_dim 512 \
     --lr 0.0003
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=5 python src/main_denoising.py \
     --dataset_dir dataset/sun360 \
     --model relu \
     --max_epochs 2000 \
@@ -91,7 +91,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
     --hidden_dim 512 \
     --lr 0.0001
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=6 python src/main_denoising.py \
     --dataset_dir dataset/sun360 \
     --model siren \
     --max_epochs 2000 \
@@ -102,7 +102,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
     --hidden_dim 256 \
     --lr 0.0004
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=7 python src/main_denoising.py \
     --dataset_dir dataset/sun360 \
     --model wire \
     --max_epochs 2000 \
@@ -116,19 +116,19 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
 
 # Flickr360 
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=3 python src/main_denoising.py \
     --dataset_dir dataset/flickr360 \
     --model swinr \
-    --max_epochs 2000 \
+    --max_epochs 500 \
     --skip \
     --plot \
     --normalize \
     --omega 30 \
     --sigma 1 \
     --hidden_dim 512 \
-    --lr 0.0004
+    --lr 0.0004 \
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=4 python src/main_denoising.py \
     --dataset_dir dataset/flickr360 \
     --model shinr \
     --max_epochs 2000 \
@@ -139,7 +139,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
     --hidden_dim 512 \
     --lr 0.0001
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=5 python src/main_denoising.py \
     --dataset_dir dataset/flickr360 \
     --model relu \
     --max_epochs 2000 \
@@ -149,7 +149,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
     --hidden_dim 128 \
     --lr 0.004
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=6 python src/main_denoising.py \
     --dataset_dir dataset/flickr360 \
     --model siren \
     --max_epochs 2000 \
@@ -160,7 +160,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
     --hidden_dim 128 \
     --lr 0.005
 
-CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=7 python src/main_denoising.py \
     --dataset_dir dataset/flickr360 \
     --model wire \
     --max_epochs 2000 \

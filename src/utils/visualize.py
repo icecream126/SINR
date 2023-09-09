@@ -74,9 +74,9 @@ def visualize(dataset, model, args, mode, logger):
 
 def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
     with torch.no_grad():
-        data = dataset[:]
+        data = dataset.get_all_data()
 
-        inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
+        inputs, target, g_target = data["inputs"].unsqueeze(0), data["target"].unsqueeze(0), data["g_target"].unsqueeze(0)
 
         mean_lat_weight = data["mean_lat_weight"]
         target_shape = data["target_shape"]
@@ -111,14 +111,25 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         g_target_min, g_target_max = g_target.min(), g_target.max()
         g_target = (g_target - g_target_min) / (g_target_max - g_target_min)
 
-        lat = inputs[..., 0].detach().cpu().numpy()
-        lon = inputs[..., 1].detach().cpu().numpy()
+        lat = inputs[..., 0].squeeze(0).detach().cpu().numpy()
+        lon = inputs[..., 1].squeeze(0).detach().cpu().numpy()
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
-        error = error.squeeze(-1).detach().cpu().numpy()
+        if error.shape[-1]==1:
+            error = error.squeeze(-1)
+        if error.shape[0]==1:
+            error = error.squeeze(0)
+            
+        error = error.detach().cpu().numpy()
 
         g_target = g_target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
-        g_error = g_error.squeeze(-1).detach().cpu().numpy()
+        if g_error.shape[-1]==1:
+            g_error = g_error.squeeze(-1)
+        if g_error.shape[0]==1:
+            g_error = g_error.squeeze(0)
+            
+        g_error = g_error.detach().cpu().numpy()
+        
 
         # multiply 255
         target = (255 * target).astype(np.uint8)

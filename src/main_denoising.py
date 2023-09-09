@@ -48,12 +48,14 @@ if __name__ == "__main__":
     parser.add_argument("--posenc_freq", type=int, default=10)
 
     # Learning argument
-    parser.add_argument("--batch_size", type=int, default=512)
+    parser.add_argument("--batch_size", type=int, default=256*256)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--max_epochs", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
+    parser.add_argument("--project_name", type=str, default="final_denoising")
+    
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()
 
@@ -69,7 +71,7 @@ if __name__ == "__main__":
     logger = WandbLogger(
         config=args,
         name=args.model,
-        project="denoising",
+        project=args.project_name,
         # mode='disabled',
     )
 
@@ -115,10 +117,10 @@ if __name__ == "__main__":
     trainer.fit(model, train_loader)
     trainer.test(model, test_loader, "best")
 
-    dataset_all = dataset.Dataset(**vars(args))
-    logger.experiment.log(
-        {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
-    )
+    # dataset_all = dataset.Dataset(**vars(args))
+    # logger.experiment.log(
+    #     {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
+    # )
 
     if args.plot:
         dataset_all = denoising.Dataset(**vars(args))

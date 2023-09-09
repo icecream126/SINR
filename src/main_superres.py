@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from utils.utils import calculate_ssim
+# from utils.utils import calculate_ssim
 from utils.visualize import visualize, visualize_denoising
 import os
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="swinr")
 
     # Dataset argument
-    parser.add_argument("--panorama_idx", type=int, default=0)
+    parser.add_argument("--panorama_idx", type=int, default=2)
     parser.add_argument("--normalize", default=False, action="store_true")
 
     # Model argument
@@ -117,12 +117,12 @@ if __name__ == "__main__":
     )
 
     trainer.fit(model, train_loader, valid_loader)
-    trainer.test(model, test_loader, "best")[0]
+    trainer.test(model, test_loader, "best")
 
-    dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
-    logger.experiment.log(
-        {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
-    )
+    # dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
+    # logger.experiment.log(
+    #     {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
+    # )
 
     if args.plot:
         dataset_all = dataset.Dataset(dataset_type="all", **vars(args))

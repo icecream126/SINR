@@ -69,8 +69,8 @@ def measure(x, noise_snr=40, tau=100):
     return x_meas
 
 
-# def mse2psnr(mse):
-#     return -10.0 * np.log10(mse)
+def mse2psnr(mse):
+    return -10.0 * np.log10(mse)
 
 
 # def image_psnr(gt_image, noisy_image, weights):
