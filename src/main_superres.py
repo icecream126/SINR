@@ -50,6 +50,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
+    
+    parser.add_argument("--project_name",type=str, default='final_superres')
 
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()
@@ -64,7 +66,7 @@ if __name__ == "__main__":
 
     # Log
     logger = WandbLogger(
-        config=args, name=args.model, project="superres"
+        config=args, name=args.model, project=args.project_name
     )
 
     # Dataset

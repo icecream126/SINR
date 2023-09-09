@@ -1,6 +1,6 @@
 import torch
 import pytorch_lightning as pl
-from utils.utils import mse2psnr, to_cartesian
+from utils.utils import to_cartesian, psnr
 from torch.optim import lr_scheduler
 
 
@@ -26,11 +26,14 @@ class MODEL(pl.LightningModule):
         )  # [512, 1] with 0.9419
         error = weights * error  # [512, 512] with 1.2535
         loss = error.mean()  # 1.2346
+        
+        w_psnr_val = psnr(pred.detach().cpu().numpy(), target.detach().cpu().numpy(), weights.unsqueeze(-1).detach().cpu().numpy())
+        
 
         self.log("train_loss", loss, prog_bar=True, sync_dist=True)
         self.log(
             "batch_train_psnr",
-            mse2psnr(loss.detach().cpu().numpy()),
+            w_psnr_val,
             prog_bar=True,
             sync_dist=True,
         )
@@ -50,8 +53,10 @@ class MODEL(pl.LightningModule):
         error = weights * error
         loss = error.mean()
 
+        w_psnr_val = psnr(pred.detach().cpu().numpy(), target.detach().cpu().numpy(), weights.unsqueeze(-1).detach().cpu().numpy())
+        
         self.log("valid_loss", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_valid_psnr", mse2psnr(loss.detach().cpu().numpy()))
+        self.log("batch_valid_psnr", w_psnr_val)
         return loss
 
     def test_step(self, data, batch_idx):
@@ -68,8 +73,10 @@ class MODEL(pl.LightningModule):
         error = weights * error
         loss = error.mean()
 
+        w_psnr_val = psnr(pred.detach().cpu().numpy(), target.detach().cpu().numpy(), weights.unsqueeze(-1).detach().cpu().numpy())
+        
         self.log("test_mse", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_test_psnr", mse2psnr(loss.detach().cpu().numpy()))
+        self.log("batch_test_psnr", w_psnr_val)
         return loss
 
     def configure_optimizers(self):
@@ -111,11 +118,14 @@ class DENOISING_MODEL(pl.LightningModule):
         error_orig = weights * error_orig
         loss = error.mean()
         loss_orig = error_orig.mean()
+        
+        w_psnr_val = psnr(pred.detach().cpu().numpy(), target.detach().cpu().numpy(), weights.unsqueeze(-1).detach().cpu().numpy())
+        g_w_psnr_val = psnr(pred.detach().cpu().numpy(), g_target.detach().cpu().numpy(), weights.unsqueeze(-1).detach().cpu().numpy())
 
         self.log("train_loss", loss, prog_bar=True)
         self.log("train_loss_orig", loss_orig, prog_bar=True)
-        self.log("batch_train_psnr", mse2psnr(loss.detach().cpu().numpy()))
-        self.log("batch_train_psnr_orig", mse2psnr(loss_orig.detach().cpu().numpy()))
+        self.log("batch_train_w_psnr", w_psnr_val)
+        self.log("batch_train_w_psnr_orig", g_w_psnr_val)
 
         return loss
 
@@ -136,10 +146,13 @@ class DENOISING_MODEL(pl.LightningModule):
         loss = error.mean()
         loss_orig = error_orig.mean()
 
+        w_psnr_val = psnr(pred.detach().cpu().numpy(), target.detach().cpu().numpy(), weights.unsqueeze(-1).detach().cpu().numpy())
+        g_w_psnr_val = psnr(pred.detach().cpu().numpy(), g_target.detach().cpu().numpy(), weights.unsqueeze(-1).detach().cpu().numpy())
+        
         self.log("test_mse", loss)
         self.log("test_mse_orig", loss_orig)
-        self.log("batch_test_psnr", mse2psnr(loss.detach().cpu().numpy()))
-        self.log("batch_test_psnr_orig", mse2psnr(loss_orig.detach().cpu().numpy()))
+        self.log("batch_test_w_psnr", w_psnr_val)
+        self.log("batch_test_w_psnr_orig", g_w_psnr_val)
         return loss
 
     def configure_optimizers(self):

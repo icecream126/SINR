@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Dataset argument
     parser.add_argument("--panorama_idx", type=int, default=0)
     parser.add_argument("--normalize", default=False, action="store_true")
-    parser.add_argument("--tau", type=float, default=9e1)
+    parser.add_argument("--tau", type=float, default=3e1)
     parser.add_argument("--snr", type=float, default=2)
 
     # Model argument
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--max_epochs", type=int, default=100)
+    parser.add_argument("--max_epochs", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
@@ -76,8 +76,8 @@ if __name__ == "__main__":
     # Dataset
     dataset = denoising
 
-    train_dataset = dataset.Dataset(dataset_type="train", **vars(args))
-    test_dataset = dataset.Dataset(dataset_type="test", **vars(args))
+    train_dataset = dataset.Dataset(**vars(args))
+    test_dataset = dataset.Dataset(**vars(args))
 
     train_loader = DataLoader(
         train_dataset,
@@ -124,11 +124,11 @@ if __name__ == "__main__":
         }
     )
 
-    dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
+    dataset_all = dataset.Dataset(**vars(args))
     logger.experiment.log(
         {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
     )
 
     if args.plot:
-        dataset_all = denoising.Dataset(dataset_type="all", **vars(args))
+        dataset_all = denoising.Dataset(**vars(args))
         visualize_denoising(dataset_all, model, args, logger=logger)

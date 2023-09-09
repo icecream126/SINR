@@ -37,7 +37,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --skip \
     --plot \
     --normalize \
-    --max_order 2\
+    --levels 4\
     --hidden_dim 128 \
     --lr 0.003
 
@@ -95,7 +95,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --skip \
     --plot \
     --normalize \
-    --max_order 2\
+    --levels 4\
     --hidden_dim 512 \
     --lr 0.0003
 
@@ -153,7 +153,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --skip \
     --plot \
     --normalize \
-    --max_order 2\
+    --levels 4\
     --hidden_dim 512 \
     --lr 0.0003
 

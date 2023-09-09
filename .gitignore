@@ -22,6 +22,7 @@ final_superres/
 ERA5_SR/
 *.ckpt
 *.png
+*.jpg
 bash_denoising/
 bash_superres/
 flickr_agent/
@@ -31,3 +32,4 @@ runs/temp/
 sweep/
 temporal_geopotential.sh
 temporal_temperature.sh
+230909/

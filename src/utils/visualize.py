@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from utils.utils import to_spherical, image_psnr, to_cartesian
 from PIL import Image as PILImage
 import math
+import cv2
 
 
 def visualize(dataset, model, args, mode, logger):
@@ -85,15 +86,15 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         weights = torch.cos(inputs[..., 0])
         weights = weights / mean_lat_weight
 
-        logger.experiment.log(
-            {
-                "noisy_img_psnr": image_psnr(
-                    g_target.reshape(*target_shape).detach().cpu().numpy(),
-                    target.reshape(*target_shape).detach().cpu().numpy(),
-                    weights.numpy(),
-                )
-            }
-        )
+        # logger.experiment.log(
+        #     {
+        #         "noisy_img_psnr": image_psnr(
+        #             g_target.reshape(*target_shape).detach().cpu().numpy(),
+        #             target.reshape(*target_shape).detach().cpu().numpy(),
+        #             weights.numpy(),
+        #         )
+        #     }
+        # )
 
         cart_inputs = to_cartesian(inputs)
         pred = model(cart_inputs)
@@ -131,10 +132,19 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         g_target = g_target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         g_error = g_error.squeeze(-1).detach().cpu().numpy()
 
+
         # multiply 255
         target = (255 * target).astype(np.uint8)
         pred = (255 * pred).astype(np.uint8)
         g_target = (255 * g_target).astype(np.uint8)
+        
+        pil_target = PILImage.fromarray(target)
+        pil_g_target = PILImage.fromarray(g_target)
+        pil_pred = PILImage.fromarray(pred)
+        
+        # pil_target.save("pil_noisy_img.png")
+        # pil_g_target.save("pil_gt_img.png")
+        # pil_pred.save("pil_pred.png")
 
         plt.rcParams["font.size"] = 50
         fig1 = plt.figure(figsize=(40, 20))
@@ -174,15 +184,15 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
                 ),
                 mode
                 + " Prediction": wandb.Image(
-                    pred, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    pil_pred, caption=f"{args.model}: {rmse:.4f}(RMSE)"
                 ),
                 mode
                 + " Noisy Truth": wandb.Image(
-                    target, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    pil_target, caption=f"{args.model}: {rmse:.4f}(RMSE)"
                 ),
                 mode
                 + " Ground Truth": wandb.Image(
-                    g_target, caption=f"{args.model}: {g_rmse:.4f}(G_RMSE)"
+                    pil_g_target, caption=f"{args.model}: {g_rmse:.4f}(G_RMSE)"
                 ),
             }
         )
