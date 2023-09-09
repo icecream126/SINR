@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="swinr")
 
     # Dataset argument
-    parser.add_argument("--panorama_idx", type=int, default=0)
+    parser.add_argument("--panorama_idx", type=int, default=1)
     parser.add_argument("--normalize", default=False, action="store_true")
     parser.add_argument("--tau", type=float, default=3e1)
     parser.add_argument("--snr", type=float, default=2)
