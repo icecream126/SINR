@@ -1,13 +1,13 @@
-program: src/main.py
+program: src/main_superres.py
 name: siren
 entity: postech_sinr
 method: bayes
 metric:
-  name: best_valid_loss
+  name: avg_valid_mse
   goal: minimize
 parameters:
   omega:
-    values: [0.001, 0.01, 0.1, 1, 10, 20, 30]
+    values: [0.001, 0.01, 0.1, 1, 10, 20, 30, 40, 50]
   lr:
     min: 0.0001
     max: 0.01
@@ -17,11 +17,11 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/spatial/sun360
+  - --dataset_dir=dataset/spatial/era5_geopotential
   - --model=siren
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=6
+  # - --panorama_idx=6
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial     
