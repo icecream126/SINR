@@ -12,3 +12,4 @@ SINR-src/
 figure/
 _sun*/
 _circle/
+*.ckpt
