@@ -10,22 +10,23 @@ np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 
+
 def normalize(x, fullnormalize=False):
-    '''
-        Normalize input to lie between 0, 1.
+    """
+    Normalize input to lie between 0, 1.
 
-        Inputs:
-            x: Input signal
-            fullnormalize: If True, normalize such that minimum is 0 and
-                maximum is 1. Else, normalize such that maximum is 1 alone.
+    Inputs:
+        x: Input signal
+        fullnormalize: If True, normalize such that minimum is 0 and
+            maximum is 1. Else, normalize such that maximum is 1 alone.
 
-        Outputs:
-            xnormalized: Normalized x.
-    '''
+    Outputs:
+        xnormalized: Normalized x.
+    """
 
     if x.sum() == 0:
         return x
-    
+
     xmax = x.max()
 
     if fullnormalize:
@@ -33,33 +34,34 @@ def normalize(x, fullnormalize=False):
     else:
         xmin = 0
 
-    xnormalized = (x - xmin)/(xmax - xmin)
+    xnormalized = (x - xmin) / (xmax - xmin)
 
     return xnormalized
 
+
 def measure(x, noise_snr=40, tau=100):
-    ''' Realistic sensor measurement with readout and photon noise
+    """Realistic sensor measurement with readout and photon noise
 
-        Inputs:
-            noise_snr: Readout noise in electron count
-            tau: Integration time. Poisson noise is created for x*tau.
-                (Default is 100)
+    Inputs:
+        noise_snr: Readout noise in electron count
+        tau: Integration time. Poisson noise is created for x*tau.
+            (Default is 100)
 
-        Outputs:
-            x_meas: x with added noise
-    '''
+    Outputs:
+        x_meas: x with added noise
+    """
     x_meas = np.copy(x)
 
-    noise = np.random.randn(x_meas.size).reshape(x_meas.shape)*noise_snr
+    noise = np.random.randn(x_meas.size).reshape(x_meas.shape) * noise_snr
 
     # First add photon noise, provided it is not infinity
-    if tau != float('Inf'):
-        x_meas = x_meas*tau
+    if tau != float("Inf"):
+        x_meas = x_meas * tau
 
         x_meas[x > 0] = np.random.poisson(x_meas[x > 0])
         x_meas[x <= 0] = -np.random.poisson(-x_meas[x <= 0])
 
-        x_meas = (x_meas + noise)/tau
+        x_meas = (x_meas + noise) / tau
 
     else:
         x_meas = x_meas + noise
@@ -74,27 +76,26 @@ def measure(x, noise_snr=40, tau=100):
 # def image_psnr(gt_image, noisy_image, weights):
 #     gt_image = (255*gt_image).astype(np.uint8)
 #     noisy_image = (255*noisy_image).astype(np.uint8)
-    
+
 #     error = np.sum((gt_image - noisy_image) ** 2, axis=-1).flatten()
 #     mse = np.mean(weights * error)
 #     print('mse : ',mse)
 #     psnr = mse2psnr(mse)
 #     return psnr
 
-def psnr(x, xhat, weights):
-    ''' Compute Peak Signal to Noise Ratio in dB
 
-        Inputs:
-            x: Ground truth signal
-            xhat: Reconstructed signal
+def psnr(x, error):
+    """Compute Peak Signal to Noise Ratio in dB
 
-        Outputs:
-            snrval: PSNR in dB
-    '''
-    err = x - xhat
-    w_denom = np.mean(weights * pow(err, 2))
-    w_snrval = 10*np.log10(np.max(x)/w_denom)
-    return w_snrval
+    Inputs:
+        x: Ground truth signal
+        xhat: Reconstructed signal
+
+    Outputs:
+        snrval: PSNR in dB
+    """
+    psnr = 10 * np.log10(np.max(x) / error)
+    return psnr
 
 
 def crop(ar, crop_width, copy=False, order="K"):

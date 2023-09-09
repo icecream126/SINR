@@ -28,9 +28,7 @@ class Dataset(Dataset):
     def get_filenames(self):
         filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*")))
         return (
-            filenames[self.panorama_idx]
-            if "360" in self.dataset_dir
-            else filenames[0]
+            filenames[self.panorama_idx] if "360" in self.dataset_dir else filenames[0]
         )
 
     def __getitem__(self, index):

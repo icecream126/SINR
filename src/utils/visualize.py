@@ -3,10 +3,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils.utils import to_spherical, image_psnr, to_cartesian
+from utils.utils import to_cartesian
 from PIL import Image as PILImage
-import math
-import cv2
 
 
 def visualize(dataset, model, args, mode, logger):
@@ -23,7 +21,7 @@ def visualize(dataset, model, args, mode, logger):
 
         weights = torch.cos(inputs[..., :1])
         weights = weights / mean_lat_weight
-        if weights.shape[-1]==1:
+        if weights.shape[-1] == 1:
             weights = weights.squeeze(-1)
 
         error = torch.sum((pred - target) ** 2, dim=-1)
@@ -86,22 +84,12 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         weights = torch.cos(inputs[..., 0])
         weights = weights / mean_lat_weight
 
-        # logger.experiment.log(
-        #     {
-        #         "noisy_img_psnr": image_psnr(
-        #             g_target.reshape(*target_shape).detach().cpu().numpy(),
-        #             target.reshape(*target_shape).detach().cpu().numpy(),
-        #             weights.numpy(),
-        #         )
-        #     }
-        # )
-
         cart_inputs = to_cartesian(inputs)
         pred = model(cart_inputs)
 
         # Noisy - Prediction Error
         error = torch.sum((pred - target) ** 2, dim=-1)
-        if weights.shape[-1]==1:
+        if weights.shape[-1] == 1:
             weights = weights.squeeze(-1)
         error = weights * error
         loss = error.mean()
@@ -132,16 +120,15 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         g_target = g_target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         g_error = g_error.squeeze(-1).detach().cpu().numpy()
 
-
         # multiply 255
         target = (255 * target).astype(np.uint8)
         pred = (255 * pred).astype(np.uint8)
         g_target = (255 * g_target).astype(np.uint8)
-        
+
         pil_target = PILImage.fromarray(target)
         pil_g_target = PILImage.fromarray(g_target)
         pil_pred = PILImage.fromarray(pred)
-        
+
         # pil_target.save("pil_noisy_img.png")
         # pil_g_target.save("pil_gt_img.png")
         # pil_pred.save("pil_pred.png")

@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from utils.utils import mse2psnr, calculate_ssim
+from utils.utils import calculate_ssim
 from utils.visualize import visualize, visualize_denoising
 import os
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
 
     checkpoint_cb = ModelCheckpoint(
-        monitor="train_loss_orig", mode="min", filename="best"
+        monitor="avg_train_mse_orig", mode="min", filename="best"
     )
 
     trainer = pl.Trainer.from_argparse_args(
@@ -113,16 +113,7 @@ if __name__ == "__main__":
     )
 
     trainer.fit(model, train_loader)
-    res = trainer.test(model, test_loader, "best")[0]
-
-    logger.experiment.log(
-        {
-            "test_rmse": np.sqrt(res["test_mse"]),
-            "test_psnr": mse2psnr(res["test_mse"]),
-            "best_orig_loss": checkpoint_cb.best_model_score.item(),
-            "best_orig_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
-        }
-    )
+    trainer.test(model, test_loader, "best")
 
     dataset_all = dataset.Dataset(**vars(args))
     logger.experiment.log(

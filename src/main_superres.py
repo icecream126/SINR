@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from utils.utils import mse2psnr, calculate_ssim
+from utils.utils import calculate_ssim
 from utils.visualize import visualize, visualize_denoising
 import os
 
@@ -50,8 +50,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
-    
-    parser.add_argument("--project_name",type=str, default='final_superres')
+
+    parser.add_argument("--project_name", type=str, default="final_superres")
 
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()
@@ -65,9 +65,7 @@ if __name__ == "__main__":
     )  # sun360, flickr360 takes 3 else 1
 
     # Log
-    logger = WandbLogger(
-        config=args, name=args.model, project=args.project_name
-    )
+    logger = WandbLogger(config=args, name=args.model, project=args.project_name)
 
     # Dataset
     if args.time:
@@ -104,7 +102,9 @@ if __name__ == "__main__":
     # Learning
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
 
-    checkpoint_cb = ModelCheckpoint(monitor="valid_loss", mode="min", filename="best")
+    checkpoint_cb = ModelCheckpoint(
+        monitor="avg_valid_mse", mode="min", filename="best"
+    )
 
     trainer = pl.Trainer.from_argparse_args(
         args,
@@ -117,16 +117,7 @@ if __name__ == "__main__":
     )
 
     trainer.fit(model, train_loader, valid_loader)
-    res = trainer.test(model, test_loader, "best")[0]
-
-    logger.experiment.log(
-        {
-            "test_rmse": np.sqrt(res["test_mse"]),
-            "test_psnr": mse2psnr(res["test_mse"]),
-            "best_orig_loss": checkpoint_cb.best_model_score.item(),
-            "best_orig_psnr": mse2psnr(checkpoint_cb.best_model_score.item()),
-        }
-    )
+    trainer.test(model, test_loader, "best")[0]
 
     dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
     logger.experiment.log(
