@@ -79,19 +79,19 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --dataset_dir dataset/sun360 \
     --model swinr \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
-    --omega 20 \
+    --omega 40 \
     --sigma 1 \
     --hidden_dim 512 \
-    --lr 0.0002
+    --lr 0.0003
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=1 python src/main_superres.py \
     --dataset_dir dataset/sun360 \
     --model shinr \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
@@ -99,57 +99,57 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --hidden_dim 512 \
     --lr 0.0003
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=2 python src/main_superres.py \
     --dataset_dir dataset/sun360 \
     --model relu \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
     --hidden_dim 512 \
-    --lr 0.0001
+    --lr 0.006
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
     --dataset_dir dataset/sun360 \
     --model siren \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
     --omega 1 \
     --hidden_dim 256 \
-    --lr 0.0004
+    --lr 0.002
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=4 python src/main_superres.py \
     --dataset_dir dataset/sun360 \
     --model wire \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
     --omega 1 \
     --sigma 20 \
     --hidden_dim 128 \
-    --lr 0.001
+    --lr 0.005
 
 # Flickr360 (Need Search)
 
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --dataset_dir dataset/flickr360 \
     --model swinr \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
     --omega 20 \
     --sigma 1 \
-    --hidden_dim 512 \
-    --lr 0.0002
+    --hidden_dim 64 \
+    --lr 0.001
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=1 python src/main_superres.py \
     --dataset_dir dataset/flickr360 \
     --model shinr \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
@@ -157,35 +157,35 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --hidden_dim 512 \
     --lr 0.0003
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=2 python src/main_superres.py \
     --dataset_dir dataset/flickr360 \
     --model relu \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
-    --hidden_dim 512 \
+    --hidden_dim 128 \
     --lr 0.0001
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
     --dataset_dir dataset/flickr360 \
     --model siren \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
     --omega 1 \
-    --hidden_dim 256 \
-    --lr 0.0004
+    --hidden_dim 64 \
+    --lr 0.002
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=4 python src/main_superres.py \
     --dataset_dir dataset/flickr360 \
     --model wire \
-    --max_epochs 500 \
+    --max_epochs 2000 \
     --skip \
     --plot \
     --normalize \
-    --omega 1 \
-    --sigma 20 \
-    --hidden_dim 128 \
-    --lr 0.001
+    --omega 0.01 \
+    --sigma 10 \
+    --hidden_dim 64 \
+    --lr 0.002
