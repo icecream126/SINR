@@ -94,7 +94,7 @@ def psnr(x, error):
     Outputs:
         snrval: PSNR in dB
     """
-    psnr = 10 * np.log10(np.max(x) / error)
+    psnr = -10.0 * np.log10(error)
     return psnr
 
 

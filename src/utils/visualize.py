@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 
 from utils.utils import to_cartesian
 from PIL import Image as PILImage
+import cartopy.crs as ccrs
+from mpl_toolkits.basemap import Basemap
+import matplotlib.cm as cm
 
 
 def visualize(dataset, model, args, mode, logger):
@@ -34,15 +37,22 @@ def visualize(dataset, model, args, mode, logger):
         pred = (pred - target_min) / (target_max - target_min)
         pred = torch.clip(pred, 0, 1)
 
-        lat = inputs[..., 0].detach().cpu().numpy()
-        lon = inputs[..., 1].detach().cpu().numpy()
+        lat = inputs[..., 0]# .detach().cpu().numpy()
+        lon = inputs[..., 1]# .detach().cpu().numpy()
+        deg_lat = torch.rad2deg(lat).reshape(target_shape) # set range [-90, 90]
+        deg_lon = (torch.rad2deg(lon)-180).reshape(target_shape) # set range [-180, 180]
+        lat, lon = lat.detach().cpu().numpy(), lon.detach().cpu().numpy()
+        deg_lat, deg_lon = deg_lat.detach().cpu().numpy(), deg_lon.detach().cpu().numpy()
+        
+        
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         error = error.squeeze(-1).detach().cpu().numpy()
 
         target = (255 * target).astype(np.uint8)
-        pred = (255 * pred).astype(np.uint8)
-
+        pred = (255 * pred).astype(np.uint8)  
+            
+            
         plt.rcParams["font.size"] = 50
         fig = plt.figure(figsize=(40, 20))
         plt.tricontourf(
@@ -50,26 +60,68 @@ def visualize(dataset, model, args, mode, logger):
             -lat,
             error,
             levels=100,
-            cmap="hot",
+            cmap="PuBu_r",
         )
         plt.colorbar()
+        
+                
+        if len(pred.shape)!=3:
+            plt.rcParams["font.size"] = 50
+            fig = plt.figure(figsize=(40, 20))
+            plt.tricontourf(
+                lon,
+                -lat,
+                pred.flatten(),
+                levels=100,
+                cmap="PuBu_r",
+            )
+            plt.colorbar()
+            logger.experiment.log(
+                {
+                    mode
+                    + " My prediction Map": wandb.Image(
+                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    )
+                }
+            )
+            
+            plt.rcParams["font.size"] = 50
+            fig = plt.figure(figsize=(40, 20))
+            plt.tricontourf(
+                lon,
+                -lat,
+                target.flatten(),
+                levels=100,
+                cmap="PuBu_r",
+            )
+            plt.colorbar()
+            logger.experiment.log(
+                {
+                    mode
+                    + " My truth": wandb.Image(
+                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    )
+                }
+            )          
+            
+        else:
 
-        logger.experiment.log(
-            {
-                mode
-                + " Error Map": wandb.Image(
-                    fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                ),
-                mode
-                + " Prediction": wandb.Image(
-                    pred, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                ),
-                mode
-                + " Truth": wandb.Image(
-                    target, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                ),
-            }
-        )
+            logger.experiment.log(
+                {
+                    mode
+                    + " Error Map": wandb.Image(
+                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    ),
+                    mode
+                    + " Prediction": wandb.Image(
+                        pred, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    ),
+                    mode
+                    + " Truth": wandb.Image(
+                        target, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    ),
+                }
+            )
 
 
 def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
