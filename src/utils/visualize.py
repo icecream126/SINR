@@ -39,8 +39,8 @@ def visualize(dataset, model, args, mode, logger):
 
         lat = inputs[..., 0]# .detach().cpu().numpy()
         lon = inputs[..., 1]# .detach().cpu().numpy()
-        deg_lat = torch.rad2deg(lat).reshape(target_shape) # set range [-90, 90]
-        deg_lon = (torch.rad2deg(lon)-180).reshape(target_shape) # set range [-180, 180]
+        deg_lat = torch.rad2deg(lat) # set range [-90, 90]
+        deg_lon = (torch.rad2deg(lon)-180) # set range [-180, 180]
         lat, lon = lat.detach().cpu().numpy(), lon.detach().cpu().numpy()
         deg_lat, deg_lon = deg_lat.detach().cpu().numpy(), deg_lon.detach().cpu().numpy()
         
@@ -66,6 +66,15 @@ def visualize(dataset, model, args, mode, logger):
         
                 
         if len(pred.shape)!=3:
+            logger.experiment.log(
+                {
+                    mode
+                    + " Error Map": wandb.Image(
+                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                    )
+                }
+             )
+            
             plt.rcParams["font.size"] = 50
             fig = plt.figure(figsize=(40, 20))
             plt.tricontourf(

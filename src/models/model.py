@@ -2,7 +2,7 @@ from typing import List, Union
 from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 import torch
 import pytorch_lightning as pl
-from utils.utils import to_cartesian, psnr, mse2psnr
+from utils.utils import to_cartesian, mse2psnr
 from torch.optim import lr_scheduler
 
 
@@ -29,7 +29,7 @@ class MODEL(pl.LightningModule):
         error = weights * error  # [512, 512] with 1.2535
         loss = error.mean()  # 1.2346
 
-        w_psnr_val = psnr(target.detach().cpu().numpy(), loss.detach().cpu().numpy())
+        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
 
         self.log("batch_train_mse", loss, prog_bar=True, sync_dist=True)
         self.log(
@@ -54,7 +54,7 @@ class MODEL(pl.LightningModule):
         error = weights * error
         loss = error.mean()
 
-        w_psnr_val = psnr(target.detach().cpu().numpy(), loss.detach().cpu().numpy())
+        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
 
         self.log("batch_valid_mse", loss, prog_bar=True, sync_dist=True)
         self.log("batch_valid_psnr", w_psnr_val)
@@ -81,7 +81,7 @@ class MODEL(pl.LightningModule):
         error = weights * error
         loss = error.mean()
 
-        w_psnr_val = psnr(target.detach().cpu().numpy(), loss.detach().cpu().numpy())
+        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
 
         self.log("batch_test_mse", loss, prog_bar=True, sync_dist=True)
         self.log("batch_test_psnr", w_psnr_val)
@@ -141,10 +141,8 @@ class DENOISING_MODEL(pl.LightningModule):
         loss = error.mean()
         loss_orig = error_orig.mean()
 
-        w_psnr_val = psnr(target.detach().cpu().numpy(), loss.detach().cpu().numpy())
-        g_w_psnr_val = psnr(
-            target.detach().cpu().numpy(), loss_orig.detach().cpu().numpy()
-        )
+        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        g_w_psnr_val = mse2psnr(loss_orig.detach().cpu().numpy())
 
         self.log("batch_train_mse", loss, prog_bar=True)
         self.log("batch_train_mse_orig", loss_orig, prog_bar=True)
@@ -177,10 +175,8 @@ class DENOISING_MODEL(pl.LightningModule):
         loss = error.mean()
         loss_orig = error_orig.mean()
 
-        w_psnr_val = psnr(target.detach().cpu().numpy(), loss.detach().cpu().numpy())
-        g_w_psnr_val = psnr(
-            target.detach().cpu().numpy(), loss_orig.detach().cpu().numpy()
-        )
+        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        g_w_psnr_val = mse2psnr(loss_orig.detach().cpu().numpy())
 
         self.log("batch_test_mse", loss)
         self.log("batch_test_mse_orig", loss_orig)

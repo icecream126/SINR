@@ -73,30 +73,6 @@ def mse2psnr(mse):
     return -10.0 * np.log10(mse)
 
 
-# def image_psnr(gt_image, noisy_image, weights):
-#     gt_image = (255*gt_image).astype(np.uint8)
-#     noisy_image = (255*noisy_image).astype(np.uint8)
-
-#     error = np.sum((gt_image - noisy_image) ** 2, axis=-1).flatten()
-#     mse = np.mean(weights * error)
-#     print('mse : ',mse)
-#     psnr = mse2psnr(mse)
-#     return psnr
-
-
-def psnr(x, error):
-    """Compute Peak Signal to Noise Ratio in dB
-
-    Inputs:
-        x: Ground truth signal
-        xhat: Reconstructed signal
-
-    Outputs:
-        snrval: PSNR in dB
-    """
-    psnr = -10.0 * np.log10(error)
-    return psnr
-
 
 def crop(ar, crop_width, copy=False, order="K"):
     """Crop array `ar` by `crop_width` along each dimension.
