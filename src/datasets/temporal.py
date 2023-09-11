@@ -46,7 +46,7 @@ class Dataset(Dataset):
                     lon = f.variables[variable][:]
                 elif variable == "time":
                     time = f.variables[variable][:]
-                elif variable in ["z", "t"]:
+                else:
                     target = f.variables[variable][:]
 
         lat = np.deg2rad(lat)
