@@ -2,15 +2,22 @@ import wandb
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import xarray as xr
 
 from utils.utils import to_cartesian
 from PIL import Image as PILImage
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+
 from mpl_toolkits.basemap import Basemap
 import matplotlib.cm as cm
+import math
+
+from scipy.interpolate import griddata
+import numpy as np
 
 
-def visualize(dataset, model, args, mode, logger):
+def visualize_360(dataset, model, args, mode, logger):
     with torch.no_grad():
         data = dataset[:]
 
@@ -32,27 +39,22 @@ def visualize(dataset, model, args, mode, logger):
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
 
-        target_min, target_max = target.min(), target.max()
-        target = (target - target_min) / (target_max - target_min)
-        pred = (pred - target_min) / (target_max - target_min)
-        pred = torch.clip(pred, 0, 1)
 
-        lat = inputs[..., 0]# .detach().cpu().numpy()
-        lon = inputs[..., 1]# .detach().cpu().numpy()
+        lat = inputs[..., 0]
+        lon = inputs[..., 1]
         deg_lat = torch.rad2deg(lat) # set range [-90, 90]
-        deg_lon = (torch.rad2deg(lon)-180) # set range [-180, 180]
+        deg_lon = torch.rad2deg(lon) # set range [-180, 180]
         lat, lon = lat.detach().cpu().numpy(), lon.detach().cpu().numpy()
         deg_lat, deg_lon = deg_lat.detach().cpu().numpy(), deg_lon.detach().cpu().numpy()
         
+        # Unnormalize prediction
         
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         error = error.squeeze(-1).detach().cpu().numpy()
-
+            
         target = (255 * target).astype(np.uint8)
         pred = (255 * pred).astype(np.uint8)  
-            
-            
         plt.rcParams["font.size"] = 50
         fig = plt.figure(figsize=(40, 20))
         plt.tricontourf(
@@ -60,77 +62,106 @@ def visualize(dataset, model, args, mode, logger):
             -lat,
             error,
             levels=100,
-            cmap="PuBu_r",
+            cmap="hot",
         )
         plt.colorbar()
-        
-                
-        if len(pred.shape)!=3:
-            logger.experiment.log(
-                {
-                    mode
-                    + " Error Map": wandb.Image(
-                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                    )
-                }
-             )
-            
-            plt.rcParams["font.size"] = 50
-            fig = plt.figure(figsize=(40, 20))
-            plt.tricontourf(
-                lon,
-                -lat,
-                pred.flatten(),
-                levels=100,
-                cmap="PuBu_r",
-            )
-            plt.colorbar()
-            logger.experiment.log(
-                {
-                    mode
-                    + " My prediction Map": wandb.Image(
-                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                    )
-                }
-            )
-            
-            plt.rcParams["font.size"] = 50
-            fig = plt.figure(figsize=(40, 20))
-            plt.tricontourf(
-                lon,
-                -lat,
-                target.flatten(),
-                levels=100,
-                cmap="PuBu_r",
-            )
-            plt.colorbar()
-            logger.experiment.log(
-                {
-                    mode
-                    + " My truth": wandb.Image(
-                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                    )
-                }
-            )          
-            
-        else:
 
-            logger.experiment.log(
-                {
-                    mode
-                    + " Error Map": wandb.Image(
-                        fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                    ),
-                    mode
-                    + " Prediction": wandb.Image(
-                        pred, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                    ),
-                    mode
-                    + " Truth": wandb.Image(
-                        target, caption=f"{args.model}: {rmse:.4f}(RMSE)"
-                    ),
-                }
-            )
+        logger.experiment.log(
+            {
+                mode
+                + " Error Map": wandb.Image(
+                    fig, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                ),
+                mode
+                + " Prediction": wandb.Image(
+                    pred, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                ),
+                mode
+                + " Truth": wandb.Image(
+                    target, caption=f"{args.model}: {rmse:.4f}(RMSE)"
+                ),
+            }
+        )
+
+def draw_map(x, mode, variable, colormap, rmse, logger, args):
+    # Plot flat map
+    title = mode+'_'+variable
+    fig = plt.figure(figsize=[12,5])
+    ax = fig.add_subplot(111, projection=ccrs.PlateCarree(central_longitude=0))
+    x[variable].plot(ax=ax,cmap=colormap, transform=ccrs.PlateCarree())
+    ax.coastlines()
+    plt.savefig(title+'.png')
+    logger.experiment.log({
+        title: wandb.Image(fig, caption=f"{args.model}:{rmse:.4f}(RMSE)")
+    })
+    
+    # Plot sphere map
+    title = 'sphere_'+mode+'_'+variable
+    fig = plt.figure(figsize=[12,5])
+    ax = fig.add_subplot(111, projection=ccrs.Orthographic(central_longitude=20, central_latitude=40))
+    x[variable].plot(ax=ax,cmap=colormap, transform=ccrs.PlateCarree())
+    ax.coastlines()
+    plt.savefig(title+'.png')
+    logger.experiment.log({
+        title: wandb.Image(fig, caption=f"{args.model}:{rmse:.4f}(RMSE)")
+    })
+
+
+
+def visualize_era5(dataset, model, filename, logger, args):
+    with torch.no_grad():
+        data = dataset[:]
+
+        inputs, target = data["inputs"], data["target"]
+
+        mean_lat_weight = data["mean_lat_weight"]
+        target_shape = data["target_shape"]
+
+        cart_inputs = to_cartesian(inputs)
+        pred = model(cart_inputs)
+
+        weights = torch.cos(inputs[..., :1])
+        weights = weights / mean_lat_weight
+        if weights.shape[-1] == 1:
+            weights = weights.squeeze(-1)
+
+        error = torch.sum((pred - target) ** 2, dim=-1)
+        error = weights * error
+        loss = error.mean()
+        rmse = torch.sqrt(loss).item()
+        
+        target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
+        pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
+        error = error.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
+        
+        dims=('latitude','longitude')
+
+
+        x = xr.open_dataset(filename)
+        
+        # Assign prediction and error for visualization        
+        x = x.assign(pred=(dims,pred))
+        x = x.assign(error=(dims,error))
+        
+        if "geopotential" in args.dataset_dir:
+            ground_truth='z'
+            colormap='YlOrBr_r'
+        elif "wind" in args.dataset_dir:
+            ground_truth='u'
+            colormap='Greys_r'
+        elif "cloud" in args.dataset_dir:
+            ground_truth='cc'
+            colormap='PuBu_r'
+        
+        # Assign normalized target variable for visualization
+        gt_min, gt_max = float(x[ground_truth].min()),float(x[ground_truth].max())
+        x = x.assign(target=(x[ground_truth]-gt_min)/(gt_max-gt_min))
+            
+        draw_map(x, "HR", "pred" , colormap, rmse, logger, args)
+        draw_map(x, "HR", "error" , "hot", rmse, logger, args)
+        draw_map(x, "HR", "target" , colormap, rmse, logger, args)
+        
+        
 
 
 def visualize_denoising(dataset, model, args, mode="denoising", logger=None):

@@ -8,8 +8,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-# from utils.utils import calculate_ssim
-from utils.visualize import visualize, visualize_denoising
+from utils.visualize import visualize_era5, visualize_360
 import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
@@ -51,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
-    parser.add_argument("--project_name", type=str, default="final_superres")
+    parser.add_argument("--project_name", type=str, default="fair_superres")
 
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()
@@ -126,5 +125,15 @@ if __name__ == "__main__":
 
     if args.plot:
         dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
-        visualize(dataset_all, model, args, "HR", logger=logger)
-        visualize(train_dataset, model, args, "LR", logger=logger)
+        
+        if 'era5' in args.dataset_dir:
+            # Currently only HR visualized
+            visualize_era5(dataset_all, model, args.dataset_dir+"/data.nc", logger, args)
+            # TODO : Visualize LR
+            # Visualizing LR with earthmap is tricky due to interpolation
+            # visualize_era5_LR(train_dataset, model, args.dataset_dir+"/data.nc", logger, args)
+            # Maybe we don't need LR visualizations. At most, we would need the ground truth.
+            # i.e., we don't need error map, prediction of LR visualizations
+        else:
+            visualize_360(dataset_all, model, args, "HR", logger=logger)
+            visualize_360(train_dataset, model, args, "LR", logger=logger)

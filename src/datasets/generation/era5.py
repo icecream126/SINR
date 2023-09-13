@@ -1,8 +1,8 @@
 import cdsapi
 import argparse
 import os
-URL = ''
-KEY = ''
+URL = 'https://cds.climate.copernicus.eu/api/v2'
+KEY = '243554:3dc5cf51-eeb5-4de2-a8d9-d6f46dc39565'
 all_years = [
     "1979",
     "1980",
