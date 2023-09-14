@@ -26,5 +26,8 @@ class PosEncoding(nn.Module):
                 cos = torch.unsqueeze(torch.cos((2**i) * np.pi * c), -1)
 
                 coords_pos_enc = torch.cat((coords_pos_enc, sin, cos), axis=-1)
-
-        return coords_pos_enc.reshape(coords.shape[0], self.out_dim)
+        # spatial / time
+        if coords.shape[-1]==3:
+            return coords_pos_enc.reshape(coords.shape[0], self.out_dim)
+        else:
+            return coords_pos_enc.reshape(coords.shape[1], self.out_dim)

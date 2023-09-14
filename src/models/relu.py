@@ -39,7 +39,7 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = PosEncoding(in_features=3, num_frequencies=posenc_freq)
+        self.posenc = PosEncoding(in_features=input_dim, num_frequencies=posenc_freq)
         self.posenc_dim = 2 * posenc_freq * input_dim + input_dim
 
         self.nonlin = ReLULayer

@@ -94,7 +94,7 @@ class SphericalGaborLayer(nn.Module):
         gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
 
         if self.time:
-            time = input[..., 2:]
+            time = input[..., 3:]
             lin = self.linear(time)
             freq_arg = freq_arg + lin
             gauss_arg = gauss_arg + lin * lin

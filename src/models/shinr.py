@@ -32,7 +32,7 @@ class SphericalHarmonicsLayer(nn.Module):
         out = components_from_spherical_harmonics(self.levels, input[..., :3])
 
         if self.time:
-            time = input[..., 2:]
+            time = input[..., 3:]
             lin = self.linear(time)
             omega = self.omega * lin
             out = out * torch.sin(omega)

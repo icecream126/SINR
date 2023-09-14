@@ -20,7 +20,10 @@ class MODEL(pl.LightningModule):
         weights = torch.cos(inputs[..., 0])  # [512, 1]
         weights = weights / mean_lat_weight  # [512, 512]
 
-        inputs = to_cartesian(inputs)
+        if self.time:
+            inputs = torch.cat((to_cartesian(inputs[...,:2]), inputs[...,2:]), dim=-1)
+        else:
+            inputs = to_cartesian(inputs)
         pred = self.forward(inputs)  # [512, 3]
 
         error = torch.sum(
@@ -49,8 +52,11 @@ class MODEL(pl.LightningModule):
 
         weights = torch.cos(inputs[..., 0])
         weights = weights / mean_lat_weight
-
-        inputs = to_cartesian(inputs)
+        
+        if self.time:
+            inputs = torch.cat((to_cartesian(inputs[...,:2]), inputs[...,2:]), dim=-1)
+        else:
+            inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
@@ -79,7 +85,10 @@ class MODEL(pl.LightningModule):
         weights = torch.cos(inputs[..., 0])
         weights = weights / mean_lat_weight
 
-        inputs = to_cartesian(inputs)
+        if self.time:
+            inputs = torch.cat((to_cartesian(inputs[...,:2]), inputs[...,2:]), dim=-1)
+        else:
+            inputs = to_cartesian(inputs)
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
