@@ -9,7 +9,6 @@ from PIL import Image as PILImage
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
-from mpl_toolkits.basemap import Basemap
 import matplotlib.cm as cm
 import math
 
