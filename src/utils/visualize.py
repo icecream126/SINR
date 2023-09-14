@@ -47,9 +47,8 @@ def visualize_360(dataset, model, args, mode, logger):
         deg_lat, deg_lon = deg_lat.detach().cpu().numpy(), deg_lon.detach().cpu().numpy()
         
         target_min, target_max = target.min(), target.max()
-        pred_min, pred_max = pred.min(), pred.max()
         target = (target - target_min) / (target_max - target_min)
-        pred = (pred - pred_min) / (pred_max - pred_min)
+        pred = (pred - target_min) / (target_max - target_min)
         pred = torch.clip(pred, 0, 1)
         
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
@@ -132,6 +131,12 @@ def visualize_era5(dataset, model, filename, logger, args):
         error = weights * error
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
+        
+                
+        target_min, target_max = target.min(), target.max()
+        target = (target - target_min) / (target_max - target_min)
+        pred = (pred - target_min) / (target_max - target_min)
+        pred = torch.clip(pred, 0, 1)
         
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
