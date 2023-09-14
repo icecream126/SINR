@@ -26,7 +26,10 @@ class MODEL(pl.LightningModule):
         error = torch.sum(
             (pred - target) ** 2, dim=-1, keepdim=True
         )  # [512, 1] with 0.9419
+        if len(error.shape)>len(weights.shape):
+            error = error.squeeze(-1)
         error = weights * error  # [512, 512] with 1.2535
+        
         loss = error.mean()  # 1.2346
 
         w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
@@ -51,6 +54,8 @@ class MODEL(pl.LightningModule):
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+        if len(error.shape)>len(weights.shape):
+            error = error.squeeze(-1)
         error = weights * error
         loss = error.mean()
 
@@ -78,6 +83,8 @@ class MODEL(pl.LightningModule):
         pred = self.forward(inputs)
 
         error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+        if len(error.shape)>len(weights.shape):
+            error = error.squeeze(-1)
         error = weights * error
         loss = error.mean()
 
