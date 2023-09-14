@@ -47,7 +47,10 @@ def visualize_360(dataset, model, args, mode, logger):
         lat, lon = lat.detach().cpu().numpy(), lon.detach().cpu().numpy()
         deg_lat, deg_lon = deg_lat.detach().cpu().numpy(), deg_lon.detach().cpu().numpy()
         
-        # Unnormalize prediction
+        target_min, target_max = target.min(), target.max()
+        target = (target - target_min) / (target_max - target_min)
+        pred = (pred - target_min) / (target_max - target_min)
+        pred = torch.clip(pred, 0, 1)
         
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
