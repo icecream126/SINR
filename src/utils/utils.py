@@ -4,6 +4,7 @@ from skimage.metrics import structural_similarity as ssim_func
 from skimage.metrics import peak_signal_noise_ratio as psnr_func
 from numbers import Integral
 import math
+from torch import nn
 
 seed = 0
 np.random.seed(seed)
@@ -71,7 +72,6 @@ def measure(x, noise_snr=40, tau=100):
 
 def mse2psnr(mse):
     return -10.0 * np.log10(mse)
-
 
 
 def crop(ar, crop_width, copy=False, order="K"):
@@ -211,3 +211,35 @@ def calculate_ssim(model, dataset, output_dim):
     ssim = ssim / 3
 
     return ssim
+
+
+def geometric_initializer(layer, in_dim):
+    nn.init.normal_(layer.weight, mean=np.sqrt(np.pi) / np.sqrt(in_dim), std=0.00001)
+    nn.init.constant_(layer.bias, -1)
+
+
+def first_layer_sine_initializer(layer):
+    with torch.no_grad():
+        if hasattr(layer, "weight"):
+            num_input = layer.weight.size(-1)
+            # See paper sec. 3.2, final paragraph, and supplement Sec. 1.5 for discussion of factor 30
+            layer.weight.uniform_(-1 / num_input, 1 / num_input)
+
+
+def sine_initializer(layer):
+    with torch.no_grad():
+        if hasattr(layer, "weight"):
+            num_input = layer.weight.size(-1)
+            # See supplement Sec. 1.5 for discussion of factor 30
+            layer.weight.uniform_(
+                -np.sqrt(6 / num_input) / 30, np.sqrt(6 / num_input) / 30
+            )
+
+
+class Sine(nn.Module):
+    def __init__(self, omega_0=30):
+        super().__init__()
+        self.omega_0 = omega_0
+
+    def forward(self, input):
+        return torch.sin(self.omega_0 * input)

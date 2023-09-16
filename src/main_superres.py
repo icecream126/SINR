@@ -13,8 +13,8 @@ import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
-from datasets import spatial, temporal
-from models import relu, siren, wire, shinr, swinr, shiren
+from datasets import spatial, temporal, spatial_ginr
+from models import relu, siren, wire, shinr, swinr, shiren, ginr
 
 model_dict = {
     "relu": relu,
@@ -23,6 +23,7 @@ model_dict = {
     "shinr": shinr,
     "swinr": swinr,
     "shiren": shiren,
+    "ginr": ginr,
 }
 
 if __name__ == "__main__":
@@ -50,6 +51,9 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
+    # GINR argument
+    parser.add_argument("--n_fourier", type=int, default=34)
+
     parser.add_argument("--project_name", type=str, default="fair_superres")
 
     parser.add_argument("--plot", default=False, action="store_true")
@@ -71,10 +75,14 @@ if __name__ == "__main__":
         dataset = temporal
     else:
         dataset = spatial
+        if args.model == "ginr":
+            dataset = spatial_ginr
 
     train_dataset = dataset.Dataset(dataset_type="train", **vars(args))
     valid_dataset = dataset.Dataset(dataset_type="valid", **vars(args))
     test_dataset = dataset.Dataset(dataset_type="test", **vars(args))
+    if args.model == "ginr":
+        args.input_dim = train_dataset.n_fourier + (1 if args.time else 0)
 
     train_loader = DataLoader(
         train_dataset,
@@ -94,6 +102,10 @@ if __name__ == "__main__":
         shuffle=False,
         num_workers=args.num_workers,
     )
+
+    import pdb
+
+    pdb.set_trace()
 
     # Model
     model = model_dict[args.model].INR(**vars(args))
@@ -125,10 +137,12 @@ if __name__ == "__main__":
 
     if args.plot:
         dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
-        
-        if 'era5' in args.dataset_dir:
+
+        if "era5" in args.dataset_dir:
             # Currently only HR visualized
-            visualize_era5(dataset_all, model, args.dataset_dir+"/data.nc", logger, args)
+            visualize_era5(
+                dataset_all, model, args.dataset_dir + "/data.nc", logger, args
+            )
             # TODO : Visualize LR
             # Visualizing LR with earthmap is tricky due to interpolation
             # visualize_era5_LR(train_dataset, model, args.dataset_dir+"/data.nc", logger, args)

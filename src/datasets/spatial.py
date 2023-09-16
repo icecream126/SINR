@@ -26,7 +26,7 @@ class Dataset(Dataset):
         return self._data["inputs"].size(0)
 
     def get_filenames(self):
-        filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*")))
+        filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*.nc")))
         return (
             filenames[self.panorama_idx] if "360" in self.dataset_dir else filenames[0]
         )
@@ -40,6 +40,9 @@ class Dataset(Dataset):
         data_out["mean_lat_weight"] = self._data["mean_lat_weight"]
         data_out["lat"] = self._data["lat"]
         data_out["lon"] = self._data["lon"]
+        # import pdb
+
+        # pdb.set_trace()
         return data_out
 
     def load_data(self):
@@ -60,7 +63,7 @@ class Dataset(Dataset):
                         lat = f.variables[variable][:]
                     elif variable == "longitude":
                         lon = f.variables[variable][:]
-                    else :
+                    else:
                         target = f.variables[variable][0]
         else:
             data = np.load(self.filename)
@@ -70,7 +73,9 @@ class Dataset(Dataset):
             target = data["target"]
 
         lat = np.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
-        lon = np.deg2rad(lon)  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
+        lon = np.deg2rad(
+            lon
+        )  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
 
         if self.normalize:
             target = (target - target.min()) / (target.max() - target.min())
@@ -90,8 +95,8 @@ class Dataset(Dataset):
         lat = torch.from_numpy(lat[lat_idx]).float()  # 171
         lon = torch.from_numpy(lon[lon_idx]).float()  # 342
         target = torch.from_numpy(target[lat_idx][:, lon_idx]).float()  # [171, 342, 3]
-        data_out['lat'] = lat
-        data_out['lon'] = lon
+        data_out["lat"] = lat
+        data_out["lon"] = lon
 
         mean_lat_weight = torch.cos(lat).mean()  # 0.6341
         target_shape = target.shape  # [171, 342, 3]
