@@ -11,32 +11,39 @@ from utils.spherical_harmonics import components_from_spherical_harmonics
 class SphericalHarmonicsLayer(nn.Module):
     def __init__(
         self,
+        relu,
+        hidden_dim,
         levels,
         time,
         omega,
         **kwargs,
     ):
         super().__init__()
-
+        self.relu = relu
         self.levels = levels
-        self.hidden_dim = levels**2
+        self.hidden_dim = hidden_dim
+        # self.hidden_dim = levels**2
         self.time = time
         self.omega = omega
+        self.linear = nn.Linear(levels**2, self.hidden_dim)
 
         if time:
-            self.linear = nn.Linear(1, self.hidden_dim)
-            with torch.no_grad():
-                self.linear.weight.uniform_(-1, 1)
+            self.latents = nn.Linear(1, self.hidden_dim) # latent embedding for time
+            self.linear = nn.Linear(levels**2+self.hidden_dim, self.hidden_dim) # change linear layer output dim for time
 
     def forward(self, input):
         out = components_from_spherical_harmonics(self.levels, input[..., :3])
 
         if self.time:
             time = input[..., 3:]
-            lin = self.linear(time)
-            omega = self.omega * lin
-            out = out * torch.sin(omega)
-        return out
+            time = self.latents(time)
+            out = torch.cat([out, time], dim=-1)
+        out = self.linear(out)
+        
+        if self.relu:
+            return nn.functional.relu(out)
+        else:
+            return out
 
 
 class INR(MODEL):
@@ -50,6 +57,7 @@ class INR(MODEL):
         time,
         skip,
         omega,
+        relu,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -61,14 +69,12 @@ class INR(MODEL):
         self.first_nonlin = SphericalHarmonicsLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(levels, time, omega))
+        self.net.append(self.first_nonlin(relu, hidden_dim, levels, time, omega))
 
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
-            if i == 0:
-                self.net.append(self.nonlin(levels**2, hidden_dim))
-            elif skip and i == ceil(hidden_layers / 2):
+            if skip and i == ceil(hidden_layers / 2):
                 self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:
                 self.net.append(self.nonlin(hidden_dim, hidden_dim))

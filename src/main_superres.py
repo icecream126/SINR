@@ -42,6 +42,7 @@ if __name__ == "__main__":
     parser.add_argument("--sigma", type=float, default=1.0)
     parser.add_argument("--levels", type=int, default=4)
     parser.add_argument("--posenc_freq", type=int, default=10)
+    parser.add_argument("--relu", type=bool, default=False)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
