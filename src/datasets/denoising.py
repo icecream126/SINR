@@ -6,7 +6,7 @@ import numpy as np
 import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
-import cv2
+# import cv2
 import matplotlib.pyplot as plt
 
 from utils.utils import to_cartesian, add_noise, image_psnr
@@ -60,6 +60,7 @@ class Dataset(Dataset):
         data_out["g_target"] = self._data["g_target"][index]
         data_out["target_shape"] = self._data["target_shape"]
         data_out["mean_lat_weight"] = self._data["mean_lat_weight"]
+        data_out['input_psnr'] = self._data['input_psnr']
         return data_out
 
     def load_data(self):
@@ -88,12 +89,13 @@ class Dataset(Dataset):
         lat = torch.from_numpy(np.deg2rad(lat)).float()
         lon = torch.from_numpy(np.deg2rad(lon)).float()
 
-        mean_lat_weight = torch.cos(lat).mean()  # 0.6354
+        mean_lat_weight = torch.abs(torch.cos(lat)).mean()  # 0.6354
 
         lat, lon = torch.meshgrid(lat, lon)  # [2048, 1024]for each
         lat = lat.flatten()
         lon = lon.flatten()
-        weights = torch.cos(lat) / mean_lat_weight
+        weights = torch.abs(torch.cos(lat)) / mean_lat_weight
+        input_psnr = image_psnr(g_target, noisy_target, weights.reshape(g_target.shape[:2]).unsqueeze(-1).detach().cpu().numpy())
         # coords = np.hstack((lat.reshape(-1,1), lon.reshape(-1,1)))  # [2097152, 2]
         inputs = torch.stack([lat, lon], dim=-1)
         # inputs = to_cartesian(inputs)  # [2097152, 3]
@@ -110,6 +112,7 @@ class Dataset(Dataset):
         data_out["g_target"] = g_target  # ground truth image pixel value [2097152,3]
         data_out["target_shape"] = target_shape  # 2097152,3
         data_out["mean_lat_weight"] = mean_lat_weight  # 0.6360
+        data_out['input_psnr'] = input_psnr
         return data_out
     
 '''

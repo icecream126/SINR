@@ -29,7 +29,7 @@ def visualize_360(dataset, model, args, mode, logger):
         cart_inputs = to_cartesian(inputs)
         pred = model(cart_inputs)
 
-        weights = torch.cos(inputs[..., :1])
+        weights = torch.abs(torch.cos(inputs[..., :1]))
         weights = weights / mean_lat_weight
         if weights.shape[-1] == 1:
             weights = weights.squeeze(-1)
@@ -123,7 +123,7 @@ def visualize_era5(dataset, model, filename, logger, args):
         cart_inputs = to_cartesian(inputs)
         pred = model(cart_inputs)
 
-        weights = torch.cos(inputs[..., :1])
+        weights = torch.abs(torch.cos(inputs[..., :1]))
         weights = weights / mean_lat_weight
         if weights.shape[-1] == 1:
             weights = weights.squeeze(-1)
@@ -231,15 +231,15 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
             
         g_error = g_error.detach().cpu().numpy()
         
-
-        logger.experiment.log({"normalized_psnr_orig":image_psnr(g_target, pred, weights.detach().cpu().numpy())})
+        logger.experiment.log({"input_psnr":data['input_psnr']})
+        logger.experiment.log({"normalized_psnr_orig":image_psnr(g_target, pred, weights.reshape(g_target.shape[:2]).unsqueeze(-1).detach().cpu().numpy())})
         
         # multiply 255
         target = (255 * target).astype(np.uint8)
         pred = (255 * pred).astype(np.uint8)
         g_target = (255 * g_target).astype(np.uint8)
         
-        logger.experiment.log({"unnormalized_psnr_orig":image_psnr(g_target, pred, weights.detach().cpu().numpy())})
+        logger.experiment.log({"unnormalized_psnr_orig":image_psnr(g_target, pred, weights.reshape(g_target.shape[:2]).unsqueeze(-1).detach().cpu().numpy())})
 
         pil_target = PILImage.fromarray(target)
         pil_g_target = PILImage.fromarray(g_target)
