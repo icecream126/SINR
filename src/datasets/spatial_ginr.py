@@ -10,7 +10,7 @@ import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
 
-from utils.utils import to_cartesian
+from utils.utils import to_cartesian, StandardScalerTorch, MinMaxScalerTorch
 
 from pathlib import Path
 from scipy.spatial import ConvexHull
@@ -29,6 +29,7 @@ class Dataset(Dataset):
         panorama_idx,
         n_fourier=5,
         n_nodes_in_sample=5000,
+        zscore_normalize=False,
         **kwargs,
     ):
         self.dataset_dir = dataset_dir
@@ -38,6 +39,12 @@ class Dataset(Dataset):
         self.panorama_idx = panorama_idx
         self.n_fourier = n_fourier
         self.n_nodes_in_sample = n_nodes_in_sample
+        self.zscore_normalize = zscore_normalize
+        self.scaler = None
+        if self.normalize:
+            self.scaler = MinMaxScalerTorch()
+        elif self.zscore_normalize:
+            self.scaler = StandardScalerTorch()
         self.filename = self.get_filenames()
         self._data = self.load_data()
 
@@ -91,7 +98,7 @@ class Dataset(Dataset):
                                 torch.tensor(f.variables[variable][0].data)
                                 .unsqueeze(2)
                                 .numpy()
-                            )
+                            )  # (lat, lon, 1)
 
             else:
                 data = np.load(self.filename)
@@ -136,25 +143,19 @@ class Dataset(Dataset):
         self.points_idx = np.arange(start, self.n_points, step)
 
         data_out["fourier"] = torch.from_numpy(data["fourier"]).float()  # [n, 100]
+        data_out["target"] = torch.from_numpy(data["target"]).float()  # [n, 1]
+
+        # Sampling
         data_out["fourier"] = data_out["fourier"][
             self.points_idx, : self.n_fourier
         ]  # [n/3, 34]
-        data_out["target"] = torch.from_numpy(data["target"]).float()  # [n, 1]
         data_out["target"] = data_out["target"][self.points_idx]  # [n/3, 1]
+
+        if self.zscore_normalize or self.normalize:
+            self.scaler.fit(data_out["target"])
+            data_out["target"] = self.scaler.transform(data_out["target"])
+
         return data_out
-
-    @staticmethod
-    def get_subsampling_idx(n_points, to_keep):
-        if n_points >= to_keep:
-            idx = torch.randperm(n_points)[:to_keep]
-        else:
-            # Sample some indices more than once
-            idx = (
-                torch.randperm(n_points * int(np.ceil(to_keep / n_points)))[:to_keep]
-                % n_points
-            )
-
-        return idx
 
 
 def sphere_to_cartesian(lat, lon):

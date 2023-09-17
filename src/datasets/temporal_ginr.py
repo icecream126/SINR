@@ -17,6 +17,7 @@ from scipy.spatial import ConvexHull
 import pymesh
 from scipy import sparse as sp
 import re
+from utils.utils import to_cartesian, StandardScalerTorch, MinMaxScalerTorch
 
 
 class Dataset(Dataset):
@@ -26,42 +27,60 @@ class Dataset(Dataset):
         dataset_type,
         output_dim,
         normalize,
-        panorama_idx,
-        n_fourier=5,
+        n_fourier=5,  # Chosen number of fourier features (1~100, 34 for weather)
         n_nodes_in_sample=5000,
+        zscore_normalize=False,  # Choosing whether to normalize the target
+        data_year="2018",  # Choosing which number of years to use
         **kwargs,
     ):
         self.dataset_dir = dataset_dir
         self.dataset_type = dataset_type
         self.output_dim = output_dim
         self.normalize = normalize
-        self.panorama_idx = panorama_idx
         self.n_fourier = n_fourier
         self.n_nodes_in_sample = n_nodes_in_sample
-        self.filename = self.get_filenames()
-        self._data = self.load_data()
+        self.zscore_normalize = zscore_normalize
+        self.filenames = self.get_filenames(data_year)
+        self.scaler = None
+        if self.normalize:
+            self.scaler = MinMaxScalerTorch()
+        elif self.zscore_normalize:
+            self.scaler = StandardScalerTorch()
+
+        self._data = self.load_data(self.filenames)
 
     def __len__(self):
-        return len(self.points_idx)
+        return self._data["target"].size(0)
 
-    def get_filenames(self):
-        filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*.nc")))
-        return (
-            filenames[self.panorama_idx] if "360" in self.dataset_dir else filenames[0]
-        )
+    def get_filenames(self, data_year=None):
+        filenames = glob.glob(os.path.join(self.dataset_dir, "*.nc"))
+        if data_year is not None:
+            filenames = [filename for filename in filenames if data_year in filename]
+        return sorted(filenames)[0]
 
     def __getitem__(self, index):
         data_out = dict()
-        data_out["inputs"] = self._data["fourier"]  # [n/3, n_fourier]
-        data_out["target"] = self._data["target"]  # [n/3, 1]
+        data = self._data
 
-        data_out["inputs"] = data_out["inputs"][index]  # [n_fourier]
-        data_out["target"] = data_out["target"][index]  # [1]
+        l1 = data["fourier"].size(0)
+        # l2 = data["time"].size(0)
+
+        data_out["inputs"] = data["fourier"][index % l1]  # [n_fourier]
+        data_out["time"] = data["time"][index // l1]  # [1]
+        data_out["target"] = data["target"][index]  # [1]
+
+        # import pdb
+
+        # pdb.set_trace()
 
         return data_out
 
-    def load_data(self):
-        cachefile = Path(self.dataset_dir) / "cached" / "cached_data.npz"
+    def load_data(self, filename):
+        cur_filename = os.path.basename(filename).split(".")[0]
+        # import pdb
+
+        # pdb.set_trace()
+        cachefile = Path(self.dataset_dir) / "cached" / (cur_filename + ".npz")
         data_out = dict()
 
         if cachefile.is_file():
@@ -69,36 +88,26 @@ class Dataset(Dataset):
             data = np.load(cachefile)
         else:
             print("There is no cached data:", self.dataset_type, "/ Generating data...")
-            if "360" in self.dataset_dir:
-                target = np.array(Image.open(self.filename))  # [512, 1024, 3]
+            print(filename)
+            with nc.Dataset(filename, "r") as f:
+                for variable in f.variables:
+                    if variable == "latitude":
+                        lat = f.variables[variable][:]
+                    elif variable == "longitude":
+                        lon = f.variables[variable][:]
+                    elif variable == "time":
+                        time = f.variables[variable][:]
+                    elif variable == "z":
+                        # Fixed
+                        target = f.variables[variable][:]  # (time, lat, lon)
 
-                H, W = target.shape[:2]  # H : 512, W : 1024
+                        # target = (
+                        #     torch.tensor(f.variables[variable][0].data)
+                        #     .unsqueeze(2)
+                        #     .numpy()
+                        # )
 
-                lat = np.linspace(-90, 90, H)  # 512
-                lon = np.linspace(-180, 180, W)  # 1024
-
-            elif "era5" in self.dataset_dir:
-                print(self.filename)
-                with nc.Dataset(self.filename, "r") as f:
-                    for variable in f.variables:
-                        if variable == "latitude":
-                            lat = f.variables[variable][:]
-                        elif variable == "longitude":
-                            lon = f.variables[variable][:]
-                        elif variable == "z":
-                            # Fixed
-                            target = (
-                                torch.tensor(f.variables[variable][0].data)
-                                .unsqueeze(2)
-                                .numpy()
-                            )
-
-            else:
-                data = np.load(self.filename)
-
-                lat = data["latitude"]
-                lon = data["longitude"]
-                target = data["target"]
+            time = (time - time.min()) / (time.max() - time.min())  # time normalization
 
             lats, lons = np.meshgrid(lat, lon)
             lats, lons = lats.T.data, lons.T.data  # (lat, lon), (lat, lon)
@@ -111,14 +120,15 @@ class Dataset(Dataset):
 
             print(f"Computing embeddings, size=({adj.shape})")
             u = get_fourier(adj)
-            if self.normalize:
-                target = (target - target.min()) / (target.max() - target.min())
-
+            # if self.normalize:
+            #     target = (target - target.min()) / (target.max() - target.min())
+            os.makedirs(Path(self.dataset_dir) / "cached", exist_ok=True)
             np.savez(
                 cachefile,
                 points=points,
                 fourier=u,
-                target=target.reshape(-1, 1),
+                target=target,
+                time=time,
                 faces=mesh.faces,
             )
             data = np.load(cachefile)
@@ -132,15 +142,24 @@ class Dataset(Dataset):
         else:
             start, step = 2, 3
 
+        # Time sampling
         self.n_points = data["target"].shape[0]
-        self.points_idx = np.arange(start, self.n_points, step)
+        self.points_idx = np.arange(start, len(data["time"]), step)
 
         data_out["fourier"] = torch.from_numpy(data["fourier"]).float()  # [n, 100]
-        data_out["fourier"] = data_out["fourier"][
-            self.points_idx, : self.n_fourier
-        ]  # [n/3, 34]
-        data_out["target"] = torch.from_numpy(data["target"]).float()  # [n, 1]
-        data_out["target"] = data_out["target"][self.points_idx]  # [n/3, 1]
+        data_out["fourier"] = data_out["fourier"][:, : self.n_fourier]  # [n/3, 34]
+        data_out["time"] = torch.from_numpy(data["time"]).float()  # [t, 1]
+        data_out["time"] = data_out["time"][self.points_idx].view(-1, 1)  # [t, 1]
+        data_out["target"] = torch.from_numpy(data["target"]).float()  # [t,n, 1]
+        data_out["target"] = data_out["target"][self.points_idx]  # [t/3,n, 1]
+        data_out["target"] = data_out["target"].view(-1, 1)  # [t/3 * n, 1]
+        # import pdb
+
+        # pdb.set_trace()
+        if self.zscore_normalize or self.normalize:
+            self.scaler.fit(data_out["target"])
+            data_out["target"] = self.scaler.transform(data_out["target"])
+
         return data_out
 
     @staticmethod

@@ -13,7 +13,7 @@ import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
-from datasets import spatial, temporal, spatial_ginr
+from datasets import spatial, temporal, spatial_ginr, temporal_ginr
 from models import relu, siren, wire, shinr, swinr, shiren, ginr
 
 model_dict = {
@@ -34,6 +34,7 @@ if __name__ == "__main__":
     # Dataset argument
     parser.add_argument("--panorama_idx", type=int, default=2)
     parser.add_argument("--normalize", default=False, action="store_true")
+    parser.add_argument("--zscore_normalize", default=False, action="store_true")
 
     # Model argument
     parser.add_argument("--hidden_dim", type=int, default=256)
@@ -73,6 +74,8 @@ if __name__ == "__main__":
     # Dataset
     if args.time:
         dataset = temporal
+        if args.model == "ginr":
+            dataset = temporal_ginr
     else:
         dataset = spatial
         if args.model == "ginr":
@@ -103,12 +106,12 @@ if __name__ == "__main__":
         num_workers=args.num_workers,
     )
 
-    import pdb
-
-    pdb.set_trace()
-
     # Model
     model = model_dict[args.model].INR(**vars(args))
+
+    # Pass scaler from dataset to model
+    model.scaler = train_dataset.scaler
+    model.normalize = train_dataset.zscore_normalize or train_dataset.normalize
 
     # Learning
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")

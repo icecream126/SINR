@@ -7,18 +7,31 @@ import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
 
-from utils.utils import to_cartesian
+from utils.utils import to_cartesian, StandardScalerTorch, MinMaxScalerTorch
 
 
 class Dataset(Dataset):
     def __init__(
-        self, dataset_dir, dataset_type, output_dim, normalize, panorama_idx, **kwargs
+        self,
+        dataset_dir,
+        dataset_type,
+        output_dim,
+        normalize,
+        panorama_idx,
+        zscore_normalize=False,
+        **kwargs
     ):
         self.dataset_dir = dataset_dir
         self.dataset_type = dataset_type
         self.output_dim = output_dim
         self.normalize = normalize
+        self.zscore_normalize = zscore_normalize
         self.panorama_idx = panorama_idx
+        self.scaler = None
+        if self.normalize:
+            self.scaler = MinMaxScalerTorch()
+        elif self.zscore_normalize:
+            self.scaler = StandardScalerTorch()
         self.filename = self.get_filenames()
         self._data = self.load_data()
 
@@ -77,8 +90,8 @@ class Dataset(Dataset):
             lon
         )  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
 
-        if self.normalize:
-            target = (target - target.min()) / (target.max() - target.min())
+        # if self.normalize:
+        #     target = (target - target.min()) / (target.max() - target.min())
 
         if self.dataset_type == "all":
             start, step = 0, 1
@@ -106,6 +119,9 @@ class Dataset(Dataset):
         lat = lat.flatten()  # [58482]
         lon = lon.flatten()  # ""
         target = target.reshape(-1, self.output_dim)  # [58482, 3]
+        if self.zscore_normalize or self.normalize:
+            self.scaler.fit(target)
+            target = self.scaler.transform(target)
 
         inputs = torch.stack([lat, lon], dim=-1)  # [58482, 2]
         # inputs = to_cartesian(inputs)  # [58482, 3]
@@ -114,4 +130,5 @@ class Dataset(Dataset):
         data_out["target"] = target  # [58482, 3]
         data_out["target_shape"] = target_shape  # [171, 342, 3]
         data_out["mean_lat_weight"] = mean_lat_weight  # 0.6341
+
         return data_out

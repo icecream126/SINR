@@ -12,18 +12,22 @@ class MODEL(pl.LightningModule):
 
         self.lr = lr
         self.lr_patience = lr_patience
+        self.scaler = None
+        self.target_normalize = False
 
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]  # [512, 3], [512, 3]
         mean_lat_weight = data["mean_lat_weight"]  # [512] with 0.6341
 
-        weights = torch.cos(inputs[..., 0])  # [512, 1]
+        # weights = torch.cos(inputs[..., 0])  # [512, 1]
+        weights = torch.cos(inputs[..., 0]).unsqueeze(1)  # [512, 1]
         weights = weights / mean_lat_weight  # [512, 512]
 
         if self.time:
             inputs = torch.cat((to_cartesian(inputs[..., :2]), inputs[..., 2:]), dim=-1)
         else:
             inputs = to_cartesian(inputs)
+
         pred = self.forward(inputs)  # [512, 3]
 
         error = torch.sum(
@@ -35,9 +39,22 @@ class MODEL(pl.LightningModule):
 
         loss = error.mean()  # 1.2346
 
-        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        if self.normalize:
+            self.scaler.match_device(pred)
+            pred = self.scaler.inverse_transform(pred)
+            target = self.scaler.inverse_transform(target)
+            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            if len(error.shape) > len(weights.shape):
+                error = error.squeeze(-1)
+            mse = weights * error
+            mse = mse.mean()
+        else:
+            mse = loss
 
-        self.log("batch_train_mse", loss, prog_bar=True, sync_dist=True)
+        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
+
+        self.log("batch_train_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("batch_train_mse", mse, prog_bar=True, sync_dist=True)
         self.log(
             "batch_train_psnr",
             w_psnr_val,
@@ -50,7 +67,8 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., 0])
+        # weights = torch.cos(inputs[..., 0])
+        weights = torch.cos(inputs[..., 0]).unsqueeze(1)  # [512, 1]
         weights = weights / mean_lat_weight
 
         if self.time:
@@ -65,9 +83,22 @@ class MODEL(pl.LightningModule):
         error = weights * error
         loss = error.mean()
 
-        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        if self.normalize:
+            self.scaler.match_device(pred)
+            pred = self.scaler.inverse_transform(pred)
+            target = self.scaler.inverse_transform(target)
+            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            if len(error.shape) > len(weights.shape):
+                error = error.squeeze(-1)
+            mse = weights * error
+            mse = mse.mean()
+        else:
+            mse = loss
 
-        self.log("batch_valid_mse", loss, prog_bar=True, sync_dist=True)
+        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
+
+        self.log("batch_valid_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("batch_valid_mse", mse, prog_bar=True, sync_dist=True)
         self.log("batch_valid_psnr", w_psnr_val)
         return {"batch_valid_mse": loss.item()}
 
@@ -84,7 +115,8 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., 0])
+        # weights = torch.cos(inputs[..., 0])
+        weights = torch.cos(inputs[..., 0]).unsqueeze(1)  # [512, 1]
         weights = weights / mean_lat_weight
 
         if self.time:
@@ -99,9 +131,22 @@ class MODEL(pl.LightningModule):
         error = weights * error
         loss = error.mean()
 
-        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        if self.normalize:
+            self.scaler.match_device(pred)
+            pred = self.scaler.inverse_transform(pred)
+            target = self.scaler.inverse_transform(target)
+            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            if len(error.shape) > len(weights.shape):
+                error = error.squeeze(-1)
+            mse = weights * error
+            mse = mse.mean()
+        else:
+            mse = loss
 
-        self.log("batch_test_mse", loss, prog_bar=True, sync_dist=True)
+        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
+
+        self.log("batch_test_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("batch_test_mse", mse, prog_bar=True, sync_dist=True)
         self.log("batch_test_psnr", w_psnr_val)
         return {"batch_test_mse": loss.item(), "batch_test_psnr": w_psnr_val.item()}
 

@@ -142,6 +142,8 @@ class INR(MODEL):
         skip: bool = True,
         bn: bool = False,
         dropout: float = 0.0,
+        latent_dim: int = 256,
+        time: bool = False,  # True when using temporal data / default: [1] to [256] embedding
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -157,10 +159,16 @@ class INR(MODEL):
         self.skip = skip
         self.bn = bn
         self.dropout = dropout
+        self.time = time
+
+        # Compute true input dimension
+        input_dim_true = input_dim
+        if time:
+            input_dim_true += latent_dim - 1
 
         # Modules
         self.model = MLP(
-            input_dim,
+            input_dim_true,
             output_dim,
             hidden_dim,
             n_layers,
@@ -172,6 +180,9 @@ class INR(MODEL):
             bn,
             dropout,
         )
+        # Latent codes
+        if time:
+            self.latents = nn.Linear(1, latent_dim)
 
         # Loss
         self.loss_fn = nn.MSELoss()
@@ -194,24 +205,36 @@ class INR(MODEL):
         )[0][..., -3:]
         return points_grad
 
+    def add_latent(self, points, latents):
+        return torch.cat([latents, points], dim=-1)
+
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+        if self.time:
+            time = data["time"]
+            latents = self.latents(time)
+            inputs = self.add_latent(inputs, latents)
 
         # Predict signal
         pred = self.forward(inputs)
 
-        # import pdb
-
-        # pdb.set_trace()
-
         # Loss
         main_loss = self.loss_fn(pred, target)
-        self.log("main_loss", main_loss, prog_bar=True, sync_dist=True)
         loss = main_loss
 
-        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        if self.normalize:
+            self.scaler.match_device(pred)
+            pred = self.scaler.inverse_transform(pred)
+            target = self.scaler.inverse_transform(target)
+            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            mse = mse.mean()
+        else:
+            mse = loss
 
-        self.log("batch_train_mse", loss, sync_dist=True)
+        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
+
+        self.log("batch_train_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("batch_train_mse", mse, prog_bar=True, sync_dist=True)
         self.log(
             "batch_train_psnr",
             w_psnr_val,
@@ -224,82 +247,65 @@ class INR(MODEL):
     def validation_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
 
+        # import pdb
+
+        # pdb.set_trace()
+        if self.time:
+            time = data["time"]
+            latents = self.latents(time)
+            inputs = self.add_latent(inputs, latents)
+
         # Predict signal
         pred = self.forward(inputs)
 
         # Loss
         main_loss = self.loss_fn(pred, target)
-        self.log("main_loss", main_loss, prog_bar=True, sync_dist=True)
         loss = main_loss
 
-        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        if self.normalize:
+            self.scaler.match_device(pred)
+            pred = self.scaler.inverse_transform(pred)
+            target = self.scaler.inverse_transform(target)
+            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            mse = mse.mean()
+        else:
+            mse = loss
 
-        self.log("batch_valid_mse", loss, sync_dist=True)
-        self.log("batch_valid_psnr", w_psnr_val)
+        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
+
+        self.log("batch_valid_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("batch_valid_mse", mse, prog_bar=True, sync_dist=True)
+        self.log("batch_valid_psnr", w_psnr_val, prog_bar=True, sync_dist=True)
 
         return {"batch_valid_mse": loss.item()}
 
     def test_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+        if self.time:
+            time = data["time"]
+            latents = self.latents(time)
+            inputs = self.add_latent(inputs, latents)
 
         # Predict signal
         pred = self.forward(inputs)
 
         # Loss
         main_loss = self.loss_fn(pred, target)
-        self.log("main_loss", main_loss, prog_bar=True, sync_dist=True)
         loss = main_loss
 
-        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        if self.normalize:
+            self.scaler.match_device(pred)
+            pred = self.scaler.inverse_transform(pred)
+            target = self.scaler.inverse_transform(target)
+            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            mse = mse.mean()
+        else:
+            mse = loss
 
-        self.log("batch_test_mse", loss, sync_dist=True)
-        self.log("batch_test_psnr", w_psnr_val)
+        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
+
+        self.log("batch_test_loss", loss, prog_bar=True, sync_dist=True)
+        self.log("batch_test_mse", mse, prog_bar=True, sync_dist=True)
+        self.log("batch_test_psnr", w_psnr_val, prog_bar=True, sync_dist=True)
 
         return {"batch_test_mse": loss.item(), "batch_test_psnr": w_psnr_val.item()}
-
-
-class DENOISING_INR(DENOISING_MODEL):
-    def __init__(
-        self,
-        input_dim,
-        output_dim,
-        hidden_dim,
-        hidden_layers,
-        levels,
-        time,
-        skip,
-        omega,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
-        self.time = time
-        self.skip = skip
-        self.hidden_layers = hidden_layers
-
-        # self.first_nonlin = SphericalHarmonicsLayer
-
-        self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(levels, time, omega))
-
-        self.nonlin = ReLULayer
-
-        for i in range(hidden_layers):
-            if i == 0:
-                self.net.append(self.nonlin(levels**2, hidden_dim))
-            elif skip and i == ceil(hidden_layers / 2):
-                self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
-            else:
-                self.net.append(self.nonlin(hidden_dim, hidden_dim))
-
-        final_linear = nn.Linear(hidden_dim, output_dim)
-
-        self.net.append(final_linear)
-
-    def forward(self, x):
-        x_in = x
-        for i, layer in enumerate(self.net):
-            if self.skip and i == ceil(self.hidden_layers / 2) + 1:
-                x = torch.cat([x, x_in], dim=-1)
-            x = layer(x)
-        return x
