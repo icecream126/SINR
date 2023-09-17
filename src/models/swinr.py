@@ -167,6 +167,7 @@ class DENOISING_INR(DENOISING_MODEL):
         skip,
         omega,
         sigma,
+        relu,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -178,7 +179,7 @@ class DENOISING_INR(DENOISING_MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
+        self.net.append(self.first_nonlin(relu,hidden_dim, time, omega, sigma))
 
         self.nonlin = ReLULayer
 

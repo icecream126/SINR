@@ -15,12 +15,11 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/temporal/era5_geopotential
+  - --dataset_dir=dataset/spatial_0_25/era5_cloud
   - --model=swinr
   - --skip
-  - --max_epoch=100 # depend on dataset
-  # - --panorama_idx=3
+  - --max_epoch=500 # depend on dataset
+  - --panorama_idx=7
   - --normalize
-  - --batch_size=1 # only for temporal
+  # - --batch_size=1 # only for temporal
   - --plot # only for spatial
-  - --relu

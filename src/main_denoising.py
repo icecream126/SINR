@@ -9,10 +9,12 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 from utils.utils import calculate_ssim
-from utils.visualize import visualize, visualize_denoising
+from utils.visualize import visualize_denoising
+
 import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
+os.environ["CUDA_VISIBLE_DEVICES"]="5"
 
 
 from datasets import denoising
@@ -46,15 +48,16 @@ if __name__ == "__main__":
     parser.add_argument("--sigma", type=float, default=1.0)
     parser.add_argument("--levels", type=int, default=4)
     parser.add_argument("--posenc_freq", type=int, default=10)
+    parser.add_argument("--relu", default=False, action="store_true")
 
     # Learning argument
-    parser.add_argument("--batch_size", type=int, default=256*256)
+    parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--max_epochs", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
-    parser.add_argument("--project_name", type=str, default="final_denoising")
+    parser.add_argument("--project_name", type=str, default="fair_denoising")
     
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()

@@ -17,7 +17,7 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]  # [512, 3], [512, 3]
         mean_lat_weight = data["mean_lat_weight"]  # [512] with 0.6341
 
-        weights = torch.cos(inputs[..., 0])  # [512, 1]
+        weights = torch.abs(torch.cos(inputs[..., 0]))  # [512, 1]
         weights = weights / mean_lat_weight  # [512, 512]
 
         if self.time:
@@ -50,7 +50,7 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., 0])
+        weights = torch.abs(torch.cos(inputs[..., 0]))
         weights = weights / mean_lat_weight
         
         if self.time:
@@ -82,7 +82,7 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., 0])
+        weights = torch.abs(torch.cos(inputs[..., 0]))
         weights = weights / mean_lat_weight
 
         if self.time:
@@ -144,7 +144,7 @@ class DENOISING_MODEL(pl.LightningModule):
         )  # [512, 3] for each
         mean_lat_weight = data["mean_lat_weight"]  # 512
 
-        weights = torch.cos(inputs[..., 0])  # [512, 1]
+        weights = torch.abs(torch.cos(inputs[..., 0]))  # [512, 1] # make sure nonzero weights
         weights = weights / mean_lat_weight  # [512, 512]
 
         inputs = to_cartesian(inputs)
@@ -168,17 +168,21 @@ class DENOISING_MODEL(pl.LightningModule):
         return {"loss":loss, "batch_train_mse_orig": loss_orig}
 
     def training_epoch_end(self, outputs):
+        avg_train_mse = torch.stack(
+            [torch.tensor(x["loss"]) for x in outputs]
+        ).mean()
         avg_train_mse_orig = torch.stack(
             [torch.tensor(x["batch_train_mse_orig"]) for x in outputs]
         ).mean()
+        self.log("avg_train_mse", avg_train_mse)
         self.log("avg_train_mse_orig", avg_train_mse_orig)
-        self.log("final_train_psnr_orig", mse2psnr(avg_train_mse_orig), prog_bar=True, sync_dist=True)
+        self.log("final_train_psnr_orig", mse2psnr(avg_train_mse_orig.detach().cpu().numpy()), prog_bar=True, sync_dist=True)
 
     def test_step(self, data, batch_idx):
         inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.cos(inputs[..., 0])
+        weights = torch.abs(torch.cos(inputs[..., 0])) # make sure nonzero weights
         weights = weights / mean_lat_weight
 
         inputs = to_cartesian(inputs)
@@ -225,8 +229,8 @@ class DENOISING_MODEL(pl.LightningModule):
         self.log("avg_test_mse_orig", avg_test_mse_orig, prog_bar=True, sync_dist=True)
         self.log("avg_test_psnr", avg_batch_test_psnr, prog_bar=True, sync_dist=True)
         self.log("avg_test_psnr_orig", avg_batch_test_psnr_orig, prog_bar=True, sync_dist=True)
-        self.log("final_test_psnr", mse2psnr(avg_test_mse), prog_bar=True, sync_dist=True)
-        self.log("final_test_psnr_orig", mse2psnr(avg_test_mse_orig), prog_bar=True, sync_dist=True)
+        self.log("final_test_psnr", mse2psnr(avg_test_mse.detach().cpu().numpy()), prog_bar=True, sync_dist=True)
+        self.log("final_test_psnr_orig", mse2psnr(avg_test_mse_orig.detach().cpu().numpy()), prog_bar=True, sync_dist=True)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)

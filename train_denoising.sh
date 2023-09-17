@@ -58,7 +58,7 @@ CUDA_VISIBLE_DEVICES=0 python src/main_denoising.py \
 
 # SUN360 (Need search)
 
-CUDA_VISIBLE_DEVICES=3 python src/main_denoising.py \
+CUDA_VISIBLE_DEVICES=5 python src/main_denoising.py \
     --dataset_dir dataset/sun360 \
     --model swinr \
     --max_epochs 2000 \

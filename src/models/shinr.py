@@ -103,6 +103,7 @@ class DENOISING_INR(DENOISING_MODEL):
         time,
         skip,
         omega,
+        relu,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -114,14 +115,12 @@ class DENOISING_INR(DENOISING_MODEL):
         self.first_nonlin = SphericalHarmonicsLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(levels, time, omega))
+        self.net.append(self.first_nonlin(relu, hidden_dim, levels, time, omega))
 
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
-            if i == 0:
-                self.net.append(self.nonlin(levels**2, hidden_dim))
-            elif skip and i == ceil(hidden_layers / 2):
+            if skip and i == ceil(hidden_layers / 2):
                 self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:
                 self.net.append(self.nonlin(hidden_dim, hidden_dim))

@@ -1,7 +1,10 @@
-program: src/main_superres.py
+program: src/main_denoising.py
 name: swinr
 entity: postech_sinr
-method: grid
+method: bayes
+metric:
+  name: avg_train_mse_orig
+  goal: minimize
 parameters:
   levels:
     values: [1,2,3,4,5]
@@ -13,12 +16,12 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/temporal/era5_geopotential
+  - --dataset_dir=dataset/sun360
   - --model=shinr
   - --skip
-  - --max_epoch=100 # depend on dataset
-  # - --panorama_idx=3
+  - --max_epoch=800 # depend on dataset
+  - --panorama_idx=7
   - --normalize
-  - --batch_size=1 # only for temporal
+  # - --batch_size=1 # only for temporal
   - --plot # only for spatial
   - --relu
