@@ -165,6 +165,8 @@ class DENOISING_MODEL(pl.LightningModule):
 
         error = torch.sum((pred - target) ** 2, dim=-1)# , keepdim=True)
         error_orig = torch.sum((pred - g_target) ** 2, dim=-1)# , keepdim=True)
+        if len(error.shape)>len(weights.shape):
+            error = error.squeeze(-1)
         error = weights * error
         error_orig = weights * error_orig
         loss = error.mean()
@@ -195,7 +197,7 @@ class DENOISING_MODEL(pl.LightningModule):
         inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
         mean_lat_weight = data["mean_lat_weight"]
 
-        weights = torch.abs(torch.cos(inputs[..., 0])) # make sure nonzero weights
+        weights = torch.abs(torch.cos(inputs[..., 0])) # make sure nonnegative weights
         weights = weights / mean_lat_weight
 
         inputs = to_cartesian(inputs)
@@ -203,6 +205,8 @@ class DENOISING_MODEL(pl.LightningModule):
 
         error = torch.sum((pred - target) ** 2, dim=-1)# , keepdim=True)
         error_orig = torch.sum((pred - g_target) ** 2, dim=-1)# , keepdim=True)
+        if len(error.shape)>len(weights.shape):
+            error = error.squeeze(-1)
         error = weights * error
         error_orig = weights * error_orig
         loss = error.mean()

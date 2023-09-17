@@ -182,7 +182,7 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         mean_lat_weight = data["mean_lat_weight"]
         target_shape = data["target_shape"]
 
-        weights = torch.abs(torch.cos(inputs[..., 0]))
+        weights = torch.abs(torch.cos(inputs[..., :1]))
         weights = weights / mean_lat_weight
 
         cart_inputs = to_cartesian(inputs)
