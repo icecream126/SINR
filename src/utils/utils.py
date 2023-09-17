@@ -11,6 +11,13 @@ np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 
+def image_psnr(gt_image, noisy_image, weights):
+    error = (gt_image - noisy_image) ** 2
+    mse = np.mean(weights * error)
+    psnr = mse2psnr(mse)
+    return psnr
+
+
 
 def normalize(x, fullnormalize=False):
     """
@@ -190,7 +197,7 @@ def calculate_ssim(model, dataset, output_dim):
 
     pred = model(inputs)
 
-    weights = torch.cos(inputs[..., :1])
+    weights = torch.abs(torch.cos(inputs[..., :1]))
     weights = weights / mean_lat_weight
     weights = np.array(weights.reshape(H, W, -1))
 

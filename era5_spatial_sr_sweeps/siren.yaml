@@ -1,27 +1,23 @@
 program: src/main_superres.py
-name: siren
+name: swinr
 entity: postech_sinr
-method: bayes
-metric:
-  name: avg_valid_mse
-  goal: minimize
+method: grid
 parameters:
   omega:
-    values: [0.001, 0.01, 0.1, 1, 10, 20, 30, 40, 50]
+    values: [0.01, 0.1, 1, 10, 30]
   lr:
-    min: 0.0001
-    max: 0.01
+    values: [0.003, 0.004, 0.005, 0.0003, 0.0005]
   hidden_dim:
     values: [64, 128, 256, 512]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/spatial/era5_geopotential
+  - --dataset_dir=dataset/sun360
   - --model=siren
   - --skip
   - --max_epoch=500 # depend on dataset
-  # - --panorama_idx=6
+  - --panorama_idx=0
   - --normalize
   # - --batch_size=1 # only for temporal
-  - --plot # only for spatial     
+  - --plot # only for spatial
