@@ -11,6 +11,7 @@ import cartopy.feature as cfeature
 
 import matplotlib.cm as cm
 import math
+from utils.utils import image_psnr
 
 from scipy.interpolate import griddata
 import numpy as np
@@ -174,14 +175,14 @@ def visualize_era5(dataset, model, filename, logger, args):
 
 def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
     with torch.no_grad():
-        data = dataset.get_all_data()
+        data = dataset[:]
 
-        inputs, target, g_target = data["inputs"].unsqueeze(0), data["target"].unsqueeze(0), data["g_target"].unsqueeze(0)
+        inputs, target, g_target = data["inputs"], data["target"], data["g_target"]
 
         mean_lat_weight = data["mean_lat_weight"]
         target_shape = data["target_shape"]
 
-        weights = torch.cos(inputs[..., 0])
+        weights = torch.abs(torch.cos(inputs[..., 0]))
         weights = weights / mean_lat_weight
 
         cart_inputs = to_cartesian(inputs)
@@ -231,14 +232,20 @@ def visualize_denoising(dataset, model, args, mode="denoising", logger=None):
         g_error = g_error.detach().cpu().numpy()
         
 
+        logger.experiment.log({"normalized_psnr_orig":image_psnr(g_target, pred, weights.detach().cpu().numpy())})
+        
         # multiply 255
         target = (255 * target).astype(np.uint8)
         pred = (255 * pred).astype(np.uint8)
         g_target = (255 * g_target).astype(np.uint8)
+        
+        logger.experiment.log({"unnormalized_psnr_orig":image_psnr(g_target, pred, weights.detach().cpu().numpy())})
 
         pil_target = PILImage.fromarray(target)
         pil_g_target = PILImage.fromarray(g_target)
         pil_pred = PILImage.fromarray(pred)
+        
+        
 
         # pil_target.save("pil_noisy_img.png")
         # pil_g_target.save("pil_gt_img.png")

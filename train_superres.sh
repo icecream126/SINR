@@ -3,7 +3,7 @@
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --dataset_dir dataset/temporal/era5_geopotential \
     --model swinr \
-    --max_epochs 100 \
+    --max_epochs 1 \
     --batch_size 1 \
     --skip 
 

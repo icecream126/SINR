@@ -10,6 +10,13 @@ np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
 
+def image_psnr(gt_image, noisy_image, weights):
+    error = np.sum((gt_image - noisy_image) ** 2, axis=-1).flatten()
+    mse = np.mean(weights * error)
+    psnr = mse2psnr(mse)
+    return psnr
+
+
 
 def normalize(x, fullnormalize=False):
     """
