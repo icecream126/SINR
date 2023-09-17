@@ -173,21 +173,21 @@ class DENOISING_MODEL(pl.LightningModule):
         w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
         g_w_psnr_val = mse2psnr(loss_orig.detach().cpu().numpy())
 
-        self.log("batch_train_mse", loss, prog_bar=True)
-        self.log("batch_train_mse_orig", loss_orig, prog_bar=True)
+        # self.log("batch_train_mse", loss, prog_bar=True)
+        # self.log("batch_train_mse_orig", loss_orig, prog_bar=True)
         self.log("batch_train_psnr", w_psnr_val)
         self.log("batch_train_psnr_orig", g_w_psnr_val)
 
         return {"loss":loss, "batch_train_mse_orig": loss_orig}
 
     def training_epoch_end(self, outputs):
-        avg_train_mse = torch.stack(
-            [torch.tensor(x["loss"]) for x in outputs]
-        ).mean()
+        # avg_train_mse = torch.stack(
+        #     [torch.tensor(x["loss"]) for x in outputs]
+        # ).mean()
         avg_train_mse_orig = torch.stack(
             [torch.tensor(x["batch_train_mse_orig"]) for x in outputs]
         ).mean()
-        self.log("avg_train_mse", avg_train_mse)
+        # self.log("avg_train_mse", avg_train_mse)
         self.log("avg_train_mse_orig", avg_train_mse_orig)
         self.log("final_train_psnr_orig", mse2psnr(avg_train_mse_orig.detach().cpu().numpy()), prog_bar=True, sync_dist=True)
 
@@ -211,8 +211,8 @@ class DENOISING_MODEL(pl.LightningModule):
         w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
         g_w_psnr_val = mse2psnr(loss_orig.detach().cpu().numpy())
 
-        self.log("batch_test_mse", loss)
-        self.log("batch_test_mse_orig", loss_orig)
+        # self.log("batch_test_mse", loss)
+        # self.log("batch_test_mse_orig", loss_orig)
         self.log("batch_test_psnr", w_psnr_val)
         self.log("batch_test_psnr_orig", g_w_psnr_val)
         return {

@@ -14,7 +14,6 @@ from utils.visualize import visualize_denoising
 import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
-os.environ["CUDA_VISIBLE_DEVICES"]="5"
 
 
 from datasets import denoising
@@ -57,7 +56,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
-    parser.add_argument("--project_name", type=str, default="fair_denoising")
+    parser.add_argument("--project_name", type=str, default="new_denoising")
     
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()
