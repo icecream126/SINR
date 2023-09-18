@@ -1,25 +1,27 @@
 program: src/main_superres.py
-name: swinr
+name: wire
 entity: postech_sinr
 method: grid
 parameters:
   omega:
-    values: [0.1, 1, 10, 30]
+    values: [0.1, 1, 10]
   sigma:
-    values: [0.1, 1, 10, 30]
+    values: [0.1, 1, 10]
   lr:
-    values: [0.005, 0.001]
+    values: [0.0001]
   hidden_dim:
-    values: [128, 256, 512]
+    values: [512]
+  batch_size:
+    values: [128, 256]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/sun360
+  - --dataset_dir=dataset/spatial_1_00/era5_geopotential
   - --model=wire
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=0
+  # - --panorama_idx=0
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial
