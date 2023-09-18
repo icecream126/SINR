@@ -66,7 +66,7 @@ class MODEL(pl.LightningModule):
             [torch.tensor(x['batch_train_psnr']) for x in outputs]
         ).mean()
         self.log("avg_train_mse", avg_train_mse)
-        self.log("final_train_psnr", avg_train_psnr, prog_bar=True, sync_dist=True)
+        self.log("avg_train_psnr", avg_train_psnr, prog_bar=True, sync_dist=True)
 
     def test_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
@@ -107,7 +107,7 @@ class MODEL(pl.LightningModule):
         self.log("batch_test_rmse", rmse)
         self.log("batch_test_mse", loss, prog_bar=True, sync_dist=True)
         self.log("batch_test_psnr", w_psnr_val)
-        return {"batch_test_mse": loss.item(), "batch_test_psnr": w_psnr_val.item(), "batch_test_rmse": rmse.item()}
+        return {"batch_test_mse": loss, "batch_test_psnr": w_psnr_val.item(), "batch_test_rmse": rmse.item()}
 
     def test_epoch_end(self, outputs):
         # Compute the average of test_mse and batch_test_psnr over the entire epoch
@@ -126,7 +126,7 @@ class MODEL(pl.LightningModule):
         self.log("avg_test_mse", avg_test_mse, prog_bar=True, sync_dist=True)
         self.log("avg_test_psnr", avg_test_psnr, prog_bar=True, sync_dist=True)
         self.log(
-            "final_test_psnr", mse2psnr(avg_test_mse), prog_bar=True, sync_dist=True
+            "final_test_psnr", mse2psnr(avg_test_mse.detach().cpu().numpy()), prog_bar=True, sync_dist=True
         )
 
     def configure_optimizers(self):
