@@ -2,7 +2,7 @@
 
 CUDA_VISIBLE_DEVICES=7 python src/main_superres.py \
     --dataset_dir dataset/spatial_1_00/era5_geopotential \
-    --model relu \
+    --model swinr \
     --max_epochs 500 \
     --lr 0.0001 \
     --hidden_dim 256 \
