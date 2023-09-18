@@ -4,40 +4,42 @@ from math import pi, ceil
 
 from .model import MODEL, DENOISING_MODEL
 from .relu import ReLULayer
+from torch import nn
 
 
 class SphericalGaborLayer(nn.Module):
     def __init__(
         self,
-        output_dim,
+        relu,
+        hidden_dim,
         time,
         omega,
         sigma,
         **kwargs,
     ):
         super().__init__()
-
+        self.relu = relu
         self.time = time
         self.omega = omega
         self.sigma = sigma
-        self.output_dim = output_dim
+        self.hidden_dim = hidden_dim
 
-        self.dilate = nn.Parameter(torch.empty(1, output_dim))
+        self.dilate = nn.Parameter(torch.empty(1, hidden_dim))
         nn.init.normal_(self.dilate)
 
-        self.u = nn.Parameter(torch.empty(output_dim))
-        self.v = nn.Parameter(torch.empty(output_dim))
-        self.w = nn.Parameter(torch.empty(output_dim))
+        self.u = nn.Parameter(torch.empty(hidden_dim))
+        self.v = nn.Parameter(torch.empty(hidden_dim))
+        self.w = nn.Parameter(torch.empty(hidden_dim))
         nn.init.uniform_(self.u)
         nn.init.uniform_(self.v)
         nn.init.uniform_(self.w)
 
         if time:
-            self.linear = nn.Linear(1, output_dim)
+            self.linear = nn.Linear(1, hidden_dim)
 
     def forward(self, input):
-        zeros = torch.zeros(self.output_dim, device=self.u.device)
-        ones = torch.ones(self.output_dim, device=self.u.device)
+        zeros = torch.zeros(self.hidden_dim, device=self.u.device)
+        ones = torch.ones(self.hidden_dim, device=self.u.device)
 
         alpha = 2 * pi * self.u
         beta = torch.arccos(torch.clamp(2 * self.v - 1, -1 + 1e-6, 1 - 1e-6))
@@ -93,15 +95,19 @@ class SphericalGaborLayer(nn.Module):
         freq_arg = 2 * dilate * x / (1e-6 + 1 + z)
         gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
 
-        if self.time:
-            time = input[..., 3:]
-            lin = self.linear(time)
-            freq_arg = freq_arg + lin
-            gauss_arg = gauss_arg + lin * lin
 
         freq_term = torch.cos(self.omega * freq_arg)
         gauss_term = torch.exp(-self.sigma * self.sigma * gauss_arg)
-        return freq_term * gauss_term
+        out = freq_term * gauss_term
+        if self.time:
+            time = input[..., 3:]
+            time = self.linear(time)
+            out = torch.cat([out, time], dim=-1)
+
+        if self.relu : 
+            return nn.functional.relu(out)
+        else:
+            return out
 
 
 class INR(MODEL):
@@ -115,6 +121,7 @@ class INR(MODEL):
         skip,
         omega,
         sigma,
+        relu,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -126,7 +133,7 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
+        self.net.append(self.first_nonlin(relu,hidden_dim, time, omega, sigma))
 
         self.nonlin = ReLULayer
 
@@ -160,6 +167,7 @@ class DENOISING_INR(DENOISING_MODEL):
         skip,
         omega,
         sigma,
+        relu,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -171,7 +179,7 @@ class DENOISING_INR(DENOISING_MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
+        self.net.append(self.first_nonlin(relu,hidden_dim, time, omega, sigma))
 
         self.nonlin = ReLULayer
 

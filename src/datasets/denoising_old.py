@@ -76,12 +76,12 @@ class Dataset(Dataset):
         lat = torch.from_numpy(np.deg2rad(lat)).float()
         lon = torch.from_numpy(np.deg2rad(lon)).float()
 
-        mean_lat_weight = torch.cos(lat).mean()  # 0.6354
+        mean_lat_weight = torch.abs(torch.cos(lat)).mean()  # 0.6354
 
         lat, lon = torch.meshgrid(lat, lon)  # [2048, 1024]for each
         lat = lat.flatten()
         lon = lon.flatten()
-        weights = torch.cos(lat) / mean_lat_weight
+        weights = torch.abs(torch.cos(lat)) / mean_lat_weight
         # coords = np.hstack((lat.reshape(-1,1), lon.reshape(-1,1)))  # [2097152, 2]
         inputs = torch.stack([lat, lon], dim=-1)
         # inputs = to_cartesian(inputs)  # [2097152, 3]

@@ -111,7 +111,7 @@ class Dataset(Dataset):
         data_out["lat"] = lat
         data_out["lon"] = lon
 
-        mean_lat_weight = torch.cos(lat).mean()  # 0.6341
+        mean_lat_weight = torch.abs(torch.cos(lat)).mean()  # 0.6341
         target_shape = target.shape  # [171, 342, 3]
 
         lat, lon = torch.meshgrid(lat, lon)  # [171, 342] for each

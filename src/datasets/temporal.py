@@ -90,7 +90,7 @@ class Dataset(Dataset):
         time = torch.from_numpy(time[time_idx]).float()
         target = torch.from_numpy(target[time_idx]).float()
 
-        mean_lat_weight = torch.cos(lat).mean().float()
+        mean_lat_weight = torch.abs(torch.cos(lat)).mean().float()
         target_shape = target.shape
 
         time, lat, lon = torch.meshgrid(time, lat, lon)

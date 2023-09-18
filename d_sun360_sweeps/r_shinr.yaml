@@ -1,0 +1,27 @@
+program: src/main_denoising.py
+name: swinr
+entity: postech_sinr
+method: bayes
+metric:
+  name: avg_train_mse_orig
+  goal: minimize
+parameters:
+  levels:
+    values: [1,2,3,4,5]
+  lr:
+    values: [0.0007, 0.0003, 0.007, 0.003, 0.0005]
+  hidden_dim:
+    values: [64, 128, 256, 512]
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --dataset_dir=dataset/sun360
+  - --model=shinr
+  - --skip
+  - --max_epoch=800 # depend on dataset
+  - --panorama_idx=7
+  - --normalize
+  # - --batch_size=1 # only for temporal
+  - --plot # only for spatial
+  - --relu
