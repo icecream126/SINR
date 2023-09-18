@@ -96,11 +96,11 @@ class Dataset(Dataset):
         if self.dataset_type == "all":
             start, step = 0, 1
         elif self.dataset_type == "train":
-            start, step = 0, 3
-        elif self.dataset_type == "valid":
-            start, step = 1, 3
+            start, step = 0, 2
         else:
-            start, step = 2, 3
+            start, step = 1, 2
+        # else:
+        #     start, step = 2, 3
 
         lat_idx = np.arange(start, len(lat), step)
         lon_idx = np.arange(start, len(lon), step)

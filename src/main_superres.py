@@ -83,7 +83,6 @@ if __name__ == "__main__":
             dataset = spatial_ginr
 
     train_dataset = dataset.Dataset(dataset_type="train", **vars(args))
-    valid_dataset = dataset.Dataset(dataset_type="valid", **vars(args))
     test_dataset = dataset.Dataset(dataset_type="test", **vars(args))
     if args.model == "ginr":
         args.input_dim = train_dataset.n_fourier + (1 if args.time else 0)
@@ -92,12 +91,6 @@ if __name__ == "__main__":
         train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=args.num_workers,
-    )
-    valid_loader = DataLoader(
-        valid_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
         num_workers=args.num_workers,
     )
     test_loader = DataLoader(
@@ -118,7 +111,7 @@ if __name__ == "__main__":
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
 
     checkpoint_cb = ModelCheckpoint(
-        monitor="avg_valid_mse", mode="min", filename="best"
+        monitor="avg_train_mse", mode="min", filename="best"
     )
 
     trainer = pl.Trainer.from_argparse_args(
@@ -131,7 +124,7 @@ if __name__ == "__main__":
         strategy="ddp" if torch.cuda.device_count() > 1 else None,
     )
 
-    trainer.fit(model, train_loader, valid_loader)
+    trainer.fit(model, train_loader)
     trainer.test(model, test_loader, "best")
 
     # dataset_all = dataset.Dataset(dataset_type="all", **vars(args))

@@ -8,6 +8,7 @@ from .relu import ReLULayer
 from utils.spherical_harmonics import components_from_spherical_harmonics
 
 
+
 class SphericalHarmonicsLayer(nn.Module):
     def __init__(
         self,
@@ -19,25 +20,26 @@ class SphericalHarmonicsLayer(nn.Module):
         **kwargs,
     ):
         super().__init__()
-        self.relu = relu
-        self.levels = levels
-        self.hidden_dim = hidden_dim
-        # self.hidden_dim = levels**2
+        self.max_order = max_order
+        self.hidden_dim = (max_order+1)**2
         self.time = time
         self.omega = omega
-        self.linear = nn.Linear(levels**2, self.hidden_dim)
 
         if time:
-            self.latents = nn.Linear(1, self.hidden_dim) # latent embedding for time
-            self.linear = nn.Linear(levels**2+self.hidden_dim, self.hidden_dim) # change linear layer output dim for time
+            self.linear = nn.Linear(1, self.hidden_dim)
+            with torch.no_grad():
+                self.linear.weight.uniform_(-1, 1)
 
     def forward(self, input):
         out = components_from_spherical_harmonics(self.levels, input[..., :3])
-
+        import pdb
+        pdb.set_trace()
+        
         if self.time:
-            time = input[..., 3:]
-            time = self.latents(time)
-            out = torch.cat([out, time], dim=-1)
+            time = input[..., 2:]
+            lin = self.linear(time)
+            omega = self.omega * lin
+            out = out * torch.sin(omega)
         out = self.linear(out)
         
         if self.relu:

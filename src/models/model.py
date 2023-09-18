@@ -49,70 +49,24 @@ class MODEL(pl.LightningModule):
             mse = mse.mean()
         else:
             mse = loss
-
         w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
 
         self.log("batch_train_loss", loss, prog_bar=True, sync_dist=True)
         self.log("batch_train_mse", mse, prog_bar=True, sync_dist=True)
-        self.log(
-            "batch_train_psnr",
-            w_psnr_val,
-            prog_bar=True,
-            sync_dist=True,
-        )
+        self.log("batch_train_psnr", w_psnr_val, prog_bar=True, sync_dist=True)
         self.log("batch_train_rmse",torch.sqrt(loss),prog_bar=True, sync_dist=True)
-        return loss
+        
+        return {"loss": loss, "batch_train_psnr":w_psnr_val.item()}
 
-    def validation_step(self, data, batch_idx):
-        inputs, target = data["inputs"], data["target"]
-        mean_lat_weight = data["mean_lat_weight"]
-
-        weights = torch.abs(torch.cos(inputs[..., :1]))
-        weights = weights / mean_lat_weight
-
-        if self.time:
-            inputs = torch.cat((to_cartesian(inputs[..., :2]), inputs[..., 2:]), dim=-1)
-        else:
-            inputs = to_cartesian(inputs)
-        pred = self.forward(inputs)
-
-        error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
-        if len(error.shape) > len(weights.shape):
-            error = error.squeeze(-1)
-        error = weights * error
-        loss = error.mean()
-        rmse = torch.sqrt(loss)
-
-        if self.normalize:
-            self.scaler.match_device(pred)
-            pred = self.scaler.inverse_transform(pred)
-            target = self.scaler.inverse_transform(target)
-            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
-            if len(error.shape) > len(weights.shape):
-                error = error.squeeze(-1)
-            mse = weights * error
-            mse = mse.mean()
-        else:
-            mse = loss
-
-        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
-
-        self.log("batch_valid_rmse", rmse)
-        self.log("batch_valid_mse", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_valid_loss", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_valid_mse", mse, prog_bar=True, sync_dist=True)
-        self.log("batch_valid_psnr", w_psnr_val)
-        return {"batch_valid_mse": loss.item(), "batch_valid_rmse":rmse.item()}
-
-    def validation_epoch_end(self, outputs):
-        avg_valid_mse = torch.stack(
-            [torch.tensor(x["batch_valid_mse"]) for x in outputs]
+    def train_epoch_end(self, outputs):
+        avg_train_mse = torch.stack(
+            [torch.tensor(x["loss"]) for x in outputs]
         ).mean()
-        avg_valid_rmse = torch.stack(
-            [torch.tensor(x['batch_valid_rmse']) for x in outputs]
+        avg_train_psnr = torch.stack(
+            [torch.tensor(x['batch_train_psnr']) for x in outputs]
         ).mean()
-        self.log("avg_valid_mse", avg_valid_mse)
-        self.log("final_valid_psnr", mse2psnr(avg_valid_mse), prog_bar=True, sync_dist=True)
+        self.log("avg_train_mse", avg_train_mse)
+        self.log("final_train_psnr", avg_train_psnr, prog_bar=True, sync_dist=True)
 
     def test_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
@@ -182,7 +136,7 @@ class MODEL(pl.LightningModule):
             optimizer, factor=0.5, patience=self.lr_patience, verbose=True
         )
 
-        sch_dict = {"scheduler": scheduler, "monitor": "avg_valid_mse", "frequency": 1}
+        sch_dict = {"scheduler": scheduler, "monitor": "batch_train_mse", "frequency": 1}
         return {"optimizer": optimizer, "lr_scheduler": sch_dict}
 
 

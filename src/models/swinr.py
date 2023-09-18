@@ -92,17 +92,18 @@ class SphericalGaborLayer(nn.Module):
 
         dilate = torch.exp(self.dilate)
 
-        freq_arg = 2 * dilate * x / (1e-6 + 1 + z)
-        gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
+        freq_arg = 2 * dilate * x / (1e-6+1+z)
+        gauss_arg = 4 * dilate * dilate * (1-z) / (1e-6+1+z)
 
-
-        freq_term = torch.cos(self.omega * freq_arg)
-        gauss_term = torch.exp(-self.sigma * self.sigma * gauss_arg)
-        out = freq_term * gauss_term
         if self.time:
             time = input[..., 3:]
-            time = self.linear(time)
-            out = torch.cat([out, time], dim=-1)
+            lin = self.linear(time)
+            freq_arg = freq_arg + lin
+            gauss_arg = gauss_arg + lin * lin
+
+        freq_term = torch.cos(self.omega*freq_arg)
+        gauss_term = torch.exp(-self.sigma*self.sigma*gauss_arg)
+        out = freq_term * gauss_term
 
         if self.relu : 
             return nn.functional.relu(out)
