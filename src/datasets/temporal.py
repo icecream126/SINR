@@ -18,6 +18,7 @@ class Dataset(Dataset):
         normalize,  # Choosing whether to normalize the time input
         zscore_normalize=False,  # Choosing whether to normalize the target
         data_year="2018",  # Choosing which number of years to use
+        time_resolution=1,  # Choosing the time resolution (1~8760, 1 for hour,24 for day, 168 for week)
         **kwargs
     ):
         self.dataset_dir = dataset_dir
@@ -25,6 +26,7 @@ class Dataset(Dataset):
         self.output_dim = output_dim
         self.normalize = normalize
         self.zscore_normalize = zscore_normalize
+        self.time_resolution = time_resolution
         self.scaler = None
         if self.normalize:
             self.scaler = MinMaxScalerTorch()
@@ -67,32 +69,49 @@ class Dataset(Dataset):
                 else:
                     target = f.variables[variable][:]
 
+        """Convert lat, lon from degree to radian"""
         lat = np.deg2rad(lat)
         lon = np.deg2rad(lon)
-        time = (time - time.min()) / (time.max() - time.min())  # [8760] = []
-        # if self.normalize:
-        #     target = (target - target.min()) / (target.max() - target.min())
 
+        """Time resolution sampling, 1 for hour, 24 for day, 168 for week"""
+        time_resolution_index = np.arange(0, len(time), self.time_resolution)
+        time = time[time_resolution_index]
+        target = target[time_resolution_index]
+
+        """Time normalization: max_dim [8760], normalize to [0,1]"""
+        time = (time - time.min()) / (time.max() - time.min())
+
+        """Data chessboard sampling for super resolution task"""
         if self.dataset_type == "all":
             start, step = 0, 1
         elif self.dataset_type == "train":
-            start, step = 0, 3
+            start, step = 0, 2
         elif self.dataset_type == "valid":
-            start, step = 1, 3
+            start, step = 1, 2
         else:
-            start, step = 2, 3
+            start, step = 1, 2
 
-        # Only time index sampling
-        time_idx = np.arange(start, len(time), step)
-
+        """Numpy to torch"""
         lat = torch.from_numpy(lat).float()
         lon = torch.from_numpy(lon).float()
-        time = torch.from_numpy(time[time_idx]).float()
-        target = torch.from_numpy(target[time_idx]).float()
+        time = torch.from_numpy(time).float()
+        target = torch.from_numpy(target).float()
 
+        # """Normalization of target"""  # scaler the data after sampling
+        # if self.zscore_normalize or self.normalize:
+        #     self.scaler.fit(target)
+        #     target = self.scaler.transform(target)
+
+        """Time sampling for time super resolution task"""
+        time_idx = np.arange(start, len(time), step)
+        time = time[time_idx]
+        target = target[time_idx]
+
+        """latitudinal weight for latitudinal weighting"""
         mean_lat_weight = torch.abs(torch.cos(lat)).mean().float()
         target_shape = target.shape
 
+        """Making meshgrid and flatten"""
         time, lat, lon = torch.meshgrid(time, lat, lon)
 
         lat = lat.flatten()
@@ -100,9 +119,11 @@ class Dataset(Dataset):
         time = time.flatten()
         target = target.reshape(-1, self.output_dim)
 
+        """concatenate lat, lon, time"""
         inputs = torch.stack([lat, lon, time], dim=-1)
         inputs = torch.cat([inputs[..., :2], inputs[..., 2:]], dim=-1)
 
+        """Normalization of target"""  # scaler the data after sampling
         if self.zscore_normalize or self.normalize:
             self.scaler.fit(target)
             target = self.scaler.transform(target)

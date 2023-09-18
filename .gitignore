@@ -33,3 +33,6 @@ sweep/
 temporal_geopotential.sh
 temporal_temperature.sh
 230909/
+generate_2.sh
+dataset2
+my_script

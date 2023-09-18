@@ -136,11 +136,11 @@ class Dataset(Dataset):
         if self.dataset_type == "all":
             start, step = 0, 1
         elif self.dataset_type == "train":
-            start, step = 0, 3
+            start, step = 0, 2
         elif self.dataset_type == "valid":
-            start, step = 1, 3
+            start, step = 1, 2
         else:
-            start, step = 2, 3
+            start, step = 1, 2
 
         # Time sampling
         self.n_points = data["target"].shape[0]
