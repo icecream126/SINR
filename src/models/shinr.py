@@ -20,10 +20,12 @@ class SphericalHarmonicsLayer(nn.Module):
         **kwargs,
     ):
         super().__init__()
-        self.max_order = max_order
-        self.hidden_dim = (max_order+1)**2
+        self.relu = relu
+        self.levels = levels
+        self.hidden_dim = hidden_dim
         self.time = time
         self.omega = omega
+        self.out_linear = nn.Linear(levels**2, self.hidden_dim)
 
         if time:
             self.linear = nn.Linear(1, self.hidden_dim)
@@ -32,15 +34,13 @@ class SphericalHarmonicsLayer(nn.Module):
 
     def forward(self, input):
         out = components_from_spherical_harmonics(self.levels, input[..., :3])
-        import pdb
-        pdb.set_trace()
         
         if self.time:
-            time = input[..., 2:]
+            time = input[..., 3:]
             lin = self.linear(time)
             omega = self.omega * lin
             out = out * torch.sin(omega)
-        out = self.linear(out)
+        out = self.out_linear(out)
         
         if self.relu:
             return nn.functional.relu(out)

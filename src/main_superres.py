@@ -111,7 +111,7 @@ if __name__ == "__main__":
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
 
     checkpoint_cb = ModelCheckpoint(
-        monitor="avg_train_mse", mode="min", filename="best"
+        monitor="batch_train_mse", mode="min", filename="best"
     )
 
     trainer = pl.Trainer.from_argparse_args(
@@ -127,10 +127,6 @@ if __name__ == "__main__":
     trainer.fit(model, train_loader)
     trainer.test(model, test_loader, "best")
 
-    # dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
-    # logger.experiment.log(
-    #     {"test_ssim": calculate_ssim(model, dataset_all, args.output_dim)}
-    # )
 
     if args.plot:
         dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
