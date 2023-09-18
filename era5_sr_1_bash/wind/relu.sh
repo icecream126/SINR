@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CUDA_VISIBLE_DEVICES=4 python src/main_superres.py \
-    --dataset_dir dataset/spatial_1_00/era5_geopotential \
+    --dataset_dir dataset/spatial_1_00/era5_wind \
     --model relu \
     --max_epochs 500 \
     --lr 0.0004 \
