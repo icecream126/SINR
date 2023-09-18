@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=7 python src/main_superres.py \
     --dataset_dir dataset/spatial_1_00/era5_geopotential \
     --model wire \
     --max_epochs 500 \
