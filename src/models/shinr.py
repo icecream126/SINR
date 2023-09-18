@@ -28,7 +28,7 @@ class SphericalHarmonicsLayer(nn.Module):
         self.out_linear = nn.Linear(levels**2, self.hidden_dim)
 
         if time:
-            self.linear = nn.Linear(1, self.hidden_dim)
+            self.linear = nn.Linear(1, self.levels ** 2)
             with torch.no_grad():
                 self.linear.weight.uniform_(-1, 1)
 
