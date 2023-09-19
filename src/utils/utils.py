@@ -311,7 +311,7 @@ class MinMaxScalerTorch(object):
     def transform(self, X):
         X = torch.tensor(X, dtype=torch.float)
         # X = X.clone().detach()
-        return (X - self.max) / (self.max - self.min + EPSILON)
+        return (X - self.min) / (self.max - self.min + EPSILON)
 
     def inverse_transform(self, X):
         X = torch.tensor(X, dtype=torch.float)
