@@ -31,6 +31,7 @@ class Dataset(Dataset):
         n_nodes_in_sample=5000,
         zscore_normalize=False,  # Choosing whether to normalize the target
         data_year="2018",  # Choosing which number of years to use
+        time_resolution=1,  # Choosing the time resolution (1~8760, 1 for hour,24 for day, 168 for week)
         **kwargs,
     ):
         self.dataset_dir = dataset_dir
@@ -40,6 +41,7 @@ class Dataset(Dataset):
         self.n_fourier = n_fourier
         self.n_nodes_in_sample = n_nodes_in_sample
         self.zscore_normalize = zscore_normalize
+        self.time_resolution = time_resolution
         self.filenames = self.get_filenames(data_year)
         self.scaler = None
         if self.normalize:
@@ -136,21 +138,26 @@ class Dataset(Dataset):
         if self.dataset_type == "all":
             start, step = 0, 1
         elif self.dataset_type == "train":
-            start, step = 0, 2
+            start, step = 0, 3
         elif self.dataset_type == "valid":
-            start, step = 1, 2
+            start, step = 1, 3
         else:
-            start, step = 1, 2
+            start, step = 2, 3
+
+        data_out["time"] = torch.from_numpy(data["time"]).float()  # [t, 1]
+        data_out["target"] = torch.from_numpy(data["target"]).float()  # [t,n, 1]
+
+        time_resolution_index = np.arange(0, len(data["time"]), self.time_resolution)
+        data_out["time"] = data_out["time"][time_resolution_index]
+        data_out["target"] = data_out["target"][time_resolution_index]
 
         # Time sampling
         self.n_points = data["target"].shape[0]
-        self.points_idx = np.arange(start, len(data["time"]), step)
+        self.points_idx = np.arange(start, len(data_out["time"]), step)
 
         data_out["fourier"] = torch.from_numpy(data["fourier"]).float()  # [n, 100]
         data_out["fourier"] = data_out["fourier"][:, : self.n_fourier]  # [n/3, 34]
-        data_out["time"] = torch.from_numpy(data["time"]).float()  # [t, 1]
         data_out["time"] = data_out["time"][self.points_idx].view(-1, 1)  # [t, 1]
-        data_out["target"] = torch.from_numpy(data["target"]).float()  # [t,n, 1]
         data_out["target"] = data_out["target"][self.points_idx]  # [t/3,n, 1]
         data_out["target"] = data_out["target"].view(-1, 1)  # [t/3 * n, 1]
         # import pdb

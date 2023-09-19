@@ -49,7 +49,7 @@ class Dataset(Dataset):
         self._data = self.load_data()
 
     def __len__(self):
-        return len(self.points_idx)
+        return self._data["fourier"].shape[0]
 
     def get_filenames(self):
         filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*.nc")))
@@ -68,7 +68,12 @@ class Dataset(Dataset):
         return data_out
 
     def load_data(self):
-        cachefile = Path(self.dataset_dir) / "cached" / "cached_data.npz"
+        cur_filename = os.path.basename(self.filename).split(".")[0]
+        cachefile = (
+            Path(self.dataset_dir)
+            / "cached"
+            / (cur_filename + "_" + self.dataset_type + ".npz")
+        )
         data_out = dict()
 
         if cachefile.is_file():
@@ -89,17 +94,12 @@ class Dataset(Dataset):
                 with nc.Dataset(self.filename, "r") as f:
                     for variable in f.variables:
                         if variable == "latitude":
-                            lat = f.variables[variable][:]
+                            lat = f.variables[variable][::-1]
                         elif variable == "longitude":
                             lon = f.variables[variable][:]
                         elif variable == "z":
-                            # Fixed
-                            target = (
-                                torch.tensor(f.variables[variable][0].data)
-                                .unsqueeze(2)
-                                .numpy()
-                            )  # (lat, lon, 1)
-
+                            target = f.variables[variable][0][::-1]
+                            # (lat, lon) , [0] implies time=0
             else:
                 data = np.load(self.filename)
 
@@ -107,7 +107,28 @@ class Dataset(Dataset):
                 lon = data["longitude"]
                 target = data["target"]
 
-            lats, lons = np.meshgrid(lat, lon)
+            """Sampling index"""
+            if self.dataset_type == "all":
+                start, step = 0, 1
+            elif self.dataset_type == "train":
+                start, step = 0, 2
+            else:
+                start, step = 1, 2
+
+            """Sampling data"""  # if train -> using sampled, test -> using all but data for sampled
+            lat_sample = np.arange(start, lat.shape[0], step)
+            lon_sample = np.arange(start, lon.shape[0], step)
+
+            if self.dataset_type == "train":
+                lats = lat[lat_sample]
+                lons = lon[lon_sample]
+                target = target[lat_sample][:, lon_sample]
+            else:
+                lats = lat
+                lons = lon
+
+            lats, lons = lats.astype(np.float64), lons.astype(np.float64)
+            lats, lons = np.meshgrid(lats, lons)
             lats, lons = lats.T.data, lons.T.data  # (lat, lon), (lat, lon)
             xyz = sphere_to_cartesian(lats, lons)  # (lat, lon, 3)
 
@@ -116,40 +137,38 @@ class Dataset(Dataset):
             mesh = pymesh.form_mesh(hull.points, hull.simplices)
             points, adj = mesh_to_graph(mesh)
 
-            print(f"Computing embeddings, size=({adj.shape})")
-            u = get_fourier(adj)
-            if self.normalize:
-                target = (target - target.min()) / (target.max() - target.min())
+            import pdb
 
+            pdb.set_trace()
+
+            print(f"Computing embeddings, size=({adj.shape})")
+            four = get_fourier(adj)
+
+            if self.dataset_type == "test":
+                four = four.reshape(lat.shape[0], lon.shape[0], -1)[lat_sample][
+                    :, lon_sample
+                ]
+                four = four.reshape(-1, four.shape[-1])
+                target = target.reshape(lat.shape[0], lon.shape[0], -1)[lat_sample][
+                    :, lon_sample
+                ]
+            # index = np.arange(lat.shape[0]*lon.shape[0]).reshape(lat.shape[0], lon.shape[0])[lat_sample][:, lon_sample].reshape(-1)
             np.savez(
                 cachefile,
                 points=points,
-                fourier=u,
+                fourier=four,
                 target=target.reshape(-1, 1),
                 faces=mesh.faces,
             )
             data = np.load(cachefile)
 
-        if self.dataset_type == "all":
-            start, step = 0, 1
-        elif self.dataset_type == "train":
-            start, step = 0, 3
-        elif self.dataset_type == "valid":
-            start, step = 1, 3
-        else:
-            start, step = 2, 3
+        data_out["fourier"] = torch.from_numpy(data["fourier"]).float()[
+            :, : self.n_fourier
+        ]  # [n, 100] -> [n, n_fourier]
+        data_out["target"] = torch.from_numpy(data["target"]).float()  # [n, 1]]
+        import pdb
 
-        self.n_points = data["target"].shape[0]
-        self.points_idx = np.arange(start, self.n_points, step)
-
-        data_out["fourier"] = torch.from_numpy(data["fourier"]).float()  # [n, 100]
-        data_out["target"] = torch.from_numpy(data["target"]).float()  # [n, 1]
-
-        # Sampling
-        data_out["fourier"] = data_out["fourier"][
-            self.points_idx, : self.n_fourier
-        ]  # [n/3, 34]
-        data_out["target"] = data_out["target"][self.points_idx]  # [n/3, 1]
+        pdb.set_trace()
 
         if self.zscore_normalize or self.normalize:
             self.scaler.fit(data_out["target"])
@@ -204,7 +223,7 @@ def laplacian(A):
 
 def get_fourier(adj, k=100):
     l = laplacian(adj)
-    _, u = sp.linalg.eigsh(l, k=k, which="SM")
+    _, u = sp.linalg.eigs(l, k=k, which="SM")
     n = l.shape[0]
     u *= np.sqrt(n)
 
@@ -214,7 +233,7 @@ def get_fourier(adj, k=100):
 if __name__ == "__main__":
     dd = Dataset(
         dataset_dir="../../dataset/spatial/era5_geopotential_100",
-        dataset_type="train",
+        dataset_type="test",
         output_dim=1,
         normalize="store_true",
         panorama_idx=1,

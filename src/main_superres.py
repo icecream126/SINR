@@ -13,8 +13,8 @@ import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
-from datasets import spatial, temporal, spatial_ginr, temporal_ginr
-from models import relu, siren, wire, shinr, swinr, shiren, ginr
+from datasets import spatial, temporal, spatial_ginr
+from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr2
 
 model_dict = {
     "relu": relu,
@@ -22,6 +22,7 @@ model_dict = {
     "wire": wire,
     "shinr": shinr,
     "swinr": swinr,
+    "swinr2": swinr2,
     "shiren": shiren,
     "ginr": ginr,
 }
@@ -35,6 +36,8 @@ if __name__ == "__main__":
     parser.add_argument("--panorama_idx", type=int, default=2)
     parser.add_argument("--normalize", default=False, action="store_true")
     parser.add_argument("--zscore_normalize", default=False, action="store_true")
+    parser.add_argument("--data_year", default="2018")  # For weather temporal
+    parser.add_argument("--time_resolution", type=int, default=24)
 
     # Model argument
     parser.add_argument("--hidden_dim", type=int, default=256)
@@ -44,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("--sigma", type=float, default=1.0)
     parser.add_argument("--levels", type=int, default=4)
     parser.add_argument("--posenc_freq", type=int, default=10)
-    parser.add_argument("--relu", default=False, action='store_true')
+    parser.add_argument("--relu", default=False, action="store_true")
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
@@ -75,8 +78,8 @@ if __name__ == "__main__":
     # Dataset
     if args.time:
         dataset = temporal
-        if args.model == "ginr":
-            dataset = temporal_ginr
+        # if args.model == "ginr":
+        # dataset = temporal_ginr_copy
     else:
         dataset = spatial
         if args.model == "ginr":
@@ -126,7 +129,6 @@ if __name__ == "__main__":
 
     trainer.fit(model, train_loader)
     trainer.test(model, test_loader, "best")
-
 
     if args.plot:
         dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
