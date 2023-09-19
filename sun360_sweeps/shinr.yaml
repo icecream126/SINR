@@ -1,14 +1,14 @@
 program: src/main_superres.py
-name: swinr
+name: shinr
 entity: postech_sinr
 method: grid
 parameters:
   levels:
     values: [1,2,3,4,5]
   lr:
-    values: [0.0007, 0.0003, 0.007, 0.003, 0.0005]
+    values: [0.0003]
   hidden_dim:
-    values: [64, 128, 256, 512]
+    values: [512]
 command:
   - python
   - ${program}
@@ -17,7 +17,7 @@ command:
   - --model=shinr
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=7
+  - --panorama_idx=4
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial

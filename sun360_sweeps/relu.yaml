@@ -1,14 +1,14 @@
 program: src/main_superres.py
-name: swinr
+name: relu
 entity: postech_sinr
 method: grid
 parameters:
   posenc_freq:
     values: [5, 7, 10, 15]
   lr:
-    values: [0.0004, 0.004, 0.04, 0.006, 0.0006, 0.06]
+    values: [0.0003]
   hidden_dim:
-    values: [64, 128, 256, 512]
+    values: [512]
 command:
   - python
   - ${program}
@@ -17,7 +17,7 @@ command:
   - --model=relu
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=0
+  - --panorama_idx=4
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial
