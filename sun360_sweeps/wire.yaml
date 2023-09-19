@@ -1,5 +1,5 @@
 program: src/main_superres.py
-name: swinr
+name: wire
 entity: postech_sinr
 method: grid
 parameters:
@@ -8,9 +8,9 @@ parameters:
   sigma:
     values: [0.1, 1, 10, 30]
   lr:
-    values: [0.005, 0.001]
+    values: [0.0003]
   hidden_dim:
-    values: [128, 256, 512]
+    values: [512]
 command:
   - python
   - ${program}
@@ -19,7 +19,7 @@ command:
   - --model=wire
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=0
+  - --panorama_idx=4
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial
