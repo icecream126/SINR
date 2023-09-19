@@ -134,7 +134,7 @@ class INR(MODEL):
         input_dim: int,
         output_dim: int,
         hidden_dim: int = 512,
-        n_layers: int = 4,
+        hidden_layers: int = 4,
         geometric_init: bool = False,
         beta: int = 0,
         sine: bool = False,
@@ -151,7 +151,7 @@ class INR(MODEL):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
+        self.n_layers = hidden_layers
         self.geometric_init = geometric_init
         self.beta = beta
         self.sine = sine
@@ -171,7 +171,7 @@ class INR(MODEL):
             input_dim_true,
             output_dim,
             hidden_dim,
-            n_layers,
+            hidden_layers,
             geometric_init,
             beta,
             sine,
@@ -217,6 +217,10 @@ class INR(MODEL):
 
         # Predict signal
         pred = self.forward(inputs)
+
+        # import pdb
+
+        # pdb.set_trace()
 
         # Loss
         main_loss = self.loss_fn(pred, target)

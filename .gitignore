@@ -36,3 +36,8 @@ temporal_temperature.sh
 generate_2.sh
 dataset2
 my_script
+src/datasets/temporal_ginr_copy.py
+.gitignore
+src/models/swinr2.py
+src/models/shiren2.py
+src/models/ginr2.py

@@ -82,11 +82,7 @@ class Dataset(Dataset):
         # import pdb
 
         # pdb.set_trace()
-        cachefile = (
-            Path(self.dataset_dir)
-            / "cached"
-            / (cur_filename + "_" + self.dataset_type + ".npz")
-        )
+        cachefile = Path(self.dataset_dir) / "cached" / (cur_filename + ".npz")
         data_out = dict()
 
         if cachefile.is_file():
@@ -101,6 +97,19 @@ class Dataset(Dataset):
                         lat = f.variables[variable][:]
                     elif variable == "longitude":
                         lon = f.variables[variable][:]
+                    elif variable == "time":
+                        time = f.variables[variable][:]
+                    elif variable == "z":
+                        # Fixed
+                        target = f.variables[variable][:]  # (time, lat, lon)
+
+                        # target = (
+                        #     torch.tensor(f.variables[variable][0].data)
+                        #     .unsqueeze(2)
+                        #     .numpy()
+                        # )
+
+            time = (time - time.min()) / (time.max() - time.min())  # time normalization
 
             lats, lons = np.meshgrid(lat, lon)
             lats, lons = lats.T.data, lons.T.data  # (lat, lon), (lat, lon)
@@ -113,50 +122,47 @@ class Dataset(Dataset):
 
             print(f"Computing embeddings, size=({adj.shape})")
             u = get_fourier(adj)
+            # if self.normalize:
+            #     target = (target - target.min()) / (target.max() - target.min())
             os.makedirs(Path(self.dataset_dir) / "cached", exist_ok=True)
             np.savez(
                 cachefile,
                 points=points,
                 fourier=u,
+                target=target,
+                time=time,
                 faces=mesh.faces,
             )
             data = np.load(cachefile)
 
-        with nc.Dataset(filename, "r") as f:
-            for variable in f.variables:
-                if variable == "time":
-                    time = f.variables[variable][:]
-                elif variable == "z":
-                    target = f.variables[variable][:]  # (time, lat, lon)
-
-        """Time resolution sampling, 1 for hour, 24 for day, 168 for week"""
-        time_resolution_index = np.arange(0, len(time), self.time_resolution)
-        time = time[time_resolution_index]
-        target = target[time_resolution_index]
-        data["time"] = time
-        data["target"] = target
-
         if self.dataset_type == "all":
             start, step = 0, 1
         elif self.dataset_type == "train":
-            start, step = 0, 2
+            start, step = 0, 3
         elif self.dataset_type == "valid":
-            start, step = 1, 2
+            start, step = 1, 3
         else:
-            start, step = 1, 2
+            start, step = 2, 3
+
+        data_out["time"] = torch.from_numpy(data["time"]).float()  # [t, 1]
+        data_out["target"] = torch.from_numpy(data["target"]).float()  # [t,n, 1]
+
+        time_resolution_index = np.arange(0, len(data["time"]), self.time_resolution)
+        data_out["time"] = data_out["time"][time_resolution_index]
+        data_out["target"] = data_out["target"][time_resolution_index]
 
         # Time sampling
         self.n_points = data["target"].shape[0]
-        self.points_idx = np.arange(start, len(data["time"]), step)
+        self.points_idx = np.arange(start, len(data_out["time"]), step)
 
         data_out["fourier"] = torch.from_numpy(data["fourier"]).float()  # [n, 100]
         data_out["fourier"] = data_out["fourier"][:, : self.n_fourier]  # [n/3, 34]
-        data_out["time"] = torch.from_numpy(data["time"]).float()  # [t, 1]
         data_out["time"] = data_out["time"][self.points_idx].view(-1, 1)  # [t, 1]
-        data_out["target"] = torch.from_numpy(data["target"]).float()  # [t,n, 1]
         data_out["target"] = data_out["target"][self.points_idx]  # [t/3,n, 1]
         data_out["target"] = data_out["target"].view(-1, 1)  # [t/3 * n, 1]
+        # import pdb
 
+        # pdb.set_trace()
         if self.zscore_normalize or self.normalize:
             self.scaler.fit(data_out["target"])
             data_out["target"] = self.scaler.transform(data_out["target"])
