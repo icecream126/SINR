@@ -36,7 +36,7 @@ if __name__ == "__main__":
     parser.add_argument("--panorama_idx", type=int, default=2)
     parser.add_argument("--normalize", default=False, action="store_true")
     parser.add_argument("--zscore_normalize", default=False, action="store_true")
-    parser.add_argument("--data_year", default="2018")  # For weather temporal
+    parser.add_argument("--data_year", default=None)  # For weather temporal
     parser.add_argument("--time_resolution", type=int, default=24)
 
     # Model argument

@@ -17,7 +17,7 @@ class Dataset(Dataset):
         output_dim,
         normalize,  # Choosing whether to normalize the time input
         zscore_normalize=False,  # Choosing whether to normalize the target
-        data_year="2018",  # Choosing which number of years to use
+        data_year=None,  # Choosing which number of years to use
         time_resolution=1,  # Choosing the time resolution (1~8760, 1 for hour,24 for day, 168 for week)
         **kwargs
     ):
@@ -75,7 +75,8 @@ class Dataset(Dataset):
 
         """Time resolution sampling, 1 for hour, 24 for day, 168 for week"""
         time_resolution_index = np.arange(0, len(time), self.time_resolution)
-        time = time[time_resolution_index]
+        # time = time[time_resolution_index]
+        time = time[time_resolution_index][:30]  # make 30 datasets
         target = target[time_resolution_index]
 
         """Time normalization: max_dim [8760], normalize to [0,1]"""

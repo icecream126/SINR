@@ -113,6 +113,18 @@ def draw_map(x, mode, variable, colormap, rmse, logger, args):
     logger.experiment.log(
         {title: wandb.Image(fig, caption=f"{args.model}:{rmse:.4f}(RMSE)")}
     )
+    if variable == "error":
+        try:
+            title = mode + "_" + variable + "_hist"
+            fig = plt.figure(figsize=[12, 5])
+            ax = fig.add_subplot(111)
+            x[variable].plot.hist(ax=ax, bins=100)
+            plt.savefig(title + ".png")
+            logger.experiment.log(
+                {title: wandb.Image(fig, caption=f"{args.model}:{rmse:.4f}(RMSE)")}
+            )
+        except:
+            print("Failed to draw error histogram. Need Debugging.")
 
 
 def visualize_era5(dataset, model, filename, logger, args):
@@ -168,6 +180,8 @@ def visualize_era5(dataset, model, filename, logger, args):
         elif "cloud" in args.dataset_dir:
             ground_truth = "cc"
             colormap = "PuBu_r"
+
+        # FIXME: Implement saving raw data
 
         # Assign normalized target variable for visualization
         gt_min, gt_max = float(x[ground_truth].min()), float(x[ground_truth].max())

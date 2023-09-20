@@ -30,7 +30,7 @@ class Dataset(Dataset):
         n_fourier=5,  # Chosen number of fourier features (1~100, 34 for weather)
         n_nodes_in_sample=5000,
         zscore_normalize=False,  # Choosing whether to normalize the target
-        data_year="2020",  # Choosing which number of years to use
+        data_year=None,  # Choosing which number of years to use
         time_resolution=1,  # Choosing the time resolution (1~8760, 1 for hour,24 for day, 168 for week)
         **kwargs,
     ):
@@ -65,15 +65,13 @@ class Dataset(Dataset):
         data = self._data
 
         l1 = data["fourier"].size(0)
-        # l2 = data["time"].size(0)
 
         data_out["inputs"] = data["fourier"][index % l1]  # [n_fourier]
         data_out["time"] = data["time"][index // l1]  # [1]
         data_out["target"] = data["target"][index]  # [1]
-
-        # import pdb
-
-        # pdb.set_trace()
+        data_out["mean_lat_weight"] = self._data["mean_lat_weight"]
+        data_out["spherical"] = self._data["spherical"][index]
+        data_out["target_shape"] = self._data["target_shape"]
 
         return data_out
 
