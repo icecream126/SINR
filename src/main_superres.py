@@ -14,7 +14,7 @@ import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 from datasets import spatial, temporal, spatial_ginr
-from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr2
+from models import relu, siren, wire, shinr, swinr, shiren, ginr
 
 model_dict = {
     "relu": relu,
@@ -22,7 +22,6 @@ model_dict = {
     "wire": wire,
     "shinr": shinr,
     "swinr": swinr,
-    "swinr2": swinr2,
     "shiren": shiren,
     "ginr": ginr,
 }

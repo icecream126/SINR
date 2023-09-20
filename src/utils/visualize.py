@@ -15,7 +15,8 @@ from utils.utils import image_psnr
 
 from scipy.interpolate import griddata
 import numpy as np
-
+from datetime import datetime
+import os
 
 def visualize_360(dataset, model, args, mode, logger):
     with torch.no_grad():
@@ -57,7 +58,20 @@ def visualize_360(dataset, model, args, mode, logger):
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         error = error.squeeze(-1).detach().cpu().numpy()
-
+        
+        # Save target, pred, error as npy
+        current_datetime = datetime.now()
+        current_datetime = current_datetime.strftime('%Y_%m_%d_%H_%M_%S')
+        
+        filepath = 'output/'+str(current_datetime)+'/'+str(logger.experiment.id)+'/'
+        os.makedirs(filepath, exist_ok=True)
+        np.save(filepath+'target', target)
+        np.save(filepath+'pred', pred)
+        np.save(filepath+'error', error)
+        # draw_histogram('target', filepath+'target')
+        # draw_histogram('pred', filepath+'pred')
+        draw_histogram('error', filepath+'error', logger)
+        
         target = (255 * target).astype(np.uint8)
         pred = (255 * pred).astype(np.uint8)
         plt.rcParams["font.size"] = 50
@@ -127,6 +141,31 @@ def draw_map(x, mode, variable, colormap, rmse, logger, args):
             print("Failed to draw error histogram. Need Debugging.")
 
 
+def draw_histogram(obj_type, filepath, logger):
+    
+    obj = np.load(filepath+'.npy')
+
+    # Flatten the 2D error array to 1D
+    obj = obj.flatten()
+
+    # Round the error values to 4 decimal places
+    # rounded_obj = np.round(flattened_obj, 4)
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.hist(obj, bins=50, edgecolor='black', alpha=0.7)
+    ax.set_title("Histogram of MSE Errors")
+    ax.set_xlabel("Error")
+    ax.set_ylabel("Number of Occurrences")
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
+
+    # Log the plot directly to wandb without saving
+    logger.experiment.log({obj_type+" Histogram": wandb.Image(fig)})
+
+
+    
+
 def visualize_era5(dataset, model, filename, logger, args):
     with torch.no_grad():
         data = dataset[:]
@@ -163,6 +202,20 @@ def visualize_era5(dataset, model, filename, logger, args):
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         error = error.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
 
+        # Save target, pred, error as npy
+        current_datetime = datetime.now()
+        current_datetime = current_datetime.strftime('%Y_%m_%d_%H_%M_%S')
+        
+        filepath = 'output/'+str(current_datetime)+'/'+str(logger.experiment.id)+'/'
+        os.makedirs(filepath, exist_ok=True)
+        np.save(filepath+'target', target)
+        np.save(filepath+'pred', pred)
+        np.save(filepath+'error', error)
+        # draw_histogram('target', filepath+'target')
+        # draw_histogram('pred', filepath+'pred')
+        draw_histogram('error', filepath+'error', logger)
+        
+        
         dims = ("latitude", "longitude")
 
         x = xr.open_dataset(filename)
