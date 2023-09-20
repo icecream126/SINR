@@ -184,9 +184,6 @@ class INR(MODEL):
         if time:
             self.latents = nn.Linear(1, latent_dim)
 
-        # Loss
-        self.loss_fn = nn.MSELoss()
-
         self.save_hyperparameters()
 
     def forward(self, points):
@@ -210,6 +207,12 @@ class INR(MODEL):
 
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+        spherical = data["spherical"]
+        mean_lat_weight = data["mean_lat_weight"]  # [512] with 0.6341
+
+        weights = torch.abs(torch.cos(spherical[..., :1]))  # [512, 1]
+        weights = weights / mean_lat_weight  # [512, 512]
+
         if self.time:
             time = data["time"]
             latents = self.latents(time)
@@ -218,23 +221,28 @@ class INR(MODEL):
         # Predict signal
         pred = self.forward(inputs)
 
-        # import pdb
-
-        # pdb.set_trace()
-
         # Loss
-        main_loss = self.loss_fn(pred, target)
-        loss = main_loss
+        error = torch.sum(
+            (pred - target) ** 2, dim=-1, keepdim=True
+        )  # [512, 1] with 0.9419
+        if len(error.shape) > len(weights.shape):
+            error = error.squeeze(-1)
+        error = weights * error  # [512, 512] with 1.2535
+
+        loss = error.mean()  # 1.2346
 
         if self.normalize:
             self.scaler.match_device(pred)
             pred = self.scaler.inverse_transform(pred)
             target = self.scaler.inverse_transform(target)
             mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            if len(error.shape) > len(weights.shape):
+                error = error.squeeze(-1)
+            mse = weights * error
             mse = mse.mean()
         else:
             mse = loss
-
+        rmse = torch.sqrt(loss)
         w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
 
         self.log("batch_train_loss", loss, prog_bar=True, sync_dist=True)
@@ -245,46 +253,18 @@ class INR(MODEL):
             prog_bar=True,
             sync_dist=True,
         )
+        self.log("batch_train_rmse", rmse, prog_bar=True, sync_dist=True)
 
-        return loss
-
-    def validation_step(self, data, batch_idx):
-        inputs, target = data["inputs"], data["target"]
-
-        # import pdb
-
-        # pdb.set_trace()
-        if self.time:
-            time = data["time"]
-            latents = self.latents(time)
-            inputs = self.add_latent(inputs, latents)
-
-        # Predict signal
-        pred = self.forward(inputs)
-
-        # Loss
-        main_loss = self.loss_fn(pred, target)
-        loss = main_loss
-
-        if self.normalize:
-            self.scaler.match_device(pred)
-            pred = self.scaler.inverse_transform(pred)
-            target = self.scaler.inverse_transform(target)
-            mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
-            mse = mse.mean()
-        else:
-            mse = loss
-
-        w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
-
-        self.log("batch_valid_loss", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_valid_mse", mse, prog_bar=True, sync_dist=True)
-        self.log("batch_valid_psnr", w_psnr_val, prog_bar=True, sync_dist=True)
-
-        return {"batch_valid_mse": loss.item()}
+        return {"loss": loss, "batch_train_psnr": w_psnr_val.item()}
 
     def test_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]
+        spherical = data["spherical"]
+        mean_lat_weight = data["mean_lat_weight"]  # [512] with 0.6341
+
+        weights = torch.abs(torch.cos(spherical[..., :1]))  # [512, 1]
+        weights = weights / mean_lat_weight  # [512, 512]
+
         if self.time:
             time = data["time"]
             latents = self.latents(time)
@@ -294,22 +274,37 @@ class INR(MODEL):
         pred = self.forward(inputs)
 
         # Loss
-        main_loss = self.loss_fn(pred, target)
-        loss = main_loss
+        error = torch.sum(
+            (pred - target) ** 2, dim=-1, keepdim=True
+        )  # [512, 1] with 0.9419
+        if len(error.shape) > len(weights.shape):
+            error = error.squeeze(-1)
+        error = weights * error  # [512, 512] with 1.2535
+
+        loss = error.mean()  # 1.2346
 
         if self.normalize:
             self.scaler.match_device(pred)
             pred = self.scaler.inverse_transform(pred)
             target = self.scaler.inverse_transform(target)
             mse = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
+            if len(error.shape) > len(weights.shape):
+                error = error.squeeze(-1)
+            mse = weights * error
             mse = mse.mean()
         else:
             mse = loss
-
+        rmse = torch.sqrt(loss)
         w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
 
         self.log("batch_test_loss", loss, prog_bar=True, sync_dist=True)
         self.log("batch_test_mse", mse, prog_bar=True, sync_dist=True)
         self.log("batch_test_psnr", w_psnr_val, prog_bar=True, sync_dist=True)
+        self.log("batch_test_rmse", rmse, prog_bar=True, sync_dist=True)
 
-        return {"batch_test_mse": loss.item(), "batch_test_psnr": w_psnr_val.item()}
+        # return {"batch_test_mse": loss.item(), "batch_test_psnr": w_psnr_val.item()}
+        return {
+            "batch_test_mse": loss,
+            "batch_test_psnr": w_psnr_val.item(),
+            "batch_test_rmse": rmse.item(),
+        }

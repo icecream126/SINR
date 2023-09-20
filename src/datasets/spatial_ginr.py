@@ -10,7 +10,12 @@ import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
 
-from utils.utils import to_cartesian, StandardScalerTorch, MinMaxScalerTorch
+from utils.utils import (
+    to_cartesian,
+    to_spherical,
+    StandardScalerTorch,
+    MinMaxScalerTorch,
+)
 
 from pathlib import Path
 from scipy.spatial import ConvexHull
@@ -64,7 +69,9 @@ class Dataset(Dataset):
 
         data_out["inputs"] = data_out["inputs"][index]  # [n_fourier]
         data_out["target"] = data_out["target"][index]  # [1]
-
+        data_out["mean_lat_weight"] = self._data["mean_lat_weight"]
+        data_out["spherical"] = self._data["spherical"][index]
+        data_out["target_shape"] = self._data["target_shape"]
         return data_out
 
     def load_data(self):
@@ -112,8 +119,10 @@ class Dataset(Dataset):
                 start, step = 0, 1
             elif self.dataset_type == "train":
                 start, step = 0, 2
-            else:
+            elif self.dataset_type == "test":
                 start, step = 1, 2
+            else:
+                start, step = 0, 2
 
             """Sampling data"""  # if train -> using sampled, test -> using all but data for sampled
             lat_sample = np.arange(start, lat.shape[0], step)
@@ -131,15 +140,12 @@ class Dataset(Dataset):
             lats, lons = np.meshgrid(lats, lons)
             lats, lons = lats.T.data, lons.T.data  # (lat, lon), (lat, lon)
             xyz = sphere_to_cartesian(lats, lons)  # (lat, lon, 3)
+            mean_lat_weight = torch.abs(torch.cos(torch.Tensor(lats))).mean()  # 0.6341
 
             print("Triangulation")
             hull = ConvexHull(xyz.reshape(-1, 3))
             mesh = pymesh.form_mesh(hull.points, hull.simplices)
             points, adj = mesh_to_graph(mesh)
-
-            import pdb
-
-            pdb.set_trace()
 
             print(f"Computing embeddings, size=({adj.shape})")
             four = get_fourier(adj)
@@ -153,22 +159,26 @@ class Dataset(Dataset):
                     :, lon_sample
                 ]
             # index = np.arange(lat.shape[0]*lon.shape[0]).reshape(lat.shape[0], lon.shape[0])[lat_sample][:, lon_sample].reshape(-1)
+            os.makedirs(Path(self.dataset_dir) / "cached", exist_ok=True)
             np.savez(
                 cachefile,
                 points=points,
                 fourier=four,
+                target_shape=target.shape,
                 target=target.reshape(-1, 1),
                 faces=mesh.faces,
+                mean_lat_weight=mean_lat_weight,
             )
             data = np.load(cachefile)
 
         data_out["fourier"] = torch.from_numpy(data["fourier"]).float()[
-            :, : self.n_fourier
+            :, -self.n_fourier :
         ]  # [n, 100] -> [n, n_fourier]
         data_out["target"] = torch.from_numpy(data["target"]).float()  # [n, 1]]
-        import pdb
-
-        pdb.set_trace()
+        data_out["mean_lat_weight"] = data["mean_lat_weight"]  # 0.6341
+        data_out["points"] = torch.from_numpy(data["points"]).float()  # [n, 3]
+        data_out["spherical"] = cartesian_to_sphere(data_out["points"])  # [n, 2]
+        data_out["target_shape"] = data["target_shape"]  # [171, 342, 3]
 
         if self.zscore_normalize or self.normalize:
             self.scaler.fit(data_out["target"])
@@ -182,12 +192,24 @@ def sphere_to_cartesian(lat, lon):
     Converts latitude and longitude coordinates in degrees, to x, y, z cartesian
     coordinates.
     """
-    lat, lon = np.deg2rad(lat), np.deg2rad(lon)
     x = np.cos(lat) * np.cos(lon)
     y = np.cos(lat) * np.sin(lon)
     z = np.sin(lat)
 
     return np.stack([x, y, z], axis=-1)
+
+
+def cartesian_to_sphere(points):
+    """
+    Converts x, y, z cartesian coordinates to latitude and longitude coordinates
+    N.B.: NetCDF uses a 0:360 range for longitude
+    """
+    x, y, z = points[..., 0], points[..., 1], points[..., 2]
+
+    lat = np.arcsin(z)
+    lon = np.arctan2(y, x)
+
+    return torch.stack([lat, lon], dim=-1)
 
 
 def edges_to_adj(edges, n):
@@ -224,6 +246,7 @@ def laplacian(A):
 def get_fourier(adj, k=100):
     l = laplacian(adj)
     _, u = sp.linalg.eigs(l, k=k, which="SM")
+    # _, u = sp.linalg.eigsh(l, k=k, which="SM")
     n = l.shape[0]
     u *= np.sqrt(n)
 

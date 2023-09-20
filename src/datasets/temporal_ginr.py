@@ -30,7 +30,7 @@ class Dataset(Dataset):
         n_fourier=5,  # Chosen number of fourier features (1~100, 34 for weather)
         n_nodes_in_sample=5000,
         zscore_normalize=False,  # Choosing whether to normalize the target
-        data_year="2018",  # Choosing which number of years to use
+        data_year="2020",  # Choosing which number of years to use
         time_resolution=1,  # Choosing the time resolution (1~8760, 1 for hour,24 for day, 168 for week)
         **kwargs,
     ):
