@@ -19,7 +19,8 @@ class Dataset(Dataset):
         zscore_normalize=False,  # Choosing whether to normalize the target
         data_year=None,  # Choosing which number of years to use
         time_resolution=1,  # Choosing the time resolution (1~8760, 1 for hour,24 for day, 168 for week)
-        time_len=48,
+        ratio=1,
+        time_len=24,
         **kwargs
     ):
         self.dataset_dir = dataset_dir
@@ -28,6 +29,7 @@ class Dataset(Dataset):
         self.normalize = normalize
         self.zscore_normalize = zscore_normalize
         self.time_resolution = time_resolution
+        self.ratio = ratio
         self.time_len = time_len
         self.scaler = None
         if self.normalize:
@@ -77,10 +79,8 @@ class Dataset(Dataset):
 
         """Time resolution sampling, 1 for hour, 24 for day, 168 for week"""
         time_resolution_index = np.arange(0, len(time), self.time_resolution)
-        time_resolution_index = time_resolution_index[: self.time_len]
-        # time = time[time_resolution_index]
-        time = time[time_resolution_index]  # make 30 datasets
-        # target = target[time_resolution_index]
+        time_resolution_index = time_resolution_index[: self.time_len * 2]
+        time = time[time_resolution_index]
         target = target[time_resolution_index]
 
         """Time normalization: max_dim [8760], normalize to [0,1]"""
@@ -88,28 +88,22 @@ class Dataset(Dataset):
 
         """Normalization of target"""  # scaler the data after sampling
         if self.zscore_normalize or self.normalize:
-            self.scaler.fit(target.flatten())
-            target = self.scaler.transform(target)
+            self.scaler.fit(target.reshape(-1, 1))
+            target = self.scaler.transform(target)  # tranformed into torch
 
-        """Data chessboard sampling for super resolution task"""
-        if self.dataset_type == "all":
-            start, step = 0, 1
-        elif self.dataset_type == "train":
-            start, step = 0, 2
-        elif self.dataset_type == "valid":
-            start, step = 1, 2
-        else:
-            start, step = 1, 2
+        if self.dataset_type == "train":
+            time_extra_len = np.arange(0, self.time_len, 1)
+        elif self.dataset_type == "test":
+            time_extra_len = np.arange(0, int(self.time_len * self.ratio), 1)
+            time_extra_len += self.time_len
+
+        time = time[time_extra_len]  # make 30 datasets
+        target = target[time_extra_len]
 
         """Numpy to torch"""
         lat = torch.from_numpy(lat).float()
         lon = torch.from_numpy(lon).float()
         time = torch.from_numpy(time).float()
-
-        """Time sampling for time super resolution task"""
-        time_idx = np.arange(start, len(time), step)
-        time = time[time_idx]
-        target = target[time_idx]
 
         """latitudinal weight for latitudinal weighting"""
         mean_lat_weight = torch.abs(torch.cos(lat)).mean().float()

@@ -13,7 +13,13 @@ import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
-from datasets import spatial, temporal, temporal_ginr, spatial_ginr
+from datasets import (
+    spatial,
+    temporal_extra,
+    temporal_ginr,
+    spatial_ginr,
+    spatial_ginr_full,
+)
 from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_adap
 
 model_dict = {
@@ -38,7 +44,6 @@ if __name__ == "__main__":
     parser.add_argument("--zscore_normalize", default=False, action="store_true")
     parser.add_argument("--data_year", default=None)  # For weather temporal
     parser.add_argument("--time_resolution", type=int, default=24)
-    parser.add_argument("--time_len", type=int, default=48)
 
     # Model argument
     parser.add_argument("--hidden_dim", type=int, default=256)
@@ -59,6 +64,7 @@ if __name__ == "__main__":
 
     # GINR argument
     parser.add_argument("--n_fourier", type=int, default=34)
+    parser.add_argument("--task", type=str, default="")
 
     parser.add_argument("--project_name", type=str, default="fair_superres")
 
@@ -78,13 +84,7 @@ if __name__ == "__main__":
 
     # Dataset
     if args.time:
-        dataset = temporal
-        if args.model == "ginr":
-            dataset = temporal_ginr
-    else:
-        dataset = spatial
-        if args.model == "ginr":
-            dataset = spatial_ginr
+        dataset = temporal_extra
 
     train_dataset = dataset.Dataset(dataset_type="train", **vars(args))
     test_dataset = dataset.Dataset(dataset_type="test", **vars(args))
@@ -130,20 +130,25 @@ if __name__ == "__main__":
 
     trainer.fit(model, train_loader)
     trainer.test(model, test_loader, "best")
+    model.ratio = 1.0
+    trainer.test(model, test_loader, "best")
 
-    if args.plot:
-        dataset_all = dataset.Dataset(dataset_type="all", **vars(args))
+    model.ratio = 0.50
+    test_dataset050 = dataset.Dataset(dataset_type="test", ratio=0.5, **vars(args))
+    test_loader050 = DataLoader(
+        test_dataset050,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+    )
+    trainer.test(model, test_loader050, "best")
 
-        if "era5" in args.dataset_dir:
-            # Currently only HR visualized
-            visualize_era5(
-                dataset_all, model, args.dataset_dir + "/data.nc", logger, args
-            )
-            # TODO : Visualize LR
-            # Visualizing LR with earthmap is tricky due to interpolation
-            # visualize_era5_LR(train_dataset, model, args.dataset_dir+"/data.nc", logger, args)
-            # Maybe we don't need LR visualizations. At most, we would need the ground truth.
-            # i.e., we don't need error map, prediction of LR visualizations
-        else:
-            visualize_360(dataset_all, model, args, "HR", logger=logger)
-            visualize_360(train_dataset, model, args, "LR", logger=logger)
+    model.ratio = 0.25
+    test_dataset025 = dataset.Dataset(dataset_type="test", ratio=0.25, **vars(args))
+    test_loader025 = DataLoader(
+        test_dataset025,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+    )
+    trainer.test(model, test_loader025, "best")

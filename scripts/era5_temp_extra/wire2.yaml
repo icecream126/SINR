@@ -1,0 +1,31 @@
+program: ../../src/main_extra.py
+name: wire
+entity: postech_sinr
+method: grid
+parameters:
+  omega: # only for temporal
+    values: [0.1, 1, 10]
+  sigma:
+    values: [0.1, 1, 10]
+  lr:
+    value: 0.0001
+  hidden_dim:
+    value:  512
+  batch_size:
+    values: [4096]
+  time_resolution:
+    values: [4,6] # day 24, week 168, 2week 336
+  time_len:
+    values: 24
+  dataset_dir:
+    values: ["../../dataset/temporal_1_00/era5_geopotential", "../../dataset/temporal_1_00/era5_wind", "../../dataset/temporal_1_00/era5_cloud"]
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --model=wire
+  - --skip
+  - --max_epoch=100 # depend on dataset
+  - --normalize
+  # - --batch_size=4096 # only for temporal
+  # - --plot # only for spatial

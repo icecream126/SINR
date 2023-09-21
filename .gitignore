@@ -41,3 +41,4 @@ src/datasets/temporal_ginr_copy.py
 src/models/swinr2.py
 src/models/shiren2.py
 src/models/ginr2.py
+output

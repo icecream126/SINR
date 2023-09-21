@@ -15,6 +15,7 @@ class MODEL(pl.LightningModule):
         self.lr_patience = lr_patience
         self.scaler = None
         self.target_normalize = False
+        self.ratio = None
 
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]  # [512, 3], [512, 3]
@@ -103,35 +104,38 @@ class MODEL(pl.LightningModule):
         rmse = torch.sqrt(mse)
         w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
 
-        self.log("batch_test_loss", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_test_mse", mse, prog_bar=True, sync_dist=True)
-        self.log("batch_test_rmse", rmse)
-        self.log("batch_test_mse", loss, prog_bar=True, sync_dist=True)
-        self.log("batch_test_psnr", w_psnr_val)
+        ratio = "" if self.ratio is None else f"{self.ratio}_"
+
+        self.log(f"{ratio}batch_test_loss", loss, prog_bar=True, sync_dist=True)
+        self.log(f"{ratio}batch_test_mse", mse, prog_bar=True, sync_dist=True)
+        self.log(f"{ratio}batch_test_rmse", rmse)
+        self.log(f"{ratio}batch_test_mse", loss, prog_bar=True, sync_dist=True)
+        self.log(f"{ratio}batch_test_psnr", w_psnr_val)
         return {
-            "batch_test_mse": loss,
-            "batch_test_psnr": w_psnr_val.item(),
-            "batch_test_rmse": rmse.item(),
+            f"{ratio}batch_test_mse": loss,
+            f"{ratio}batch_test_psnr": w_psnr_val.item(),
+            f"{ratio}batch_test_rmse": rmse.item(),
         }
 
     def test_epoch_end(self, outputs):
         # Compute the average of test_mse and batch_test_psnr over the entire epoch
+        ratio = "" if self.ratio is None else f"{self.ratio}_"
         avg_test_mse = torch.stack(
-            [torch.tensor(x["batch_test_mse"]) for x in outputs]
+            [torch.tensor(x[f"{ratio}batch_test_mse"]) for x in outputs]
         ).mean()
         avg_test_psnr = torch.stack(
-            [torch.tensor(x["batch_test_psnr"]) for x in outputs]
+            [torch.tensor(x[f"{ratio}batch_test_psnr"]) for x in outputs]
         ).mean()
         avg_test_rmse = torch.stack(
-            [torch.tensor(x["batch_test_rmse"]) for x in outputs]
+            [torch.tensor(x[f"{ratio}batch_test_rmse"]) for x in outputs]
         ).mean()
 
         # Log the computed averages
-        self.log("avg_test_rmse", avg_test_rmse, prog_bar=True, sync_dist=True)
-        self.log("avg_test_mse", avg_test_mse, prog_bar=True, sync_dist=True)
-        self.log("avg_test_psnr", avg_test_psnr, prog_bar=True, sync_dist=True)
+        self.log(f"{ratio}avg_test_rmse", avg_test_rmse, prog_bar=True, sync_dist=True)
+        self.log(f"{ratio}avg_test_mse", avg_test_mse, prog_bar=True, sync_dist=True)
+        self.log(f"{ratio}avg_test_psnr", avg_test_psnr, prog_bar=True, sync_dist=True)
         self.log(
-            "final_test_psnr",
+            f"{ratio}final_test_psnr",
             mse2psnr(avg_test_mse.detach().cpu().numpy()),
             prog_bar=True,
             sync_dist=True,

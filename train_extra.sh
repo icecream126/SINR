@@ -5,14 +5,11 @@
 #     --batch_size 1 \
 #     --skip
 
-CUDA_VISIBLE_DEVICES=0 python src/main_superres_test.py \
-    --dataset_dir dataset/spatial_1_00/era5_geopotential \
-    --model ginr \
-    --max_epochs 100 \
-    --n_fourier 34 \
+CUDA_VISIBLE_DEVICES=0 python src/main_extra.py \
+    --dataset_dir dataset/temporal_1_00/era5_geopotential \
+    --model swinr \
+    --max_epochs 1 \
     --batch_size 4096 \
     --lr 0.001 \
     --skip \
-    --task extra \
-    --normalize \
-    --plot
+    --normalize
