@@ -39,7 +39,7 @@ class Dataset(Dataset):
         return self._data["inputs"].size(0)
 
     def get_filenames(self):
-        filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*.nc")))
+        filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*")))
         return (
             filenames[self.panorama_idx] if "360" in self.dataset_dir else filenames[0]
         )
@@ -86,9 +86,7 @@ class Dataset(Dataset):
             target = data["target"]
 
         lat = np.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
-        lon = np.deg2rad(
-            lon
-        )  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
+        lon = np.deg2rad(lon)  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
 
         # if self.normalize:
         #     target = (target - target.min()) / (target.max() - target.min())

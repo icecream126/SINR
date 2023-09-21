@@ -1,3 +1,12 @@
+# Spherical harmonics
+CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+    --dataset_dir dataset/spatial/spherical_harmonics \
+    --model swinr \
+    --max_epochs 1 \
+    --batch_size 1 \
+    --skip 
+
+
 # ERA5 Temporal
 
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \

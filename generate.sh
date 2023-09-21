@@ -31,3 +31,9 @@ python src/datasets/generation/era5.py --variable=cloud_cover --mode=separate --
 python src/datasets/generation/era5.py --variable=geopotential --mode=separate --level_type=pressure --years=2000 --resolution=2.8125 --pressure_level=500 --custom_fn=data.nc --output_dir=dataset/temporal_2_8125/era5_geopotential
 python src/datasets/generation/era5.py --variable=u_component_of_wind --mode=separate --level_type=pressure --years=2000 --resolution=2.8125 --pressure_level=500 --custom_fn=data.nc --output_dir=dataset/temporal_2_8125/era5_wind
 python src/datasets/generation/era5.py --variable=cloud_cover --mode=separate --level_type=pressure --years=2000 --resolution=2.8125 --pressure_level=500 --custom_fn=data.nc --output_dir=dataset/temporal_2_8125/era5_cloud
+
+
+# spherical harmonics
+python src/datasets/generation/spherical_harmonics.py --l=3 --m=3 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
+python src/datasets/generation/spherical_harmonics.py --l=5 --m=3 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
+python src/datasets/generation/spherical_harmonics.py --l=7 --m=3 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics

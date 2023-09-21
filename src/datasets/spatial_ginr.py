@@ -19,7 +19,7 @@ from utils.utils import (
 
 from pathlib import Path
 from scipy.spatial import ConvexHull
-import pymesh
+# import pymesh
 from scipy import sparse as sp
 import re
 

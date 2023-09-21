@@ -1,0 +1,25 @@
+program: src/main_superres.py
+name: wire
+entity: postech_sinr
+method: grid
+parameters:
+  omega:
+    values: [0.1, 1, 10, 30]
+  sigma:
+    values: [0.1, 1, 10, 30]
+  lr:
+    values: [0.0003]
+  hidden_dim:
+    values: [512]
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --dataset_dir=dataset/spherical_harmonics_3_3
+  - --model=wire
+  - --skip
+  - --max_epoch=500 # depend on dataset
+  - --panorama_idx=4
+  - --normalize
+  # - --batch_size=1 # only for temporal
+  - --plot # only for spatial

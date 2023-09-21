@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from utils.visualize import visualize_era5, visualize_360
+from utils.visualize import visualize_era5, visualize_360, visualize_harmonics
 import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
@@ -143,6 +143,10 @@ if __name__ == "__main__":
             # visualize_era5_LR(train_dataset, model, args.dataset_dir+"/data.nc", logger, args)
             # Maybe we don't need LR visualizations. At most, we would need the ground truth.
             # i.e., we don't need error map, prediction of LR visualizations
-        else:
+        elif '360' in args.dataset_dir:
             visualize_360(dataset_all, model, args, "HR", logger=logger)
             visualize_360(train_dataset, model, args, "LR", logger=logger)
+        elif 'spherical_harmonics' in args.dataset_dir:
+            visualize_harmonics(dataset_all, model, args,"HR", logger=logger)
+            visualize_harmonics(train_dataset, model, args,"LR", logger=logger)
+            
