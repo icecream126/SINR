@@ -201,6 +201,12 @@ def visualize_era5(dataset, model, filename, logger, args):
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         error = error.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
+        
+        # Calculate quantile error
+        q_threshold = np.quantile(error, 0.9999)
+        q_error = np.where(error >= q_threshold, 0, error)
+
+        
 
         # Save target, pred, error as npy
         current_datetime = datetime.now()
@@ -211,6 +217,7 @@ def visualize_era5(dataset, model, filename, logger, args):
         np.save(filepath+'target', target)
         np.save(filepath+'pred', pred)
         np.save(filepath+'error', error)
+        np.save(filepath+'q_error', q_error)
         # draw_histogram('target', filepath+'target')
         # draw_histogram('pred', filepath+'pred')
         draw_histogram('error', filepath+'error', logger)
@@ -223,6 +230,7 @@ def visualize_era5(dataset, model, filename, logger, args):
         # Assign prediction and error for visualization
         x = x.assign(pred=(dims, pred))
         x = x.assign(error=(dims, error))
+        x = x.assign(q_error=(dims,q_error))
 
         if "geopotential" in args.dataset_dir:
             ground_truth = "z"
@@ -242,6 +250,7 @@ def visualize_era5(dataset, model, filename, logger, args):
 
         draw_map(x, "HR", "pred", colormap, rmse, logger, args)
         draw_map(x, "HR", "error", "hot", rmse, logger, args)
+        draw_map(x, "HR", "q_error", "hot", rmse, logger, args)
         draw_map(x, "HR", "target", colormap, rmse, logger, args)
 
 
