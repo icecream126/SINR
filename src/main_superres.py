@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from utils.visualize import visualize_era5, visualize_360, visualize_harmonics
+from utils.visualize import visualize_era5, visualize_360, visualize_synthetic
 import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         elif '360' in args.dataset_dir:
             visualize_360(dataset_all, model, args, "HR", logger=logger)
             visualize_360(train_dataset, model, args, "LR", logger=logger)
-        elif 'spherical_harmonics' in args.dataset_dir:
-            visualize_harmonics(dataset_all, model, args,"HR", logger=logger)
-            visualize_harmonics(train_dataset, model, args,"LR", logger=logger)
+        else:
+            visualize_synthetic(dataset_all, model, args,"HR", logger=logger)
+            visualize_synthetic(train_dataset, model, args,"LR", logger=logger)
             

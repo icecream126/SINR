@@ -37,3 +37,6 @@ python src/datasets/generation/era5.py --variable=cloud_cover --mode=separate --
 python src/datasets/generation/spherical_harmonics.py --l=3 --m=3 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
 python src/datasets/generation/spherical_harmonics.py --l=5 --m=3 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
 python src/datasets/generation/spherical_harmonics.py --l=7 --m=3 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
+python src/datasets/generation/spherical_harmonics.py --l=20 --m=19 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
+python src/datasets/generation/spherical_harmonics.py --l=30 --m=29 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
+python src/datasets/generation/spherical_harmonics.py --l=40 --m=39 --res=200 --custom_fn=data.npz --output_dir ./dataset/spatial/spherical_harmonics
