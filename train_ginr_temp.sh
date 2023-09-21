@@ -6,12 +6,12 @@
 #     --skip
 
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
-    --dataset_dir dataset/temporal/era5_geopotential \
+    --dataset_dir dataset/temporal_1_00/era5_geopotential \
     --model ginr \
     --max_epochs 100 \
     --n_fourier 34 \
-    --levels 8 \
-    --batch_size 25600 \
-    --lr 0.01 \
+    --levels 6 \
+    --batch_size 4096 \
+    --lr 0.0001 \
     --skip \
-    --zscore_normalize
+    --normalize

@@ -13,8 +13,8 @@ import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
-from datasets import spatial, temporal, spatial_ginr
-from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr2
+from datasets import spatial, temporal, temporal_ginr, spatial_ginr
+from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_adap
 
 model_dict = {
     "relu": relu,
@@ -22,7 +22,7 @@ model_dict = {
     "wire": wire,
     "shinr": shinr,
     "swinr": swinr,
-    "swinr2": swinr2,
+    "swinr_adap": swinr_adap,
     "shiren": shiren,
     "ginr": ginr,
 }
@@ -78,8 +78,8 @@ if __name__ == "__main__":
     # Dataset
     if args.time:
         dataset = temporal
-        # if args.model == "ginr":
-        # dataset = temporal_ginr_copy
+        if args.model == "ginr":
+            dataset = temporal_ginr
     else:
         dataset = spatial
         if args.model == "ginr":

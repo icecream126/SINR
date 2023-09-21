@@ -70,7 +70,7 @@ class Dataset(Dataset):
         data_out["time"] = data["time"][index // l1]  # [1]
         data_out["target"] = data["target"][index]  # [1]
         data_out["mean_lat_weight"] = self._data["mean_lat_weight"]
-        data_out["spherical"] = self._data["spherical"][index]
+        data_out["spherical"] = self._data["spherical"][index % l1]
         data_out["target_shape"] = self._data["target_shape"]
 
         return data_out
@@ -112,6 +112,7 @@ class Dataset(Dataset):
             lats, lons = np.meshgrid(lat, lon)
             lats, lons = lats.T.data, lons.T.data  # (lat, lon), (lat, lon)
             xyz = sphere_to_cartesian(lats, lons)  # (lat, lon, 3)
+            mean_lat_weight = torch.abs(torch.cos(torch.Tensor(lats))).mean()  # 0.6341
 
             print("Triangulation")
             hull = ConvexHull(xyz.reshape(-1, 3))
@@ -119,45 +120,54 @@ class Dataset(Dataset):
             points, adj = mesh_to_graph(mesh)
 
             print(f"Computing embeddings, size=({adj.shape})")
-            u = get_fourier(adj)
+            four = get_fourier(adj)
             # if self.normalize:
             #     target = (target - target.min()) / (target.max() - target.min())
             os.makedirs(Path(self.dataset_dir) / "cached", exist_ok=True)
             np.savez(
                 cachefile,
                 points=points,
-                fourier=u,
+                fourier=four,
+                target_shape=target.shape,
                 target=target,
                 time=time,
                 faces=mesh.faces,
+                mean_lat_weight=mean_lat_weight,
             )
             data = np.load(cachefile)
 
         if self.dataset_type == "all":
             start, step = 0, 1
         elif self.dataset_type == "train":
-            start, step = 0, 3
-        elif self.dataset_type == "valid":
-            start, step = 1, 3
+            start, step = 0, 2
+        elif self.dataset_type == "test":
+            start, step = 1, 2
         else:
-            start, step = 2, 3
+            start, step = 0, 2
 
         data_out["time"] = torch.from_numpy(data["time"]).float()  # [t, 1]
         data_out["target"] = torch.from_numpy(data["target"]).float()  # [t,n, 1]
 
         time_resolution_index = np.arange(0, len(data["time"]), self.time_resolution)
-        data_out["time"] = data_out["time"][time_resolution_index]
-        data_out["target"] = data_out["target"][time_resolution_index]
+        data_out["time"] = data_out["time"][time_resolution_index][:30]
+        data_out["target"] = data_out["target"][time_resolution_index][:30]
 
         # Time sampling
         self.n_points = data["target"].shape[0]
         self.points_idx = np.arange(start, len(data_out["time"]), step)
 
         data_out["fourier"] = torch.from_numpy(data["fourier"]).float()  # [n, 100]
-        data_out["fourier"] = data_out["fourier"][:, : self.n_fourier]  # [n/3, 34]
+        data_out["fourier"] = data_out["fourier"][
+            :, -self.n_fourier - 1 : 99
+        ]  # [n/3, 34]
         data_out["time"] = data_out["time"][self.points_idx].view(-1, 1)  # [t, 1]
+        data_out["points"] = torch.from_numpy(data["points"]).float()  # [n, 3]
+        data_out["spherical"] = cartesian_to_sphere(data_out["points"])  # [n, 2]
         data_out["target"] = data_out["target"][self.points_idx]  # [t/3,n, 1]
         data_out["target"] = data_out["target"].view(-1, 1)  # [t/3 * n, 1]
+        data_out["mean_lat_weight"] = data["mean_lat_weight"]  # 0.6341
+        data_out["target_shape"] = data["target_shape"]  # [171, 342, 3]
+
         # import pdb
 
         # pdb.set_trace()
@@ -167,31 +177,30 @@ class Dataset(Dataset):
 
         return data_out
 
-    @staticmethod
-    def get_subsampling_idx(n_points, to_keep):
-        if n_points >= to_keep:
-            idx = torch.randperm(n_points)[:to_keep]
-        else:
-            # Sample some indices more than once
-            idx = (
-                torch.randperm(n_points * int(np.ceil(to_keep / n_points)))[:to_keep]
-                % n_points
-            )
-
-        return idx
-
 
 def sphere_to_cartesian(lat, lon):
     """
     Converts latitude and longitude coordinates in degrees, to x, y, z cartesian
     coordinates.
     """
-    lat, lon = np.deg2rad(lat), np.deg2rad(lon)
     x = np.cos(lat) * np.cos(lon)
     y = np.cos(lat) * np.sin(lon)
     z = np.sin(lat)
 
     return np.stack([x, y, z], axis=-1)
+
+
+def cartesian_to_sphere(points):
+    """
+    Converts x, y, z cartesian coordinates to latitude and longitude coordinates
+    N.B.: NetCDF uses a 0:360 range for longitude
+    """
+    x, y, z = points[..., 0], points[..., 1], points[..., 2]
+
+    lat = np.arcsin(z)
+    lon = np.arctan2(y, x)
+
+    return torch.stack([lat, lon], dim=-1)
 
 
 def edges_to_adj(edges, n):
@@ -227,7 +236,8 @@ def laplacian(A):
 
 def get_fourier(adj, k=100):
     l = laplacian(adj)
-    _, u = sp.linalg.eigsh(l, k=k, which="SM")
+    _, u = sp.linalg.eigs(l, k=k, which="SM")
+    # _, u = sp.linalg.eigsh(l, k=k, which="SM")
     n = l.shape[0]
     u *= np.sqrt(n)
 

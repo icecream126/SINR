@@ -142,7 +142,7 @@ class INR(MODEL):
         skip: bool = True,
         bn: bool = False,
         dropout: float = 0.0,
-        latent_dim: int = 256,
+        latent_dim: int = 1,
         time: bool = False,  # True when using temporal data / default: [1] to [256] embedding
         **kwargs,
     ):
