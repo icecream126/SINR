@@ -112,13 +112,6 @@ class SphericalGaborLayer(nn.Module):
 
         freq_arg = 2 * dilate * x / (1e-6 + 1 + z)
         gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
-
-        if self.time:
-            time = input[..., 3:]
-            lin = self.linear(time)
-            freq_arg = freq_arg + lin
-            gauss_arg = gauss_arg + lin * lin
-
         # import pdb
 
         # pdb.set_trace()
@@ -126,7 +119,11 @@ class SphericalGaborLayer(nn.Module):
         # freq_term = torch.cos(self.omega(input[:, :3]) * freq_arg)
         freq_term = torch.cos(self.omega * freq_arg)
         gauss_term = torch.exp(-sigma * sigma * gauss_arg)
-        return freq_term * gauss_term
+        out = freq_term * gauss_term
+        if self.time:
+            time = input[...,3:]
+            out = torch.cat([out, time], dim=-1)
+        return out
 
 
 class INR(MODEL):
@@ -156,52 +153,12 @@ class INR(MODEL):
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
-            if skip and i == ceil(hidden_layers / 2):
-                self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
-            else:
-                self.net.append(self.nonlin(hidden_dim, hidden_dim))
-
-        final_linear = nn.Linear(hidden_dim, output_dim)
-
-        self.net.append(final_linear)
-
-    def forward(self, x):
-        x_in = x
-        for i, layer in enumerate(self.net):
-            if self.skip and i == ceil(self.hidden_layers / 2) + 1:
-                x = torch.cat([x, x_in], dim=-1)
-            x = layer(x)
-        return x
-
-
-class DENOISING_INR(DENOISING_MODEL):
-    def __init__(
-        self,
-        input_dim,
-        output_dim,
-        hidden_dim,
-        hidden_layers,
-        time,
-        skip,
-        omega,
-        sigma,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
-        self.time = time
-        self.skip = skip
-        self.hidden_layers = hidden_layers
-
-        self.first_nonlin = SphericalGaborLayer
-
-        self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
-
-        self.nonlin = ReLULayer
-
-        for i in range(hidden_layers):
-            if skip and i == ceil(hidden_layers / 2):
+            if i==0:
+                if self.time:
+                    self.net.append(self.nonlin(hidden_dim+1, hidden_dim))
+                else:
+                    self.net.append(self.nonlin(hidden_dim, hidden_dim))
+            elif skip and i == ceil(hidden_layers / 2):
                 self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:
                 self.net.append(self.nonlin(hidden_dim, hidden_dim))

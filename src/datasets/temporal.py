@@ -79,8 +79,10 @@ class Dataset(Dataset):
         time = time[time_resolution_index][:30]  # make 30 datasets
         target = target[time_resolution_index]
 
-        """Time normalization: max_dim [8760], normalize to [0,1]"""
-        time = (time - time.min()) / (time.max() - time.min())
+        # """Time normalization: max_dim [8760], normalize to [0,1]"""
+        # time = (time - time.min()) / (time.max() - time.min())
+        """Time normalization : normalize to {0, len(time)}"""
+        time = (time-time.min())//24
 
         """Data chessboard sampling for super resolution task"""
         if self.dataset_type == "all":
