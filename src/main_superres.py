@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
-from utils.visualize import visualize_era5, visualize_360, visualize_harmonics
+from utils.visualize import visualize_era5, visualize_360, visualize_synthetic
 import os
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
