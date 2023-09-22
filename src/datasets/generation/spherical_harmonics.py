@@ -17,7 +17,6 @@ def main(l, m, res, custom_fn, output_dir):
     PHI = lon_m * np.pi / 180
     
     R = sp.sph_harm(m, l, PHI, THETA).real  # Spherical Harmonics for the meshgrid of PHI, THETA
-    
 
     data = {
         'latitude': lat_deg,
@@ -27,15 +26,10 @@ def main(l, m, res, custom_fn, output_dir):
 
     np.savez(f'{output_dir}/{custom_fn}', **data)
 
-    # Convert to Cartesian coordinates for 3D plotting
-    X = R * np.sin(THETA) * np.cos(PHI)
-    Y = R * np.sin(THETA) * np.sin(PHI)
-    Z = R * np.cos(THETA)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Visualize and save data for Spherical Harmonics.')
-    parser.add_argument('--l', type=int, default=4, help='Degree of the spherical harmonics.')
-    parser.add_argument('--m', type=int, default=2, help='Order of the spherical harmonics.')
+    parser.add_argument('--l', type=int, default=3, help='Degree of the spherical harmonics.')
+    parser.add_argument('--m', type=int, default=3, help='Order of the spherical harmonics.')
     parser.add_argument('--res', type=float, default=1, help='Resolution for the latitude and longitude grid in degrees.')
     parser.add_argument('--custom_fn', type=str, default='data.npz', help='Filename to save the data and image.')
     parser.add_argument('--output_dir', type=str, default='dataset/spatial/spherical_harmonics', help='Directory to save the data and image.')

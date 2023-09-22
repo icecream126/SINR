@@ -4,6 +4,7 @@ output/
 .conda
 launch.json
 dataset/
+harmonics_output/
 wandb/
 SINR/
 __pycache__
