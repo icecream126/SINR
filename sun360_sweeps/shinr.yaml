@@ -17,7 +17,7 @@ command:
   - --model=shinr
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=4
+  - --panorama_idx=10
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial

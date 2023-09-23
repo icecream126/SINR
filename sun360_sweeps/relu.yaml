@@ -6,7 +6,7 @@ parameters:
   posenc_freq:
     values: [5, 7, 10, 15]
   lr:
-    values: [0.0003]
+    values: [0.0004, 0.0006]
   hidden_dim:
     values: [512]
 command:
@@ -17,7 +17,7 @@ command:
   - --model=relu
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=4
+  - --panorama_idx=10
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial

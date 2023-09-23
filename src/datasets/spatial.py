@@ -33,6 +33,7 @@ class Dataset(Dataset):
         elif self.zscore_normalize:
             self.scaler = StandardScalerTorch()
         self.filename = self.get_filenames()
+        print('self.filename : ',self.filename)
         self._data = self.load_data()
 
     def __len__(self):
@@ -40,9 +41,12 @@ class Dataset(Dataset):
 
     def get_filenames(self):
         filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*")))
-        return (
-            filenames[self.panorama_idx] if "360" in self.dataset_dir else filenames[0]
-        )
+        if "360" in self.dataset_dir:
+            return [filename for filename in filenames if f'{self.panorama_idx}.jpg' in filename][0]
+        else:
+            return (
+                filenames[0]
+            )
 
     def __getitem__(self, index):
         data_out = dict()
