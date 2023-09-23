@@ -1,11 +1,20 @@
 # Spherical harmonics
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
-    --dataset_dir dataset/spatial/spherical_harmonics \
+    --dataset_dir dataset/spatial/spherical_harmonics_5_3 \
     --model swinr \
+    --omega 1 \
+    --sigma 10 \
     --max_epochs 1 \
-    --batch_size 1 \
-    --skip 
+    --skip \
+    --plot 
 
+CUDA_VISIBLE_DEVICES=1 python src/main_superres.py \
+    --dataset_dir dataset/spatial/spherical_harmonics_5_3 \
+    --model shinr \
+    --levels 4 \
+    --max_epochs 1 \
+    --skip \
+    --plot 
 
 # ERA5 Temporal
 

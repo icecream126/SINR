@@ -5,11 +5,54 @@ from skimage.metrics import peak_signal_noise_ratio as psnr_func
 from numbers import Integral
 import math
 from torch import nn
+import cv2
 
 seed = 0
 np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed_all(seed)
+
+# https://github.com/V-Sense/360SR/blob/master/ws_ssim.py (Candidate)
+# https://github.com/Fanghua-Yu/OSRT/blob/master/odisr/metrics/odi_metric.py
+def genERP(j,N):
+    val = math.pi/N
+    w = math.cos((j - (N/2) + 0.5) * val)
+    return w
+
+def _ws_ssim(img, img2):
+    """Calculate SSIM (structural similarity) for one channel images.
+    It is called by func:`calculate_ssim`.
+    Args:
+        img (ndarray): Images with range [0, 255] with order 'HWC'.
+        img2 (ndarray): Images with range [0, 255] with order 'HWC'.
+    Returns:
+        float: SSIM result.
+    """
+
+    c1 = (0.01 * 255)**2
+    c2 = (0.03 * 255)**2
+    kernel = cv2.getGaussianKernel(11, 1.5)
+    window = np.outer(kernel, kernel.transpose())
+
+    mu1 = cv2.filter2D(img, -1, window)[5:-5, 5:-5]  # valid mode for window size 11
+    mu2 = cv2.filter2D(img2, -1, window)[5:-5, 5:-5]
+    mu1_sq = mu1**2
+    mu2_sq = mu2**2
+    mu1_mu2 = mu1 * mu2
+    sigma1_sq = cv2.filter2D(img**2, -1, window)[5:-5, 5:-5] - mu1_sq
+    sigma2_sq = cv2.filter2D(img2**2, -1, window)[5:-5, 5:-5] - mu2_sq
+    sigma12 = cv2.filter2D(img * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
+
+    ssim_map = ((2 * mu1_mu2 + c1) * (2 * sigma12 + c2)) / ((mu1_sq + mu2_sq + c1) * (sigma1_sq + sigma2_sq + c2))
+
+    equ = np.zeros((ssim_map.shape[0], ssim_map.shape[1]))
+
+    for i in range(0,equ.shape[0]):
+        for j in range(0,equ.shape[1]):
+                equ[i, j] = genERP(i,equ.shape[0])
+
+    return np.multiply(ssim_map, equ).mean()/equ.mean()
+
 
 
 def image_psnr(gt_image, noisy_image, weights):

@@ -3,7 +3,7 @@ from typing import List, Union
 # from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 import torch
 import pytorch_lightning as pl
-from utils.utils import to_cartesian, mse2psnr
+from utils.utils import to_cartesian, mse2psnr, _ws_ssim
 from torch.optim import lr_scheduler
 
 
@@ -53,9 +53,11 @@ class MODEL(pl.LightningModule):
 
         rmse = torch.sqrt(mse)
         w_psnr_val = mse2psnr(mse.detach().cpu().numpy())
+        # w_ssim_val = _ws_ssim(pred, target)
 
         self.log("batch_train_loss", loss, prog_bar=True, sync_dist=True)
         self.log("batch_train_mse", mse, prog_bar=True, sync_dist=True)
+        # self.log("batch_train_ssim", w_ssim_val, prog_bar=True, sync_dist=True)
         self.log("batch_train_psnr", w_psnr_val, prog_bar=True, sync_dist=True)
         self.log("batch_train_rmse", rmse, prog_bar=True, sync_dist=True)
 

@@ -13,11 +13,11 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/spherical_harmonics_3_3
+  - --dataset_dir=dataset/spatial/spherical_harmonics_40_39
   - --model=shinr
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=4
-  - --normalize
+  # - --panorama_idx=4
+  # - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial

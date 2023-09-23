@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("--time_resolution", type=int, default=24)
 
     # Model argument
-    parser.add_argument("--hidden_dim", type=int, default=256)
+    parser.add_argument("--hidden_dim", type=int, default=512)
     parser.add_argument("--hidden_layers", type=int, default=6)
     parser.add_argument("--skip", default=False, action="store_true")
     parser.add_argument("--omega", type=float, default=1.0)
@@ -52,8 +52,8 @@ if __name__ == "__main__":
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--num_workers", type=int, default=0)
-    parser.add_argument("--max_epochs", type=int, default=100)
-    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--max_epochs", type=int, default=500)
+    parser.add_argument("--lr", type=float, default=0.0003)
     parser.add_argument("--lr_patience", type=int, default=1000)
 
     # GINR argument
@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
         if "era5" in args.dataset_dir:
             # Currently only HR visualized
-            visualize_era5(
+            visualize_era5('all',
                 dataset_all, model, args.dataset_dir + "/data.nc", logger, args
             )
             # TODO : Visualize LR
@@ -144,9 +144,9 @@ if __name__ == "__main__":
             # Maybe we don't need LR visualizations. At most, we would need the ground truth.
             # i.e., we don't need error map, prediction of LR visualizations
         elif '360' in args.dataset_dir:
-            visualize_360(dataset_all, model, args, "HR", logger=logger)
-            visualize_360(train_dataset, model, args, "LR", logger=logger)
+            visualize_360('all',dataset_all, model, args, "HR", logger=logger)
+            visualize_360('train',train_dataset, model, args, "LR", logger=logger)
         else:
-            visualize_synthetic(dataset_all, model, args,"HR", logger=logger)
-            visualize_synthetic(train_dataset, model, args,"LR", logger=logger)
+            visualize_harmonics('all', dataset_all, model, args,"HR", logger=logger)
+            visualize_harmonics('train', train_dataset, model, args,"LR", logger=logger)
             
