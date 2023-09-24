@@ -103,7 +103,7 @@ def get_fig(lon, lat, obj, cmap='jet'):
 
 ## Visualization for each dataset ##
 
-def visualize_harmonics(dtype, dataset, model, args, mode, logger):
+def visualize_synthetic(dtype, dataset, model, args, mode, logger):
     with torch.no_grad():
         data = dataset[:]
 

@@ -25,8 +25,8 @@ def main(args):
     latitude = np.deg2rad(latitude)
     longitude = np.deg2rad(longitude)
     
-    print(longitude.min(), longitude.max())
-    print(latitude.min(), latitude.max())
+    # print(longitude.min(), longitude.max())
+    # print(latitude.min(), latitude.max())
     
     data['latitude'] = latitude
     data['longitude'] = longitude
