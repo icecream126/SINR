@@ -8,6 +8,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from utils.utils import to_cartesian, StandardScalerTorch, MinMaxScalerTorch
+import cv2
 
 
 class Dataset(Dataset):
@@ -41,8 +42,10 @@ class Dataset(Dataset):
 
     def get_filenames(self):
         filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*")))
-        if "360" in self.dataset_dir:
+        if "sun360" in self.dataset_dir:
             return [filename for filename in filenames if f'{self.panorama_idx}.jpg' in filename][0]
+        elif "flickr360" in self.dataset_dir:
+            return [filename for filename in filenames if f'{self.panorama_idx}.png' in filename][0]
         else:
             return (
                 filenames[0]
@@ -67,6 +70,8 @@ class Dataset(Dataset):
 
         if "360" in self.dataset_dir:
             target = np.array(Image.open(self.filename))  # [512, 1024, 3]
+            if 'flickr' in self.dataset_dir:
+                target = cv2.resize(target, None, fx=1/2, fy=1/2, interpolation=cv2.INTER_AREA)
 
             H, W = target.shape[:2]  # H : 512, W : 1024
 

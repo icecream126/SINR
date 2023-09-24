@@ -1,23 +1,24 @@
 program: src/main_superres.py
-name: relu
+name: siren
 entity: postech_sinr
 method: grid
 parameters:
-  posenc_freq:
-    values: [5, 7, 10, 15]
+  omega:
+    values: [0.01, 0.1, 1, 10, 20]
   lr:
-    values: [0.0003, 0.0006]
+    values: [0.0003]
   hidden_dim:
     values: [512]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/sun360
-  - --model=relu
+  - --dataset_dir=dataset/flickr360
+  - --model=siren
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=10
+  - --panorama_idx=7
+  - --batch_size=1024
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial
