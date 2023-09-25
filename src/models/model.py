@@ -5,6 +5,7 @@ import torch
 import pytorch_lightning as pl
 from utils.utils import to_cartesian, mse2psnr
 from torch.optim import lr_scheduler
+import torchmetrics as tm
 
 
 class MODEL(pl.LightningModule):
@@ -16,6 +17,7 @@ class MODEL(pl.LightningModule):
         self.scaler = None
         self.target_normalize = False
         self.ratio = None
+        self.r2_score = None
 
     def training_step(self, data, batch_idx):
         inputs, target = data["inputs"], data["target"]  # [512, 3], [512, 3]
@@ -40,6 +42,18 @@ class MODEL(pl.LightningModule):
 
         loss = error.mean()  # 1.2346
 
+        if self.r2_score is not None:
+            self.r2_score(
+                pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
+            )
+            self.log(
+                "r2_score",
+                self.r2_score,
+                prog_bar=True,
+                on_epoch=True,
+                on_step=False,
+            )
+
         if self.normalize:
             self.scaler.match_device(pred)
             pred = self.scaler.inverse_transform(pred)
@@ -61,6 +75,9 @@ class MODEL(pl.LightningModule):
         self.log("batch_train_rmse", rmse, prog_bar=True, sync_dist=True)
 
         return {"loss": loss, "batch_train_psnr": w_psnr_val.item()}
+
+    def set_r2_score(self):
+        self.r2_score = tm.R2Score(num_outputs=self.output_dim)
 
     def train_epoch_end(self, outputs):
         avg_train_mse = torch.stack([torch.tensor(x["loss"]) for x in outputs]).mean()
@@ -89,6 +106,18 @@ class MODEL(pl.LightningModule):
         error = weights * error
         loss = error.mean()
 
+        if self.r2_score is not None:
+            self.r2_score(
+                pred.view(-1, self.output_dim), target.view(-1, self.output_dim)
+            )
+            self.log(
+                "r2_score",
+                self.r2_score,
+                prog_bar=True,
+                on_epoch=True,
+                on_step=False,
+            )
+
         if self.normalize:
             self.scaler.match_device(pred)
             pred = self.scaler.inverse_transform(pred)
@@ -115,6 +144,8 @@ class MODEL(pl.LightningModule):
             f"{ratio}batch_test_mse": loss,
             f"{ratio}batch_test_psnr": w_psnr_val.item(),
             f"{ratio}batch_test_rmse": rmse.item(),
+            "pred": pred,
+            "target": target,
         }
 
     def test_epoch_end(self, outputs):
@@ -129,6 +160,18 @@ class MODEL(pl.LightningModule):
         avg_test_rmse = torch.stack(
             [torch.tensor(x[f"{ratio}batch_test_rmse"]) for x in outputs]
         ).mean()
+        if self.r2_score is not None:
+            tot_r2_score = self.r2_score(
+                torch.vstack([torch.tensor(x["pred"]) for x in outputs]),
+                torch.vstack([torch.tensor(x["target"]) for x in outputs]),
+            )
+            self.log(
+                f"{ratio}tot_test_r2_score",
+                tot_r2_score,
+                prog_bar=True,
+                on_epoch=True,
+                on_step=False,
+            )
 
         # Log the computed averages
         self.log(f"{ratio}avg_test_rmse", avg_test_rmse, prog_bar=True, sync_dist=True)

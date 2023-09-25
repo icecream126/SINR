@@ -98,7 +98,7 @@ class Dataset(Dataset):
         elif self.dataset_type == "train":
             start, step = 0, 2
         else:
-            start, step = 1, 2
+            start, step = 0, 1
         # else:
         #     start, step = 2, 3
 

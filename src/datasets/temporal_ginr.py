@@ -97,7 +97,7 @@ class Dataset(Dataset):
                         lon = f.variables[variable][:]
                     elif variable == "time":
                         time = f.variables[variable][:]
-                    elif variable == "z":
+                    else:
                         # Fixed
                         target = f.variables[variable][:]  # (time, lat, lon)
 

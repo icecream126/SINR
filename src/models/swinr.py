@@ -89,6 +89,7 @@ class SphericalGaborLayer(nn.Module):
         x, z = points[..., 0], points[..., 2]
 
         dilate = torch.exp(self.dilate)
+        # dilate nn.liner(dilate + time , dilate)
 
         freq_arg = 2 * dilate * x / (1e-6 + 1 + z)
         gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
@@ -115,6 +116,7 @@ class INR(MODEL):
         skip,
         omega,
         sigma,
+        r2_score=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -122,6 +124,7 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
+        self.output_dim = output_dim
 
         self.first_nonlin = SphericalGaborLayer
 
@@ -139,6 +142,9 @@ class INR(MODEL):
         final_linear = nn.Linear(hidden_dim, output_dim)
 
         self.net.append(final_linear)
+
+        if r2_score:
+            self.set_r2_score()
 
     def forward(self, x):
         x_in = x
