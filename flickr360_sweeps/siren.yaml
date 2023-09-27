@@ -9,6 +9,8 @@ parameters:
     values: [0.0003]
   hidden_dim:
     values: [512]
+  panorama_idx:
+    values: [8,9,10,11,12,13]
 command:
   - python
   - ${program}
@@ -17,7 +19,6 @@ command:
   - --model=siren
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=7
   - --batch_size=1024
   - --normalize
   # - --batch_size=1 # only for temporal

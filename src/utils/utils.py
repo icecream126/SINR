@@ -7,10 +7,6 @@ import math
 from torch import nn
 import cv2
 
-seed = 0
-np.random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)
 
 # https://github.com/V-Sense/360SR/blob/master/ws_ssim.py (Candidate)
 # https://github.com/Fanghua-Yu/OSRT/blob/master/odisr/metrics/odi_metric.py

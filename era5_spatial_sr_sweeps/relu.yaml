@@ -4,18 +4,22 @@ entity: postech_sinr
 method: grid
 parameters:
   posenc_freq:
-    values: [5, 7, 10, 15]
+    values: [1,3,7,5]
   lr:
     values: [0.0001]
   hidden_dim:
     values: [512]
   batch_size:
-    values: [128, 256]
+    values: [128]
+  dataset_dir:
+    values: ['dataset/spatial_1_00/era5_geopotential','dataset/spatial_1_00/era5_wind','dataset/spatial_2_8125/era5_cloud','dataset/spatial_2_8125/era5_geopotential','dataset/spatial_2_8125/era5_wind','dataset/spatial_2_8125/era5_cloud']
+  seed:
+    values: [1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/spatial_1_00/era5_geopotential
+  - --project_name=era5_spatial
   - --model=relu
   - --skip
   - --max_epoch=500 # depend on dataset

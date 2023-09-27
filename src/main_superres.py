@@ -60,11 +60,15 @@ if __name__ == "__main__":
     parser.add_argument("--n_fourier", type=int, default=34)
 
     parser.add_argument("--project_name", type=str, default="fair_superres")
+    parser.add_argument("--seed", type=int, default=0)
 
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()
 
-    pl.seed_everything(0)
+    pl.seed_everything(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
 
     args.time = True if "temporal" in args.dataset_dir else False
     args.input_dim = 3 + (1 if args.time else 0)
