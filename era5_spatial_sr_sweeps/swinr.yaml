@@ -4,7 +4,7 @@ entity: postech_sinr
 method: grid
 parameters:
   omega:
-    values: [3,5,7]
+    values: [50,60,70]
   sigma:
     values: [0.1, 1, 10]
   lr:
@@ -12,9 +12,11 @@ parameters:
   hidden_dim:
     values: [512]
   batch_size:
-    values: [128]
+    values: [4096]
   dataset_dir:
-    values: ['dataset/spatial_1_00/era5_geopotential','dataset/spatial_1_00/era5_wind']
+    values: ['dataset/spatial_0_25/era5_cloud']
+  seed:
+    values: [1,2]
 command:
   - python
   - ${program}
