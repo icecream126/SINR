@@ -322,15 +322,15 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
         filepath = 'output/'+str(current_datetime)+'_'+str(logger.experiment.id)+'/'
         os.makedirs(filepath, exist_ok=True)
         
-        np.save(filepath+f'{dtype}_target', target)
-        np.save(filepath+f'{dtype}_pred', pred)
-        np.save(filepath+f'{dtype}_error', error)
-        np.save(filepath+f'{dtype}_lat', lat)
-        np.save(filepath+f'{dtype}_lon', lon)
+        # np.save(filepath+f'{dtype}_target', target)
+        # np.save(filepath+f'{dtype}_pred', pred)
+        # np.save(filepath+f'{dtype}_error', error)
+        # np.save(filepath+f'{dtype}_lat', lat)
+        # np.save(filepath+f'{dtype}_lon', lon)
         
         # draw_histogram('target', filepath+'target')
         # draw_histogram('pred', filepath+'pred')
-        draw_histogram('error', filepath+f'{dtype}_error', logger)
+        # draw_histogram('error', filepath+f'{dtype}_error', logger)
         
         
         dims = ("latitude", "longitude")

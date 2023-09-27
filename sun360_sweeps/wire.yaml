@@ -11,6 +11,8 @@ parameters:
     values: [0.0003]
   hidden_dim:
     values: [512]
+  panorama_idx:
+    values: [10, 11, 12]
 command:
   - python
   - ${program}
@@ -19,7 +21,7 @@ command:
   - --model=wire
   - --skip
   - --max_epoch=500 # depend on dataset
-  - --panorama_idx=10
+  # - --panorama_idx=10
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial
