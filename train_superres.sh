@@ -16,6 +16,16 @@ CUDA_VISIBLE_DEVICES=1 python src/main_superres.py \
     --skip \
     --plot 
 
+# Von mises
+CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+    --dataset_dir dataset/spatial/von_mises_80_001 \
+    --model swinr \
+    --omega 1 \
+    --sigma 10 \
+    --max_epochs 1 \
+    --skip \
+    --plot 
+
 # ERA5 Temporal
 
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \

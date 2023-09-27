@@ -10,6 +10,7 @@ def main(l, m, res, custom_fn, output_dir):
     lat_deg = np.linspace(-90, 90, int(180/res))  # Latitude: -90 to 90 degrees
     lon_deg = np.linspace(0, 360, int(360/res))  # Longitude: 0 to 360 degrees
     
+    
     lon_m, lat_m = np.meshgrid(lon_deg, lat_deg)
     
     # Convert lat, lon in degrees to THETA, PHI in radians for spherical harmonics
@@ -18,9 +19,10 @@ def main(l, m, res, custom_fn, output_dir):
     
     R = sp.sph_harm(m, l, PHI, THETA).real  # Spherical Harmonics for the meshgrid of PHI, THETA
 
+    lat_rad, lon_rad = np.deg2rad(lat_deg), np.deg2rad(lon_deg)
     data = {
-        'latitude': lat_deg,
-        'longitude': lon_deg,
+        'latitude': lat_rad,
+        'longitude': lon_rad,
         'target': R
     }
 
