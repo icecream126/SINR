@@ -52,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("--levels", type=int, default=4)
     parser.add_argument("--posenc_freq", type=int, default=10)
     parser.add_argument("--relu", default=False, action="store_true")
-    parser.add_argument("--gauss_scale", type=int, default=10)
+    parser.add_argument("--gauss_scale", type=float, default=10.0)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
