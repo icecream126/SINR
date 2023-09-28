@@ -25,18 +25,18 @@ class GaussActLayer(nn.Module):
         input_dim,
         output_dim,
         omega,
-        scale,
+        gauss_scale,
         **kwargs,
     ):
         super().__init__()
 
         self.omega = omega
-        self.scale = scale
+        self.gauss_scale = gauss_scale
         self.input_dim = input_dim
         self.linear = nn.Linear(input_dim, output_dim)
 
     def forward(self, input):
-        return torch.exp(-(self.scale*self.linear(input))**2)
+        return torch.exp(-(self.gauss_scale*self.linear(input))**2)
 
 
 class INR(MODEL):
@@ -49,6 +49,7 @@ class INR(MODEL):
         time,
         skip,
         omega,
+        gauss_scale,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -60,18 +61,18 @@ class INR(MODEL):
         self.nonlin = GaussActLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.nonlin(input_dim, hidden_dim, is_first=True, omega=omega))
+        self.net.append(self.nonlin(input_dim, hidden_dim,gauss_scale=gauss_scale, is_first=True, omega=omega))
 
         for i in range(hidden_layers):
             if skip and i == ceil(hidden_layers / 2):
                 self.net.append(
                     self.nonlin(
-                        hidden_dim + input_dim, hidden_dim, is_first=False, omega=omega
+                        hidden_dim + input_dim, hidden_dim, gauss_scale=gauss_scale, is_first=False, omega=omega
                     )
                 )
             else:
                 self.net.append(
-                    self.nonlin(hidden_dim, hidden_dim, is_first=False, omega=omega)
+                    self.nonlin(hidden_dim, hidden_dim, gauss_scale=gauss_scale, is_first=False, omega=omega)
                 )
 
         final_linear = nn.Linear(hidden_dim, output_dim)
