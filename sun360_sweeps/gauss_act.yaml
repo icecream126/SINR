@@ -4,7 +4,7 @@ entity: postech_sinr
 method: grid
 parameters:
   gauss_scale:
-    values: [2,4,6,8,10]
+    values: [0.1, 0.5, 1, 10, 30]
   lr:
     values: [0.0003]
   hidden_dim:
@@ -18,7 +18,7 @@ command:
   - ${program}
   - ${args}
   - --dataset_dir=dataset/sun360
-  - --model=gauss
+  - --model=gauss_act
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=10

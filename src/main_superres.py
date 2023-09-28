@@ -14,7 +14,7 @@ import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 from datasets import spatial, temporal, temporal_ginr, spatial_ginr
-from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, gauss
+from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, gauss,gauss_act
 
 model_dict = {
     "relu": relu,
@@ -28,6 +28,7 @@ model_dict = {
     "shiren": shiren,
     "ginr": ginr,
     "gauss": gauss,
+    "gauss_act":gauss_act,
 }
 
 if __name__ == "__main__":
@@ -59,6 +60,10 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=500)
     parser.add_argument("--lr", type=float, default=0.0003)
     parser.add_argument("--lr_patience", type=int, default=1000)
+    
+    # Ablation argument
+    parser.add_argument("--learn_rotate", default=True, action="store_false")
+    parser.add_argument("--learn_dilate", default=True, action="store_false")
 
     # GINR argument
     parser.add_argument("--n_fourier", type=int, default=34)

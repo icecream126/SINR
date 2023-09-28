@@ -11,12 +11,14 @@ parameters:
     values: [512]
   panorama_idx:
     values: [0,1,2,3,5,6,7]
+  seed:
+    values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
   - --dataset_dir=dataset/flickr360
-  - --model=relu
+  - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset
   - --batch_size=1024
