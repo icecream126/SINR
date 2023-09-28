@@ -14,7 +14,7 @@ import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 from datasets import spatial, temporal, temporal_ginr, spatial_ginr
-from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_adap
+from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, gauss
 
 model_dict = {
     "relu": relu,
@@ -22,9 +22,12 @@ model_dict = {
     "wire": wire,
     "shinr": shinr,
     "swinr": swinr,
-    "swinr_adap": swinr_adap,
+    "swinr_adap_all": swinr_adap_all,
+    "swinr_adap_omega": swinr_adap_omega,
+    "swinr_adap_sigma": swinr_adap_sigma,
     "shiren": shiren,
     "ginr": ginr,
+    "gauss": gauss,
 }
 
 if __name__ == "__main__":
@@ -48,6 +51,7 @@ if __name__ == "__main__":
     parser.add_argument("--levels", type=int, default=4)
     parser.add_argument("--posenc_freq", type=int, default=10)
     parser.add_argument("--relu", default=False, action="store_true")
+    parser.add_argument("--gauss_scale", type=int, default=10)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
