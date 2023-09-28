@@ -3,10 +3,10 @@ from torch import nn
 from math import ceil
 
 from .model import MODEL, DENOISING_MODEL
-from utils.posenc import PosEncoding
+from utils.posenc import GaussEncoding
 
 
-class ReLULayer(nn.Module):
+class GaussLayer(nn.Module):
     def __init__(
         self,
         input_dim,
@@ -32,6 +32,8 @@ class INR(MODEL):
         time,
         skip,
         posenc_freq,
+        gauss_scale,
+        mapping_size=256,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -39,10 +41,10 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = PosEncoding(in_features=input_dim, num_frequencies=posenc_freq)
-        self.posenc_dim = 2 * posenc_freq * input_dim + input_dim
+        self.posenc = GaussEncoding(in_features=input_dim,  scale=gauss_scale,mapping_size = mapping_size)
+        self.posenc_dim = 2 * mapping_size
 
-        self.nonlin = ReLULayer
+        self.nonlin = GaussLayer
 
         self.net = nn.ModuleList()
         self.net.append(self.nonlin(self.posenc_dim, hidden_dim))

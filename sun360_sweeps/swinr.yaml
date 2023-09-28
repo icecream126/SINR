@@ -12,7 +12,9 @@ parameters:
   hidden_dim:
     values: [512]
   panorama_idx:
-    values: [10, 11, 12]
+    values: [1,2,3,6,5,7,10]
+  seed:
+    values: [0,1,2]
 command:
   - python
   - ${program}
@@ -25,3 +27,5 @@ command:
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial
+  - --stop_dilate
+  - --stop_rotate

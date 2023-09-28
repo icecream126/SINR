@@ -293,7 +293,6 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
         else:
             lat = data["spherical"][..., :1]
             proceed_inputs = inputs
-
         pred = model(proceed_inputs)
 
         weights = torch.abs(torch.cos(lat))

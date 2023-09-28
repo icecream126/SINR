@@ -3,25 +3,27 @@ name: swinr
 entity: postech_sinr
 method: grid
 parameters:
-  omega:
-    values: [0.1, 1, 10, 20]
-  sigma:
-    values: [0.1, 1, 10]
+  gauss_scale:
+    values: [2,4,6,8,10]
   lr:
-    values: [0.0003]
+    values: [0.0001]
   hidden_dim:
     values: [512]
+  batch_size:
+    values: [4096]
+  dataset_dir:
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
   seed:
     values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/spatial/spherical_harmonics_5_3
-  - --model=swinr
+  - --project_name=era5_spatial
+  - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset
-  # - --panorama_idx=4
-  # - --normalize
+  # - --panorama_idx=0
+  - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial

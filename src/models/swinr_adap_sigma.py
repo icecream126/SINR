@@ -12,28 +12,28 @@ class SphericalGaborLayer(nn.Module):
         output_dim,
         time,
         omega,
-        # sigma,
+        sigma,
         **kwargs,
     ):
         super().__init__()
 
         self.time = time
-        # self.omega = nn.Sequential(
+        # self.omega = nn.Sequential( #omega learnable
         #     *[
         #         nn.Linear(3, 256),
         #         nn.ReLU(),
         #         nn.Linear(256, 1),
         #     ]
         # )
-        self.omega = omega
-        self.sigma = nn.Sequential(
+        self.omega = omega # omega constant 
+        self.sigma = nn.Sequential( # sigma learnable
             *[
                 nn.Linear(3, 256),
                 nn.ReLU(),
                 nn.Linear(256, 1),
             ]
         )
-        # self.sigma = sigma
+        # self.sigma = sigma # sigma constant
         self.output_dim = output_dim
 
         self.dilate = nn.Parameter(torch.empty(1, output_dim))
@@ -119,12 +119,10 @@ class SphericalGaborLayer(nn.Module):
             freq_arg = freq_arg + lin
             gauss_arg = gauss_arg + lin * lin
 
-        # import pdb
-
-        # pdb.set_trace()
-        sigma = self.sigma(input[:, :3])
-        # freq_term = torch.cos(self.omega(input[:, :3]) * freq_arg)
-        freq_term = torch.cos(self.omega * freq_arg)
+        sigma = self.sigma(input[:, :3]) # sigma learnable
+        # sigma = self.sigma # sigma constant
+        # freq_term = torch.cos(self.omega(input[:, :3]) * freq_arg) # omega learable
+        freq_term = torch.cos(self.omega * freq_arg) # omega constant
         gauss_term = torch.exp(-sigma * sigma * gauss_arg)
         return freq_term * gauss_term
 
@@ -139,7 +137,7 @@ class INR(MODEL):
         time,
         skip,
         omega,
-        # sigma,
+        sigma,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -151,7 +149,7 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega))
+        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
 
         self.nonlin = ReLULayer
 
