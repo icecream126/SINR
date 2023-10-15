@@ -14,9 +14,12 @@ class SphericalGaborLayer(nn.Module):
         time,
         omega_0,
         sigma_0,
+        freq_enc_type,
         **kwargs,
     ):
         super().__init__()
+        
+        self.freq_enc_type=freq_enc_type
 
         self.time = time
         self.wavelet_dim = wavelet_dim
@@ -100,7 +103,7 @@ class SphericalGaborLayer(nn.Module):
 
         x, z = points[..., 0], points[..., 2]
 
-        dilate = torch.exp(self.dilate)
+        dilate = torch.exp(self.dilate) 
 
         freq_arg = 2 * dilate * x / (1e-6 + 1 + z)
         gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
@@ -111,8 +114,11 @@ class SphericalGaborLayer(nn.Module):
             freq_arg = freq_arg + lin
             gauss_arg = gauss_arg + lin * lin
 
-        freq_term = torch.sin(self.omega_0 * self.omega * freq_arg)
-        # freq_term = self.omega_0 * torch.sin(self.out_linear(freq_arg)) # Follow MFN 
+        if self.freq_enc_type=='cos':
+            freq_term = torch.cos(self.omega_0 * self.omega * freq_arg)
+        else:
+            freq_term = torch.sin(self.omega_0 * self.omega * freq_arg)
+        
         gauss_term = torch.exp(-self.sigma * self.sigma * self.sigma_0 * gauss_arg)
 
         out = freq_term * gauss_term
@@ -132,6 +138,7 @@ class INR(MODEL):
         skip,
         omega_0,
         sigma_0,
+        freq_enc_type,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -143,7 +150,7 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega_0, sigma_0))
+        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega_0, sigma_0, freq_enc_type))
 
         self.nonlin = ReLULayer
 

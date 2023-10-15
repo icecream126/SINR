@@ -57,6 +57,7 @@ if __name__ == "__main__":
     parser.add_argument("--omega_0", default=10.0, type=float)
     parser.add_argument("--sigma_0", default=10.0, type=float)
     parser.add_argument("--wavelet_dim", default=1024, type=int)
+    parser.add_argument("--freq_enc_type", default='cos', type=str)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)

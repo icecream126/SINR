@@ -4,9 +4,9 @@ entity: postech_sinr
 method: grid
 parameters:
   omega_0:
-    values: [10, 30, 50]
+    values: [10.0, 5.0, 1.0]
   sigma_0:
-    values: [0.1, 1, 10]
+    values: [10.0, 1.0, 0.1]
   lr:
     values: [0.0003]
   hidden_dim:
