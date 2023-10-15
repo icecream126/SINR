@@ -4,15 +4,17 @@ entity: postech_sinr
 method: grid
 parameters:
   omega:
-    values: [0.1, 1, 10, 30]
+    values: [10, 30, 50]
   sigma:
-    values: [0.1, 1, 10, 30]
+    values: [0.1, 1, 10]
   lr:
     values: [0.0003]
   hidden_dim:
     values: [512]
   dataset_dir:
-    values: ['dataset/spatial/vmm/20_40_60','dataset/spatial/vmm/20_50_80','dataset/spatial/vmm/60_80_100']
+    values: ['dataset/spatial/vmm/20_40_60']
+  seed: 
+    values: [0,1,2]
 command:
   - python
   - ${program}

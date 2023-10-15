@@ -66,8 +66,8 @@ if __name__ == "__main__":
     parser.add_argument("--lr_patience", type=int, default=1000)
     
     # Ablation argument
-    parser.add_argument("--learn_rotate", default=True, action="store_false")
-    parser.add_argument("--learn_dilate", default=True, action="store_false")
+    parser.add_argument("--stop_rotate", default=True, action="store_false")
+    parser.add_argument("--stop_dilate", default=True, action="store_false")
 
     # GINR argument
     parser.add_argument("--n_fourier", type=int, default=34)

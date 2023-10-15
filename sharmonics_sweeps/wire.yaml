@@ -6,16 +6,18 @@ parameters:
   omega:
     values: [0.1, 1, 10, 30]
   sigma:
-    values: [0.1, 1, 10, 30]
+    values: [0.1, 1, 10]
   lr:
     values: [0.0003]
   hidden_dim:
     values: [512]
+  seed:
+    values: [1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/spatial/spherical_harmonics_40_39
+  - --dataset_dir=dataset/spatial/spherical_harmonics_5_3
   - --model=wire
   - --skip
   - --max_epoch=500 # depend on dataset

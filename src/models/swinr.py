@@ -13,8 +13,8 @@ class SphericalGaborLayer(nn.Module):
         time,
         omega,
         sigma,
-        learn_rotate,
-        learn_dilate,
+        stop_rotate,
+        stop_dilate,
         **kwargs,
     ):
         super().__init__()
@@ -24,12 +24,15 @@ class SphericalGaborLayer(nn.Module):
         self.sigma = sigma
         self.output_dim = output_dim
         
-        self.dilate = nn.Parameter(torch.empty(1, output_dim), requires_grad=learn_rotate)
+        print('stop_rotate : ',stop_rotate)
+        print('stop_dilate : ',stop_dilate)
+        
+        self.dilate = nn.Parameter(torch.empty(1, output_dim), requires_grad=stop_rotate)
         nn.init.normal_(self.dilate)
 
-        self.u = nn.Parameter(torch.empty(output_dim), requires_grad=learn_dilate)
-        self.v = nn.Parameter(torch.empty(output_dim), requires_grad=learn_dilate)
-        self.w = nn.Parameter(torch.empty(output_dim), requires_grad=learn_dilate)
+        self.u = nn.Parameter(torch.empty(output_dim), requires_grad=stop_dilate)
+        self.v = nn.Parameter(torch.empty(output_dim), requires_grad=stop_dilate)
+        self.w = nn.Parameter(torch.empty(output_dim), requires_grad=stop_dilate)
         nn.init.uniform_(self.u)
         nn.init.uniform_(self.v)
         nn.init.uniform_(self.w)
