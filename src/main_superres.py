@@ -14,7 +14,7 @@ import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 from datasets import spatial, temporal, temporal_ginr, spatial_ginr
-from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, gauss,gauss_act
+from models import relu, siren, wire, shinr, swinr, shiren, ginr, swinr_learn_all, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, gauss,gauss_act
 
 model_dict = {
     "relu": relu,
@@ -22,6 +22,7 @@ model_dict = {
     "wire": wire,
     "shinr": shinr,
     "swinr": swinr,
+    "sin_swinr_learn_all": swinr_learn_all,
     "swinr_adap_all": swinr_adap_all,
     "swinr_adap_omega": swinr_adap_omega,
     "swinr_adap_sigma": swinr_adap_sigma,
@@ -53,6 +54,9 @@ if __name__ == "__main__":
     parser.add_argument("--posenc_freq", type=int, default=10)
     parser.add_argument("--relu", default=False, action="store_true")
     parser.add_argument("--gauss_scale", type=float, default=10.0)
+    parser.add_argument("--omega_0", default=10.0, type=float)
+    parser.add_argument("--sigma_0", default=10.0, type=float)
+    parser.add_argument("--wavelet_dim", default=1024, type=int)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
@@ -118,6 +122,7 @@ if __name__ == "__main__":
 
     # Model
     model = model_dict[args.model].INR(**vars(args))
+    # model = model.cuda()
 
     # Pass scaler from dataset to model
     model.scaler = train_dataset.scaler

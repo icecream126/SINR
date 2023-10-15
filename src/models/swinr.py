@@ -117,6 +117,8 @@ class INR(MODEL):
         skip,
         omega,
         sigma,
+        learn_rotate,
+        learn_dilate,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -128,7 +130,7 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
+        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma, learn_rotate, learn_dilate))
 
         self.nonlin = ReLULayer
 

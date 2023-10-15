@@ -3,8 +3,10 @@ name: relu
 entity: postech_sinr
 method: grid
 parameters:
-  gauss_scale:
-    values: [2,4,6,8,10]
+  omega_0:
+    values: [10, 30, 50]
+  sigma_0:
+    values: [0.1, 1, 10]
   lr:
     values: [0.0003]
   hidden_dim:
@@ -17,9 +19,9 @@ command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/sun360
   - --project_name=re_spatial
-  - --model=gauss
+  - --dataset_dir=dataset/sun360
+  - --model=sin_swinr_learn_all
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=10

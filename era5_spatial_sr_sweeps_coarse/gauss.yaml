@@ -10,7 +10,7 @@ parameters:
   hidden_dim:
     values: [512]
   batch_size:
-    values: [128]
+    values: [4096]
   dataset_dir:
     values: ['dataset/spatial_1_00/era5_geopotential','dataset/spatial_1_00/era5_wind','dataset/spatial_2_8125/era5_cloud','dataset/spatial_2_8125/era5_geopotential','dataset/spatial_2_8125/era5_wind','dataset/spatial_2_8125/era5_cloud']
   seed:
@@ -19,7 +19,7 @@ command:
   - python
   - ${program}
   - ${args}
-  - --project_name=era5_spatial
+  - --project_name=re_spatial
   - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset

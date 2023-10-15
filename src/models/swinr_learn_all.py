@@ -19,25 +19,15 @@ class SphericalGaborLayer(nn.Module):
         super().__init__()
 
         self.time = time
-        self.omega_0 = omega_0
-        self.sigma_0 = sigma_0
-        self.omega = nn.Sequential( #omega learnable
-            *[
-                nn.Linear(3, 256),
-                nn.ReLU(),
-                nn.Linear(256, 1),
-            ]
-        )
-        # self.omega = omega # omega constant 
-        self.sigma = nn.Sequential( # sigma learnable
-            *[
-                nn.Linear(3, 256),
-                nn.ReLU(),
-                nn.Linear(256, 1),
-            ]
-        )
-        # self.sigma = sigma # sigma constant
         self.wavelet_dim = wavelet_dim
+        self.output_dim = output_dim
+        
+        self.omega = nn.Parameter(torch.empty(1, wavelet_dim))
+        self.sigma = nn.Parameter(torch.empty(1, wavelet_dim))
+        nn.init.normal_(self.omega)
+        nn.init.normal_(self.sigma)
+        self.omega_0 = omega_0
+        self.sigma_0 = sigma_0        
 
         self.dilate = nn.Parameter(torch.empty(1, wavelet_dim))
         nn.init.normal_(self.dilate)
@@ -48,7 +38,7 @@ class SphericalGaborLayer(nn.Module):
         nn.init.uniform_(self.u)
         nn.init.uniform_(self.v)
         nn.init.uniform_(self.w)
-
+        
         self.out_linear = nn.Linear(wavelet_dim, output_dim)
 
         if time:
@@ -63,7 +53,7 @@ class SphericalGaborLayer(nn.Module):
     def forward(self, input):
         zeros = torch.zeros(self.wavelet_dim, device=self.u.device)
         ones = torch.ones(self.wavelet_dim, device=self.u.device)
-
+        
         alpha = 2 * pi * self.u
         beta = torch.arccos(torch.clamp(2 * self.v - 1, -1 + 1e-6, 1 - 1e-6))
         gamma = 2 * pi * self.w
@@ -104,9 +94,6 @@ class SphericalGaborLayer(nn.Module):
 
         R = torch.bmm(torch.bmm(Rz_gamma, Rx_beta), Rz_alpha)
 
-        # points.shape : [ 1,2097125,3 ] / [512, 3]
-        # inputs.shape : [ 1,2097125,3] / [512, 3]
-        # R.shape : [256, 3, 3] / [256, 3, 3]
         points = input[..., 0:3]
         points = torch.matmul(R, points.unsqueeze(-2).unsqueeze(-1))
         points = points.squeeze(-1)
@@ -124,15 +111,12 @@ class SphericalGaborLayer(nn.Module):
             freq_arg = freq_arg + lin
             gauss_arg = gauss_arg + lin * lin
 
-        # import pdb
+        freq_term = torch.sin(self.omega_0 * self.omega * freq_arg)
+        # freq_term = self.omega_0 * torch.sin(self.out_linear(freq_arg)) # Follow MFN 
+        gauss_term = torch.exp(-self.sigma * self.sigma * self.sigma_0 * gauss_arg)
 
-        # pdb.set_trace()
-        sigma = self.sigma(input[:, :3]) # sigma learnable
-        # sigma = self.sigma # sigma constant
-        freq_term = torch.cos(self.omega_0 * self.omega(input[:, :3]) * freq_arg) # omega learable
-        # freq_term = torch.cos(self.omega * freq_arg) # omega constant
-        gauss_term = torch.exp(-sigma * sigma * self.sigma_0 * self.sigma_0 * gauss_arg)
         out = freq_term * gauss_term
+        # return out
         return nn.functional.relu(self.out_linear(out))
 
 
@@ -140,14 +124,14 @@ class INR(MODEL):
     def __init__(
         self,
         input_dim,
-        output_dim,
+        output_dim, 
         wavelet_dim,
         hidden_dim,
         hidden_layers,
         time,
         skip,
-        omega,
-        sigma,
+        omega_0,
+        sigma_0,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -159,11 +143,13 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega,sigma))
+        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega_0, sigma_0))
 
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
+            # if i==0:
+                # self.net.append(self.nonlin(wavelet_dim, hidden_dim))
             if skip and i == ceil(hidden_layers / 2):
                 self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:
@@ -205,7 +191,7 @@ class DENOISING_INR(DENOISING_MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega, sigma))
+        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))
 
         self.nonlin = ReLULayer
 
