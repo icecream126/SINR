@@ -8,7 +8,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from utils.utils import to_cartesian, StandardScalerTorch, MinMaxScalerTorch
-import cv2
+# import cv2
 
 
 class Dataset(Dataset):
@@ -70,9 +70,12 @@ class Dataset(Dataset):
 
         if "360" in self.dataset_dir:
             target = np.array(Image.open(self.filename))  # [512, 1024, 3]
-            if 'flickr' in self.dataset_dir:
-                target = cv2.resize(target, None, fx=1/2, fy=1/2, interpolation=cv2.INTER_AREA)
+            # if 'flickr' in self.dataset_dir:
+            #     target = cv2.resize(target, None, fx=1/2, fy=1/2, interpolation=cv2.INTER_AREA)
 
+            
+            # if self.dataset_type=='train':
+            #     target = cv2.resize(target, None, fx=1/downscale_factor, fy=1/downscale_factor, interpolation=cv2.INTER_AREA)
             H, W = target.shape[:2]  # H : 512, W : 1024
 
             lat = np.linspace(-90, 90, H)  # 512
@@ -100,15 +103,17 @@ class Dataset(Dataset):
         # if self.normalize:
         #     target = (target - target.min()) / (target.max() - target.min())
 
-        if self.dataset_type == "all":
-            start, step = 0, 1
-        elif self.dataset_type == "train":
+        # if self.dataset_type == "all":
+        #     start, step = 0, 1
+        if self.dataset_type == "train":
             start, step = 0, 2
         else:
-            start, step = 1, 2
+            start, step = 0, 1
         # else:
         #     start, step = 2, 3
 
+        # import pdb
+        # pdb.set_trace()
         lat_idx = np.arange(start, len(lat), step)
         lon_idx = np.arange(start, len(lon), step)
 
