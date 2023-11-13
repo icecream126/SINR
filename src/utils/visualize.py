@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
 
-from utils.utils import to_cartesian
+from utils.utils import to_cartesian, mse2psnr
 from PIL import Image as PILImage
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -124,6 +124,12 @@ def visualize_synthetic(dtype, dataset, model, args, mode, logger):
         error = weights * error
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
+        logger.experiment.log(
+            {"full_test_rmse": round((rmse),4)},
+        )
+        logger.experiment.log(
+            {"full_test_psnr": round(mse2psnr(np.array(rmse)),4)},
+        )
 
         lat = inputs[..., 0]
         lon = inputs[..., 1]
@@ -198,9 +204,15 @@ def visualize_360(dtype, dataset, model, args, mode, logger):
 
         mean_lat_weight = data["mean_lat_weight"]
         target_shape = data["target_shape"]
+        
+        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+            proceed_inputs = to_cartesian(inputs)
+            lat = inputs[..., :1]
+        else:
+            lat = data["inputs"][..., :1]
+            proceed_inputs = inputs
 
-        cart_inputs = to_cartesian(inputs)
-        pred = model(cart_inputs)
+        pred = model(proceed_inputs)
 
         weights = torch.abs(torch.cos(inputs[..., :1]))
         weights = weights / mean_lat_weight
@@ -211,6 +223,12 @@ def visualize_360(dtype, dataset, model, args, mode, logger):
         error = weights * error
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
+        logger.experiment.log(
+            {mode+"_full_test_rmse": round((rmse),4)},
+        )
+        logger.experiment.log(
+            {mode+"_full_test_psnr": round(mse2psnr(np.array(rmse)),4)},
+        )
 
         lat = inputs[..., 0]
         lon = inputs[..., 1]
@@ -287,12 +305,14 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
 
         mean_lat_weight = data["mean_lat_weight"]
         target_shape = data["target_shape"]
-        if args.model != "ginr":
+        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
             proceed_inputs = to_cartesian(inputs)
             lat = inputs[..., :1]
         else:
-            lat = data["spherical"][..., :1]
+            lat = data["inputs"][..., :1]
             proceed_inputs = inputs
+            
+            
         pred = model(proceed_inputs)
 
         weights = torch.abs(torch.cos(lat))
@@ -304,6 +324,12 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
         error = weights * error
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
+        logger.experiment.log(
+            {dtype+"_full_test_rmse": round((rmse),4)},
+        )
+        logger.experiment.log(
+            {dtype+"_full_test_psnr": round(mse2psnr(np.array(rmse)),4)},
+        )
 
         target_min, target_max = target.min(), target.max()
         target = (target - target_min) / (target_max - target_min)
@@ -320,16 +346,6 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
         
         filepath = 'output/'+str(current_datetime)+'_'+str(logger.experiment.id)+'/'
         os.makedirs(filepath, exist_ok=True)
-        
-        # np.save(filepath+f'{dtype}_target', target)
-        # np.save(filepath+f'{dtype}_pred', pred)
-        # np.save(filepath+f'{dtype}_error', error)
-        # np.save(filepath+f'{dtype}_lat', lat)
-        # np.save(filepath+f'{dtype}_lon', lon)
-        
-        # draw_histogram('target', filepath+'target')
-        # draw_histogram('pred', filepath+'pred')
-        # draw_histogram('error', filepath+f'{dtype}_error', logger)
         
         
         dims = ("latitude", "longitude")
@@ -356,6 +372,14 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
         gt_min, gt_max = float(x[ground_truth].min()), float(x[ground_truth].max())
         x = x.assign(target=(x[ground_truth] - gt_min) / (gt_max - gt_min))
 
-        draw_map(x, "HR", "pred", colormap, rmse, logger, args)
-        draw_map(x, "HR", "error", "hot", rmse, logger, args)
-        draw_map(x, "HR", "target", colormap, rmse, logger, args)
+        RES = None
+        if dtype=='train':
+            RES="LR"
+        elif dtype=='all':
+            RES="HR"
+        else:
+            raise Exception("Specify RES Type")
+            
+        draw_map(x, RES, "pred", colormap, rmse, logger, args)
+        draw_map(x, RES, "error", "hot", rmse, logger, args)
+        draw_map(x, RES, "target", colormap, rmse, logger, args)

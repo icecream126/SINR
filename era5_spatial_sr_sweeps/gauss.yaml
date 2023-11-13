@@ -13,13 +13,16 @@ parameters:
     values: [4096]
   dataset_dir:
     values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
+  downscale_factor:
+    values: [2,4]
   seed:
     values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --project_name=re_spatial
+  - --task=reg
+  - --project_name=231113_sr
   - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset
