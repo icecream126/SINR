@@ -103,7 +103,7 @@ if __name__ == "__main__":
     )  # sun360, flickr360 takes 3 else 1
 
     # Log
-    logger = WandbLogger(config=args, name=args.model, project=args.project_name)
+    logger = WandbLogger(config=args, name=args.model, project=args.project_name, log_model="all")
 
     # Dataset
     if args.time:
@@ -144,18 +144,18 @@ if __name__ == "__main__":
     # )
     
     # Model
-    model = model_dict[args.model].INR(**vars(args))
+    model = model_dict[args.model].INR(all_dataset=all_dataset,**vars(args))
 
     # Pass scaler from dataset to model
     model.scaler = train_dataset.scaler
     model.normalize = train_dataset.zscore_normalize or train_dataset.normalize
-    model.all_dataset = all_dataset
+    # model.all_dataset = all_dataset
 
     # Learning
     lrmonitor_cb = LearningRateMonitor(logging_interval="step")
 
     checkpoint_cb = ModelCheckpoint(
-        monitor="full_train_psnr", mode="max", filename="best-{epoch}-{full_train_psnr:.2f}", save_on_train_epoch_end=True,
+        monitor="full_train_psnr", mode="max", filename="best-{epoch}-{full_train_psnr:.2f}", save_top_k=1,
     )
 
     trainer = pl.Trainer.from_argparse_args(
@@ -182,10 +182,10 @@ if __name__ == "__main__":
     best_model_path = checkpoint_cb.best_model_path
     print('best_model_path : ',best_model_path)
     if best_model_path:
-        model = model.load_from_checkpoint(best_model_path, scaler=all_dataset.scaler, all_dataset=all_dataset, **vars(args))
-        model.scaler = all_dataset.scaler
-        model.normalize = all_dataset.zscore_normalize or all_dataset.normalize
-        model.all_dataset = all_dataset
+        best_model = model.load_from_checkpoint(best_model_path, scaler=all_dataset.scaler, all_dataset=all_dataset, **vars(args))
+        best_model.scaler = train_dataset.scaler
+        best_model.normalize = train_dataset.zscore_normalize or train_dataset.normalize
+        # model.all_dataset = all_dataset
     else:
         raise Exception("Best model is not saved properly")
     
@@ -203,11 +203,11 @@ if __name__ == "__main__":
                 parts[1]='spatial_1_00'
                 filename = '/'.join(parts) + '/data.nc'
             visualize_era5('train',
-                train_dataset, model, filename, logger, args
+                train_dataset, best_model, filename, logger, args
             )
             
             visualize_era5('all',
-                all_dataset, model, args.dataset_dir + "/data.nc", logger, args
+                all_dataset, best_model, args.dataset_dir + "/data.nc", logger, args
             )
             # TODO : Visualize LR
             # Visualizing LR with earthmap is tricky due to interpolation
@@ -215,9 +215,9 @@ if __name__ == "__main__":
             # Maybe we don't need LR visualizations. At most, we would need the ground truth.
             # i.e., we don't need error map, prediction of LR visualizations
         elif '360' in args.dataset_dir:
-            visualize_360('all',all_dataset, model, args, "HR", logger=logger)
-            visualize_360('train',train_dataset, model, args, "LR", logger=logger)
+            visualize_360('all',all_dataset, best_model, args, "HR", logger=logger)
+            visualize_360('train',train_dataset, best_model, args, "LR", logger=logger)
         else:
-            visualize_synthetic('all', all_dataset, model, args,"HR", logger=logger)
-            visualize_synthetic('train', train_dataset, model, args,"LR", logger=logger)
+            visualize_synthetic('all', all_dataset, best_model, args,"HR", logger=logger)
+            visualize_synthetic('train', train_dataset, best_model, args,"LR", logger=logger)
             

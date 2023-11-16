@@ -196,7 +196,7 @@ def visualize_synthetic(dtype, dataset, model, args, mode, logger):
         )
         
 
-def visualize_360(dtype, dataset, model, args, mode, logger):
+def visualize_360(dtype, dataset, best_model, args, mode, logger):
     with torch.no_grad():
         data = dataset[:]
 
@@ -206,15 +206,15 @@ def visualize_360(dtype, dataset, model, args, mode, logger):
         target_shape = data["target_shape"]
         
         if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
-            proceed_inputs = to_cartesian(inputs)
+            # proceed_inputs = to_cartesian(inputs)
             lat = inputs[..., :1]
         else:
-            lat = data["inputs"][..., :1]
+            lat = inputs[..., :1]
             proceed_inputs = inputs
 
-        pred = model(proceed_inputs)
+        pred = best_model(proceed_inputs)
 
-        weights = torch.abs(torch.cos(inputs[..., :1]))
+        weights = torch.abs(torch.cos(lat))
         weights = weights / mean_lat_weight
         if weights.shape[-1] == 1:
             weights = weights.squeeze(-1)
@@ -223,11 +223,12 @@ def visualize_360(dtype, dataset, model, args, mode, logger):
         error = weights * error
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
+        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
         logger.experiment.log(
             {mode+"_full_test_rmse": round((rmse),4)},
         )
         logger.experiment.log(
-            {mode+"_full_test_psnr": round(mse2psnr(np.array(rmse)),4)},
+            {mode+"_full_test_psnr": w_psnr_val},
         )
 
         lat = inputs[..., 0]
@@ -297,7 +298,7 @@ def visualize_360(dtype, dataset, model, args, mode, logger):
 
     
 
-def visualize_era5(dtype, dataset, model, filename, logger, args):
+def visualize_era5(dtype, dataset, best_model, filename, logger, args):
     with torch.no_grad():
         data = dataset[:]
 
@@ -309,11 +310,11 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
             proceed_inputs = to_cartesian(inputs)
             lat = inputs[..., :1]
         else:
-            lat = data["inputs"][..., :1]
+            lat = inputs[..., :1]
             proceed_inputs = inputs
             
             
-        pred = model(proceed_inputs)
+        pred = best_model(proceed_inputs)
 
         weights = torch.abs(torch.cos(lat))
         weights = weights / mean_lat_weight
@@ -324,11 +325,22 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
         error = weights * error
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
+        w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        
+        
+        RES = None
+        if dtype=='train':
+            RES="LR"
+        elif dtype=='all':
+            RES="HR"
+        else:
+            raise Exception("Specify RES Type")
+        
         logger.experiment.log(
-            {dtype+"_full_test_rmse": round((rmse),4)},
+            {RES+"_full_test_rmse": round((rmse),4)},
         )
         logger.experiment.log(
-            {dtype+"_full_test_psnr": round(mse2psnr(np.array(rmse)),4)},
+            {RES+"_full_test_psnr": w_psnr_val},
         )
 
         target_min, target_max = target.min(), target.max()
@@ -372,13 +384,6 @@ def visualize_era5(dtype, dataset, model, filename, logger, args):
         gt_min, gt_max = float(x[ground_truth].min()), float(x[ground_truth].max())
         x = x.assign(target=(x[ground_truth] - gt_min) / (gt_max - gt_min))
 
-        RES = None
-        if dtype=='train':
-            RES="LR"
-        elif dtype=='all':
-            RES="HR"
-        else:
-            raise Exception("Specify RES Type")
             
         draw_map(x, RES, "pred", colormap, rmse, logger, args)
         draw_map(x, RES, "error", "hot", rmse, logger, args)

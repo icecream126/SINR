@@ -14,7 +14,7 @@ parameters:
   downscale_factor:
     values: [2,4]
   seed:
-    values: [0]
+    values: [0, 1, 2]
 command:
   - python
   - ${program}

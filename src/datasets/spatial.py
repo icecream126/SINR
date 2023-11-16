@@ -82,17 +82,13 @@ class Dataset(Dataset):
             
             H, W = target.shape[:2]  # H : 512, W : 1024
 
-            lat = torch.linspace(90, -90, H)
-            lon = torch.linspace(0, 360, W)
-            '''
             if self.model=='ngp_interp':
-                lat = np.linspace(90, -90, H)
-                lon = np.linspace(0, 360, W)
-                
+                lat = torch.linspace(90, -90, H)
+                lon = torch.linspace(0, 360, W)
             else:
-                lat = np.linspace(-90, 90, H)  # 512
-                lon = np.linspace(-180, 180, W)  # 1024
-            '''
+                lat = torch.linspace(-90, 90, H)  # 512
+                lon = torch.linspace(-180, 180, W)  # 1024
+                
             
 
         elif "era5" in self.dataset_dir:
@@ -122,26 +118,6 @@ class Dataset(Dataset):
             target = torch.from_numpy(target)
             lat = torch.from_numpy(lat)
             lon = torch.from_numpy(lon)
-                        
-            # if self.dataset_type=='train':
-            #     target = cv2.resize(target, None, fx=1/self.downscale_factor, fy=1/self.downscale_factor, interpolation=cv2.INTER_AREA)
-            #     start, step = 0, self.downscale_factor
-            #     lat_idx = torch.arange(start, len(lat), step)
-            #     lon_idx = torch.arange(start, len(lon), step)
-                
-            #     target = torch.from_numpy(target)
-            #     lat = torch.from_numpy(lat)
-            #     lon = torch.from_numpy(lon)
-
-            #     lat = lat[lat_idx]  # 171
-            #     lon = lon[lon_idx]  # 342
-            #     # target = torch.from_numpy(target[lat_idx][:, lon_idx]).float()  # [171, 342, 3]
-                
-            # else:
-            #     target = torch.from_numpy(target)
-            #     lat = torch.from_numpy(lat)
-            #     lon = torch.from_numpy(lon)
-
                         
             
         else:
