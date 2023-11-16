@@ -19,7 +19,7 @@ command:
   - python
   - ${program}
   - ${args}
-  - --project_name=re_spatial
+  - --project_name=re_sr
   - --dataset_dir=dataset/sun360
   - --model=sin_swinr_learn_all
   - --skip

@@ -41,7 +41,7 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = GaussEncoding(in_features=input_dim,  scale=gauss_scale,mapping_size = mapping_size)
+        self.posenc = GaussEncoding(in_features=input_dim, mapping_size = mapping_size, scale=gauss_scale)
         self.posenc_dim = 2 * mapping_size
 
         self.nonlin = GaussLayer

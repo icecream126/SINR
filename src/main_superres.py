@@ -43,6 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--zscore_normalize", default=False, action="store_true")
     parser.add_argument("--data_year", default=None)  # For weather temporal
     parser.add_argument("--time_resolution", type=int, default=24)
+    parser.add_argument("--downscale_factor", type=int, default=2)
 
     # Model argument
     parser.add_argument("--hidden_dim", type=int, default=512)
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("--omega_0", default=10.0, type=float)
     parser.add_argument("--sigma_0", default=10.0, type=float)
     parser.add_argument("--wavelet_dim", default=1024, type=int)
-    parser.add_argument("--freq_enc_type", default='cos', type=str)
+    parser.add_argument("--freq_enc_type", default='sin', type=str)
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     )  # sun360, flickr360 takes 3 else 1
 
     # Log
-    logger = WandbLogger(config=args, name=args.model, project=args.project_name)
+    logger = WandbLogger(config=args, name=args.model, project=args.project_name)# , mode='disabled')
 
     # Dataset
     if args.time:

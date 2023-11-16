@@ -51,8 +51,8 @@ CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
     --seed 0
 
 CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
-    --dataset_dir dataset/spatial_0_25/era5_cloud \
-    --model swinr_learn_all \
+    --dataset_dir dataset/era5/era5_cloud \
+    --model sin_swinr_learn_all \
     --omega_0 50.0 \
     --sigma_0 1.0 \
     --lr 0.0001 \
@@ -62,7 +62,8 @@ CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
     --project_name re_spatial \
     --hidden_dim 512 \
     --batch_size 4096 \
-    --seed 0 
+    --seed 0 \
+    --max_epochs 1
 
 
 CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
@@ -165,6 +166,22 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --lr 0.01
 
 # SUN360
+
+CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+    --dataset_dir dataset/sun360\
+    --model sin_swinr_learn_all \
+    --omega_0 10.0 \
+    --sigma_0 10.0 \
+    --lr 0.0003 \
+    --skip \
+    --plot \
+    --normalize \
+    --project_name re_spatial \
+    --hidden_dim 512 \
+    --batch_size 512 \
+    --seed 0 \
+    --panorama_idx 10 \
+    --max_epoch 1
 
 CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
     --dataset_dir dataset/sun360\

@@ -18,7 +18,7 @@ command:
   - ${program}
   - ${args}
   - --dataset_dir=dataset/sun360
-  - --project_name=re_spatial
+  - --project_name=re_sr
   - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset
