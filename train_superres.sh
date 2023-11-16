@@ -36,8 +36,38 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --skip 
 
 # ERA5 Spatial Geopotential
+CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
+    --dataset_dir dataset/spatial_1_00/era5_cloud \
+    --model ngp_interp \
+    --lr 0.0001 \
+    --skip \
+    --plot \
+    --normalize \
+    --project_name re_era5_spatial \
+    --hidden_dim 512 \
+    --batch_size 4096 \
+    --seed 0 \
+    --mapping_size 3 \
+    --task reg \
+    --level 3
 
-CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
+    --dataset_dir dataset/spatial_1_00/era5_cloud \
+    --model learnable \
+    --lr 0.0001 \
+    --skip \
+    --plot \
+    --normalize \
+    --project_name re_era5_spatial \
+    --hidden_dim 512 \
+    --batch_size 4096 \
+    --seed 0 \
+    --mapping_size 3 \
+    --task reg \
+    --level 5
+
+
+CUDA_VISIBLE_DEVICES=1 python src/main_superres.py \
     --dataset_dir dataset/spatial_1_00/era5_cloud \
     --model gauss \
     --gauss_scale 2\
@@ -47,23 +77,50 @@ CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
     --normalize \
     --project_name re_era5_spatial \
     --hidden_dim 512 \
-    --batch_size 128 \
-    --seed 0
+    --batch_size 4096 \
+    --seed 0 \
+    --task reg
 
-CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
-    --dataset_dir dataset/era5/era5_cloud \
-    --model sin_swinr_learn_all \
+CUDA_VISIBLE_DEVICES=2 python src/main_superres.py \
+    --dataset_dir dataset/spatial_1_00/era5_cloud \
+    --model swinr_learn_all \
     --omega_0 50.0 \
     --sigma_0 1.0 \
     --lr 0.0001 \
     --skip \
     --plot \
     --normalize \
-    --project_name re_spatial \
+    --project_name re_era5_spatial \
     --hidden_dim 512 \
     --batch_size 4096 \
     --seed 0 \
-    --max_epochs 1
+    --task sr
+
+CUDA_VISIBLE_DEVICES=2 python src/main_superres.py \
+    --dataset_dir dataset/spatial_1_00/era5_cloud \
+    --model shinr \
+    --lr 0.0001 \
+    --skip \
+    --plot \
+    --normalize \
+    --project_name re_era5_spatial \
+    --hidden_dim 512 \
+    --batch_size 4096 \
+    --seed 0 \
+    --task reg
+
+
+CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+    --dataset_dir dataset/spatial_1_00/era5_cloud \
+    --model ewinr \
+    --lr 0.0001 \
+    --skip \
+    --plot \
+    --normalize \
+    --project_name re_era5_spatial \
+    --hidden_dim 512 \
+    --batch_size 4096 \
+    --seed 0
 
 
 CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
@@ -167,11 +224,10 @@ CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
 
 # SUN360
 
+
 CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
     --dataset_dir dataset/sun360\
-    --model sin_swinr_learn_all \
-    --omega_0 10.0 \
-    --sigma_0 10.0 \
+    --model swinr_pe \
     --lr 0.0003 \
     --skip \
     --plot \
@@ -180,12 +236,38 @@ CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
     --hidden_dim 512 \
     --batch_size 512 \
     --seed 0 \
-    --panorama_idx 10 \
-    --max_epoch 1
+    --panorama_idx 10
 
 CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
     --dataset_dir dataset/sun360\
-    --model sin_swinr_learn_all \
+    --model ewinr \
+    --lr 0.0003 \
+    --skip \
+    --plot \
+    --normalize \
+    --project_name re_spatial \
+    --hidden_dim 512 \
+    --batch_size 512 \
+    --seed 0 \
+    --panorama_idx 10
+
+CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+    --dataset_dir dataset/sun360\
+    --model gauss \
+    --gauss_scale 2.0 \
+    --lr 0.0003 \
+    --skip \
+    --plot \
+    --normalize \
+    --project_name re_spatial \
+    --hidden_dim 512 \
+    --batch_size 512 \
+    --seed 0 \
+    --panorama_idx 10
+
+CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+    --dataset_dir dataset/sun360\
+    --model swinr_learn_all \
     --omega_0 10.0 \
     --sigma_0 10.0 \
     --lr 0.0003 \

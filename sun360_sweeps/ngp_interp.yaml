@@ -3,8 +3,8 @@ name: relu
 entity: postech_sinr
 method: grid
 parameters:
-  gauss_scale:
-    values: [2,4,6,8,10]
+  level:
+    values: [1,2,3,4,5]
   lr:
     values: [0.0003]
   hidden_dim:
@@ -21,7 +21,8 @@ command:
   - ${args}
   - --dataset_dir=dataset/sun360
   - --project_name=231113_sr
-  - --model=gauss
+  - --model=ngp_interp
+  - --task=sr
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=10

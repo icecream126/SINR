@@ -251,9 +251,9 @@ def main(args):
         ax.plot_surface(x_adj, y_adj, z_adj, rstride=1, cstride=1, facecolors=plt.cm.viridis(pdf_values), alpha=0.6, antialiased=True)
     
     data['target']=all_pdf_values
-    import pdb
+    # import pdb
     
-    pdb.set_trace()
+    # pdb.set_trace()
     
     print('data[latitude] : ',data['latitude'].shape)
     # print('data[longitude] : ',data['longitude'].shape)

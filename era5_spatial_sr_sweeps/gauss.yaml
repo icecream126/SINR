@@ -11,17 +11,18 @@ parameters:
     values: [512]
   batch_size:
     values: [1024]
-  downscale_factor:
-    values: [4]
   dataset_dir:
-    values: ['dataset/era5/era5_geopotential','dataset/era5/era5_wind','dataset/era5/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
+  downscale_factor:
+    values: [2,4]
   seed:
     values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --project_name=re_sr
+  - --task=reg
+  - --project_name=231113_sr
   - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset

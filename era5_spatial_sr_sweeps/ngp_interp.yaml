@@ -1,30 +1,32 @@
 program: src/main_superres.py
-name: relu
+name: swinr
 entity: postech_sinr
 method: grid
 parameters:
-  gauss_scale:
-    values: [2,4,6,8,10]
+  level:
+    values: [1,2,3,4,5]
   lr:
-    values: [0.0003]
+    values: [0.0001]
   hidden_dim:
     values: [512]
-  panorama_idx:
-    values: [0,2,3,6,5,7,10]
+  batch_size:
+    values: [1024]
+  dataset_dir:
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
   downscale_factor:
     values: [2,4]
   seed:
-    values: [0, 1, 2]
+    values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --dataset_dir=dataset/sun360
+  - --task=sr
   - --project_name=231113_sr
-  - --model=gauss
+  - --model=ngp_interp
   - --skip
   - --max_epoch=500 # depend on dataset
-  # - --panorama_idx=10
+  # - --panorama_idx=0
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial

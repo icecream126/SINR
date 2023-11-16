@@ -4,24 +4,24 @@ entity: postech_sinr
 method: grid
 parameters:
   omega_0:
-    values: [10.0, 5.0, 1.0]
+    values: [10.0, 5.0, 1.0, 30.0]
   sigma_0:
-    values: [10.0, 1.0, 0.1]
+    values: [10.0, 1.0, 0.1, 15.0]
   lr:
     values: [0.0003]
   hidden_dim:
     values: [512]
   panorama_idx:
-    values: [1,2,3,6,5,7,10]
+    values: [0,2,3,6,5,7,10]
   seed:
-    values: [0,1,2]
+    values: [0]
 command:
   - python
   - ${program}
   - ${args}
-  - --project_name=re_sr
+  - --project_name=our_spatial
   - --dataset_dir=dataset/sun360
-  - --model=sin_swinr_learn_all
+  - --model=ani2_sin_swinr_learn_all
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=10

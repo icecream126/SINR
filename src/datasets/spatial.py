@@ -19,10 +19,12 @@ class Dataset(Dataset):
         output_dim,
         normalize,
         panorama_idx,
+        model,
         downscale_factor,
         zscore_normalize=False,
         **kwargs
     ):
+        self.model = model
         self.downscale_factor = downscale_factor
         self.dataset_dir = dataset_dir
         self.dataset_type = dataset_type
@@ -71,34 +73,39 @@ class Dataset(Dataset):
 
         if "360" in self.dataset_dir:
             target = np.array(Image.open(self.filename))  # [512, 1024, 3]
-            if 'flickr' in self.dataset_dir:
-                target = cv2.resize(target, None, fx=1/2, fy=1/2, interpolation=cv2.INTER_AREA)
-            
-            if self.dataset_type=="train":
+            # if 'flickr' in self.dataset_dir:
+            #     target = cv2.resize(target, None, fx=1/2, fy=1/2, interpolation=cv2.INTER_AREA)
+
+            if self.dataset_type=='train':
                 target = cv2.resize(target, None, fx=1/self.downscale_factor, fy=1/self.downscale_factor, interpolation=cv2.INTER_AREA)
-                
-
+            
             H, W = target.shape[:2]  # H : 512, W : 1024
-            print('downscale_factor : ',self.downscale_factor)
-            print('H, W : ',H, W)
 
-            lat = np.linspace(-90, 90, H)  # 512
-            lon = np.linspace(-180, 180, W)  # 1024
+            if self.model=='ngp_interp':
+                lat = torch.linspace(90, -90, H)
+                lon = torch.linspace(0, 360, W)
+            else:
+                lat = torch.linspace(-90, 90, H)  # 512
+                lon = torch.linspace(-180, 180, W)  # 1024
+                
+            
 
         elif "era5" in self.dataset_dir:
             
-            # print(self.filename) # 'dataset/era5/era5_cloud/data.nc'
-            # print(self.downscale_factor)
             if self.dataset_type=='train':
-                split = self.filename.split("/")
-                split[1] = split[1]+"_"+str(self.downscale_factor)
-                # print('split : ',split)
-                self.filename = "/".join(split)
-                print('train filename : ',self.filename)
+                parts = self.dataset_dir.split('/')
+                if self.downscale_factor==2: # 0_50
+                    parts[1]='spatial_0_50'
+                    filename = '/'.join(parts) + '/data.nc'
+                elif self.downscale_factor==4: # 1_00
+                    parts[1]='spatial_1_00'
+                    filename = '/'.join(parts) + '/data.nc'
+                else:
+                    raise Exception("Unsupported downscaling factor for ERA5")
             else:
-                print('test filename : ',self.filename)
-            
-            with nc.Dataset(self.filename, "r") as f:
+                filename = self.filename
+
+            with nc.Dataset(filename, "r") as f:
                 for variable in f.variables:
                     if variable == "latitude":
                         lat = f.variables[variable][:]
@@ -107,43 +114,33 @@ class Dataset(Dataset):
                     else:
                         target = f.variables[variable][0]
             
+            target = torch.from_numpy(target)
+            lat = torch.from_numpy(lat)
+            lon = torch.from_numpy(lon)
+                        
+            
         else:
             data = np.load(self.filename)
 
             lat = data["latitude"]
             lon = data["longitude"]
             target = data["target"]
-
-        lat = np.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
-        lon = np.deg2rad(lon)  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
-        print('lat shape ; ',lat.shape)
-        print('lon shape : ',lon.shape)
-        
-        # if self.normalize:
-        #     target = (target - target.min()) / (target.max() - target.min())
-
-        '''
-        if self.dataset_type == "all":
-            start, step = 0, 1
-        elif self.dataset_type == "train":
-            start, step = 0, 2
-        else:
-            start, step = 1, 2
-        # else:
-        #     start, step = 2, 3
-        lat_idx = np.arange(start, len(lat), step)
-        lon_idx = np.arange(start, len(lon), step)
-        
-        
-        lat = torch.from_numpy(lat[lat_idx]).float()  # 171
-        lon = torch.from_numpy(lon[lon_idx]).float()  # 342
-        '''
-        lat = torch.from_numpy(lat).float()
-        lon = torch.from_numpy(lon).float()
-        # target = torch.from_numpy(target[lat_idx][:, lon_idx]).float()  # [171, 342, 3]
-        
-        
             
+            if self.dataset_type=='train':
+                target = cv2.resize(target, None, fx=1/self.downscale_factor, fy=1/self.downscale_factor, interpolation=cv2.INTER_AREA)
+            H, W = target.shape[:2]  # H : 512, W : 1024
+
+            lat = torch.linspace(90, -90, H)
+            lon = torch.linspace(0, 360, W)
+
+        
+        
+        if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+            lat = torch.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
+            lon = torch.deg2rad(lon)  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
+
+        
+        
         data_out["lat"] = lat
         data_out["lon"] = lon
 

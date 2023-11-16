@@ -32,7 +32,7 @@ class SphericalGaborLayer(nn.Module):
         self.omega_0 = omega_0
         self.sigma_0 = sigma_0        
 
-        self.dilate = nn.Parameter(torch.empty(1, wavelet_dim))
+        self.dilate = nn.Parameter(torch.empty(1, wavelet_dim)) # (1, wavelet_dim) : isotropic dilation (2, wavelet) : aniso
         nn.init.normal_(self.dilate)
 
         self.u = nn.Parameter(torch.empty(wavelet_dim))
@@ -103,11 +103,24 @@ class SphericalGaborLayer(nn.Module):
 
         x, z = points[..., 0], points[..., 2]
 
-        dilate = torch.exp(self.dilate) 
+        dilate = torch.exp(self.dilate)  # isotropic dilation
+        # dilate_y1, dilate_y2 = torch.exp(self.dilate) # anisotropic dilation
+        
+        y1 = x / (1e-5 + 1 + z)
+        y2 = (1 - z) / (1e-5 + 1 + z)
+        
+        # isotropic dilation
+        freq_arg = 2 * dilate * y1
+        gauss_arg = 4 * dilate * dilate * y2
 
-        freq_arg = 2 * dilate * x / (1e-6 + 1 + z)
-        gauss_arg = 4 * dilate * dilate * (1 - z) / (1e-6 + 1 + z)
+        # anisotropic dilation
+        # freq_arg = 2 * dilate_y1 * y1
+        # gauss_arg = 4 * dilate_y2 * dilate_y2 * y2
 
+        # without dilation
+        # freq_arg = 2 *  y1
+        # gauss_arg = 4 * y2
+        
         if self.time:
             time = input[..., 3:]
             lin = self.linear(time)
@@ -119,7 +132,9 @@ class SphericalGaborLayer(nn.Module):
         else:
             freq_term = torch.sin(self.omega_0 * self.omega * freq_arg)
         
-        gauss_term = torch.exp(-self.sigma * self.sigma * self.sigma_0 * gauss_arg)
+        import pdb
+        pdb.set_trace()
+        gauss_term = torch.exp(-self.sigma * self.sigma_0 * gauss_arg)
 
         out = freq_term * gauss_term
         # return out
