@@ -81,12 +81,14 @@ class Dataset(Dataset):
             
             H, W = target.shape[:2]  # H : 512, W : 1024
 
-            if self.model=='ngp_interp':
+            if self.model=='ngp_interp' or 'coolchic_interp':
                 lat = torch.linspace(90, -90, H)
                 lon = torch.linspace(0, 360, W)
             else:
-                lat = torch.linspace(-90, 90, H)  # 512
-                lon = torch.linspace(-180, 180, W)  # 1024
+                # lat = torch.linspace(-90, 90, H)  # 512
+                # lon = torch.linspace(-180, 180, W)  # 1024
+                lat = torch.linspace(90, -90, H)
+                lon = torch.linspace(0, 360, W)
                 
             
 
@@ -152,6 +154,7 @@ class Dataset(Dataset):
         lat = lat.flatten()  # [58482]
         lon = lon.flatten()  # ""
         target = target.reshape(-1, self.output_dim)  # [58482, 3]
+        
         if self.zscore_normalize or self.normalize:
             self.scaler.fit(target)
             target = self.scaler.transform(target)

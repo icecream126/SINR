@@ -4,13 +4,13 @@ entity: postech_sinr
 method: grid
 parameters:
   level:
-    values: [1,2,3,4,5]
+    values: [3,5,7,9,11]
   lr:
     values: [0.0001]
   hidden_dim:
     values: [512]
   batch_size:
-    values: [4096]
+    values: [1024]
   dataset_dir:
     values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
   downscale_factor:

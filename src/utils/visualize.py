@@ -201,29 +201,44 @@ def visualize_360(dtype, dataset, best_model, args, mode, logger):
         data = dataset[:]
 
         inputs, target = data["inputs"], data["target"]
-
         mean_lat_weight = data["mean_lat_weight"]
+        
         target_shape = data["target_shape"]
         
-        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
-            # proceed_inputs = to_cartesian(inputs)
-            lat = inputs[..., :1]
+        # Weights 먼저 구해주고
+        if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
+            rad = torch.deg2rad(inputs)
+            rad_lat = rad[...,:1]
+            
+            weights = torch.abs(torch.cos(rad_lat)) 
         else:
-            lat = inputs[..., :1]
-            proceed_inputs = inputs
-
-        pred = best_model(proceed_inputs)
-
-        weights = torch.abs(torch.cos(lat))
+            weights = torch.abs(torch.cos(inputs[...,:1]))
+            
         weights = weights / mean_lat_weight
-        if weights.shape[-1] == 1:
-            weights = weights.squeeze(-1)
+            
+        # Model에 들어갈 input 계산
+        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+            model_inputs = to_cartesian(inputs)
+            # lat = inputs[..., :1]
+        else:
+            model_inputs = inputs
+            # lat = inputs[..., :1]
+            
+            
+        pred = best_model(model_inputs)
 
-        error = torch.sum((pred - target) ** 2, dim=-1)
+        error = torch.sum(
+            (pred - target) ** 2, dim=-1, keepdim=True
+        )
+        if len(error.shape) > len(weights.shape):
+            error = error.squeeze(-1)
+            
         error = weights * error
         loss = error.mean()
+        
         rmse = torch.sqrt(loss).item()
         w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
+        
         logger.experiment.log(
             {mode+"_full_test_rmse": round((rmse),4)},
         )
@@ -231,19 +246,26 @@ def visualize_360(dtype, dataset, best_model, args, mode, logger):
             {mode+"_full_test_psnr": w_psnr_val},
         )
 
-        lat = inputs[..., 0]
-        lon = inputs[..., 1]
-        deg_lat = torch.rad2deg(lat)  # set range [-90, 90]
-        deg_lon = torch.rad2deg(lon)  # set range [-180, 180]
+        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+            deg = torch.rad2deg(inputs)
+            lat = deg[...,0]  # set range [-90, 90]
+            lon = deg[...,1]  # set range [-180, 180]
+            # lat = inputs[...,0]
+            # lon = inputs[...,1]
+        else:
+            lat = inputs[..., 0]
+            lon = inputs[..., 1]
+            
         lat, lon = lat.detach().cpu().numpy(), lon.detach().cpu().numpy()
-        deg_lat, deg_lon = (
-            deg_lat.detach().cpu().numpy(),
-            deg_lon.detach().cpu().numpy(),
-        )
+        # deg_lat, deg_lon = (
+        #     deg_lat.detach().cpu().numpy(),
+        #     deg_lon.detach().cpu().numpy(),
+        # )
 
-        target_min, target_max = target.min(), target.max()
-        target = (target - target_min) / (target_max - target_min)
-        pred = (pred - target_min) / (target_max - target_min)
+        if not target.max().round().int()==1:
+            target_min, target_max = target.min(), target.max()
+            target = (target - target_min) / (target_max - target_min)
+            pred = (pred - target_min) / (target_max - target_min)
         pred = torch.clip(pred, 0, 1)
 
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
@@ -256,6 +278,7 @@ def visualize_360(dtype, dataset, best_model, args, mode, logger):
         
         filepath = 'output/'+str(current_datetime)+'_'+str(logger.experiment.id)+'/'
         os.makedirs(filepath, exist_ok=True)
+        
         np.save(filepath+f'{dtype}_target', target)
         np.save(filepath+f'{dtype}_pred', pred)
         np.save(filepath+f'{dtype}_error', error)
@@ -303,27 +326,45 @@ def visualize_era5(dtype, dataset, best_model, filename, logger, args):
         data = dataset[:]
 
         inputs, target = data["inputs"], data["target"]
-
         mean_lat_weight = data["mean_lat_weight"]
+        
         target_shape = data["target_shape"]
-        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
-            proceed_inputs = to_cartesian(inputs)
-            lat = inputs[..., :1]
+        
+        # Weights 먼저 구해주고
+        if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
+            rad = torch.deg2rad(inputs)
+            rad_lat = rad[...,:1]
+            
+            weights = torch.abs(torch.cos(rad_lat)) 
         else:
-            lat = inputs[..., :1]
-            proceed_inputs = inputs
+            weights = torch.abs(torch.cos(inputs[...,:1]))
             
-            
-        pred = best_model(proceed_inputs)
-
-        weights = torch.abs(torch.cos(lat))
         weights = weights / mean_lat_weight
-        if weights.shape[-1] == 1:
-            weights = weights.squeeze(-1)
+            
+        # Model에 들어갈 input 계산
+        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+            model_inputs = to_cartesian(inputs)
+            # lat = inputs[..., :1]
+        else:
+            model_inputs = inputs
+            # lat = inputs[..., :1]
+            
+            
+        pred = best_model(model_inputs)
+        
+        
+        # if weights.shape[-1] == 1:
+        #     weights = weights.squeeze(-1)
 
-        error = torch.sum((pred - target) ** 2, dim=-1)
+        error = torch.sum(
+            (pred - target) ** 2, dim=-1, keepdim=True
+        )
+        if len(error.shape) > len(weights.shape):
+            error = error.squeeze(-1)
+            
         error = weights * error
         loss = error.mean()
+        
         rmse = torch.sqrt(loss).item()
         w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
         
@@ -343,9 +384,10 @@ def visualize_era5(dtype, dataset, best_model, filename, logger, args):
             {RES+"_full_test_psnr": w_psnr_val},
         )
 
-        target_min, target_max = target.min(), target.max()
-        target = (target - target_min) / (target_max - target_min)
-        pred = (pred - target_min) / (target_max - target_min)
+        if not target.max().round().int()==1:
+            target_min, target_max = target.min(), target.max()
+            target = (target - target_min) / (target_max - target_min)
+            pred = (pred - target_min) / (target_max - target_min)
         pred = torch.clip(pred, 0, 1)
 
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()

@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from models import coolchic_interp
 
 from utils.visualize import visualize_era5, visualize_360, visualize_synthetic
 import os
@@ -14,7 +15,7 @@ import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 from datasets import spatial, temporal, temporal_ginr, spatial_ginr
-from models import coolchic_interp, ngp_interp, learnable, relu, siren, wire, shinr, swinr, shiren, ginr, swinr_learn_all, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, gauss,gauss_act, ewinr, swinr_pe
+from models import ngp_interp, coolchic_interp, learnable, relu, siren, wire, shinr, swinr, shiren, ginr, swinr_learn_all, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, mygauss, gauss_act, ewinr, swinr_pe
 
 model_dict = {
     "relu": relu,
@@ -29,7 +30,7 @@ model_dict = {
     "swinr_adap_sigma": swinr_adap_sigma,
     "shiren": shiren,
     "ginr": ginr,
-    "gauss": gauss,
+    "mygauss": mygauss,
     "gauss_act":gauss_act,
     "ewinr":ewinr,
     "learnable":learnable,
@@ -56,9 +57,9 @@ if __name__ == "__main__":
     parser.add_argument("--skip", default=False, action="store_true")
     parser.add_argument("--omega", type=float, default=1.0)
     parser.add_argument("--sigma", type=float, default=1.0)
-    parser.add_argument("--levels", type=int, default=4)
     parser.add_argument("--posenc_freq", type=int, default=10)
     parser.add_argument("--relu", default=False, action="store_true")
+    parser.add_argument("--geodesic_weight", default=False, action="store_true")
     parser.add_argument("--gauss_scale", type=float, default=10.0)
     parser.add_argument("--omega_0", default=10.0, type=float)
     parser.add_argument("--sigma_0", default=10.0, type=float)
@@ -68,7 +69,12 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", default=1.0, type=float)
     parser.add_argument("--beta", default=1.0, type=float)
     parser.add_argument("--mapping_size", default=256, type=int)
-    parser.add_argument("--level", default=2, type=int)
+    parser.add_argument("--n_levels", default=16, type=int)
+    parser.add_argument("--n_features_per_level", default=2, type=int)
+    parser.add_argument("--resolution", default=2, type=int)
+    parser.add_argument("--T", default=14, type=int)
+    
+    
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
@@ -123,8 +129,15 @@ if __name__ == "__main__":
     # Calculate resolution of the dataset and make it argument
     args.lat_shape = all_dataset[0]["target_shape"][0]
     args.lon_shape = all_dataset[0]["target_shape"][1]
-    resolution = abs(all_dataset[1]["lat"][2] - all_dataset[1]["lat"][1]) # latitude difference is resolution such as 0.25
-    args.resolution =  round(float(resolution),4)
+    
+    finest_resolution = abs(all_dataset[1]["lat"][2] - all_dataset[1]["lat"][1]) # latitude difference is resolution such as 0.25
+    args.finest_resolution =  round(float(finest_resolution),4)
+    
+    base_resolution = abs(train_dataset[1]["lat"][2] - train_dataset[1]["lat"][1]) # latitude difference is resolution such as 0.25
+    args.base_resolution =  round(float(base_resolution),4)
+    
+    args.finest_resolution = 512
+    args.base_resolution = 16
     
     if args.model == "ginr":
         args.input_dim = train_dataset.n_fourier + (1 if args.time else 0)

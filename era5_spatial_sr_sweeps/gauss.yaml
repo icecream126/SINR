@@ -22,7 +22,7 @@ command:
   - ${program}
   - ${args}
   - --task=reg
-  - --project_name=231113_sr
+  - --project_name=231118_sr
   - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset

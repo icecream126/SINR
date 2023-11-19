@@ -46,7 +46,7 @@ class INR(MODEL):
         self.posenc_dim = level
 
         # LearnableEncoding(self, lat_shape, lon_shape, mapping_size, resolution)
-        self.nonlin = COOLCHIC_INTERP
+        self.nonlin = COOLCHIC_INTERP_ENC
 
         self.net = nn.ModuleList()
         self.net.append(self.nonlin(self.posenc_dim, hidden_dim))

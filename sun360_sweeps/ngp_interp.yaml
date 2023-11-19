@@ -3,14 +3,14 @@ name: relu
 entity: postech_sinr
 method: grid
 parameters:
-  level:
-    values: [1,2,3,4,5]
+  n_levels:
+    values: [3,5,7,9,11]
   lr:
     values: [0.0003]
   hidden_dim:
     values: [512]
   panorama_idx:
-    values: [0,2,3,6,5,7,10]
+    values: [0,1,6,7]
   downscale_factor:
     values: [2,4]
   seed:

@@ -1,3 +1,56 @@
+# NGP - WIND - 4
+CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
+    --dataset_dir dataset/spatial_0_25/era5_wind \
+    --max_epochs 500 \
+    --n_levels 7 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --model ngp_interp \
+    --normalize \
+    --skip \
+    --plot
+
+# NGP - WIND - 2
+CUDA_VISIBLE_DEVICES=4 python src/main_superres.py \
+    --dataset_dir dataset/spatial_0_25/era5_wind \
+    --max_epochs 500 \
+    --n_levels 7 \
+    --n_features_per_level 2 \
+    --downscale_factor 2 \
+    --model ngp_interp \
+    --normalize \
+    --skip \
+    --plot
+
+# NGP - SUN360 - 4
+CUDA_VISIBLE_DEVICES=5 python src/main_superres.py \
+    --dataset_dir dataset/sun360 \
+    --panorama_idx 0 \
+    --max_epochs 500 \
+    --n_levels 7 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --model ngp_interp \
+    --normalize \
+    --skip \
+    --plot
+
+# NGP - SUN360 - 2
+CUDA_VISIBLE_DEVICES=7 python src/main_superres.py \
+    --dataset_dir dataset/sun360 \
+    --panorama_idx 0 \
+    --max_epochs 500 \
+    --n_levels 7 \
+    --n_features_per_level 2 \
+    --downscale_factor 2 \
+    --model ngp_interp \
+    --normalize \
+    --skip \
+    --plot
+
+
+
+
 # Spherical harmonics
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --dataset_dir dataset/spatial/spherical_harmonics_5_3 \

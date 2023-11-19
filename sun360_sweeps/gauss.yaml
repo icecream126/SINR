@@ -10,7 +10,7 @@ parameters:
   hidden_dim:
     values: [512]
   panorama_idx:
-    values: [0,2,3,6,5,7,10]
+    values: [0,1,6,7]
   downscale_factor:
     values: [2,4]
   seed:
@@ -20,7 +20,7 @@ command:
   - ${program}
   - ${args}
   - --dataset_dir=dataset/sun360
-  - --project_name=231113_sr
+  - --project_name=231118_sr
   - --model=gauss
   - --skip
   - --max_epoch=500 # depend on dataset

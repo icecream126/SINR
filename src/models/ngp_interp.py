@@ -25,16 +25,17 @@ class NGP_INTERP(nn.Module):
 class INR(MODEL):
     def __init__(
         self,
-        input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
         time,
         skip,
-        lat_shape,
-        lon_shape,
-        resolution,
-        level=2,
+        finest_resolution,
+        base_resolution,
+        geodesic_weight,
+        T,
+        n_levels=2,
+        n_features_per_level=2,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -42,8 +43,8 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = NGP_INTERP_ENC(lat_shape=lat_shape, lon_shape=lon_shape, level=level, resolution=resolution)
-        self.posenc_dim = level
+        self.posenc = NGP_INTERP_ENC(geodesic_weight = geodesic_weight, F = n_features_per_level, L = n_levels, T = T, finest_resolution=finest_resolution, base_resolution = base_resolution)
+        self.posenc_dim = n_levels * n_features_per_level
 
         # LearnableEncoding(self, lat_shape, lon_shape, mapping_size, resolution)
         self.nonlin = NGP_INTERP

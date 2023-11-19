@@ -3,8 +3,8 @@ name: swinr
 entity: postech_sinr
 method: grid
 parameters:
-  level:
-    values: [1,2,3,4,5]
+  n_levels:
+    values: [3,5,7,9,11]
   lr:
     values: [0.0001]
   hidden_dim:
@@ -22,7 +22,7 @@ command:
   - ${program}
   - ${args}
   - --task=sr
-  - --project_name=231113_sr
+  - --project_name=231118_sr
   - --model=ngp_interp
   - --skip
   - --max_epoch=500 # depend on dataset

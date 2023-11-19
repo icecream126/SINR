@@ -21,6 +21,7 @@ class MODEL(pl.LightningModule):
         self.all_dataset=all_dataset
         self.last_full_train_psnr = None
         self.last_full_train_rmse = None
+        self.best_full_train_psnr = 0
         
     def metric_all(self, device, mode='train'):
             with torch.no_grad():
@@ -51,8 +52,12 @@ class MODEL(pl.LightningModule):
             
                 # self.last_full_train_psnr = all_w_psnr_val
                 # self.last_full_train_rmse = all_rmse
+                if mode=='train' and self.best_full_train_psnr < all_w_psnr_val:
+                    self.best_full_train_psnr = all_w_psnr_val
+                    
                 self.log("full_"+mode+"_rmse", all_rmse, prog_bar=True, sync_dist=True, on_epoch=True)
                 self.log("full_"+mode+"_psnr", all_w_psnr_val, prog_bar=True, sync_dist=True, on_epoch=True)
+                
                 
                 
 
@@ -60,6 +65,7 @@ class MODEL(pl.LightningModule):
         inputs, target = data["inputs"], data["target"]  # [512, 3], [512, 3]
         mean_lat_weight = data["mean_lat_weight"]  # [512] with 0.6341
         
+        # Weights 먼저 구해주고
         if self.model=='learnable' or self.model=='coolchic_interp' or self.model=='ngp_interp':
             rad = torch.deg2rad(inputs)
             rad_lat = rad[...,:1]
@@ -69,11 +75,14 @@ class MODEL(pl.LightningModule):
             weights = torch.abs(torch.cos(inputs[..., :1]))  # [512, 1]
         weights = weights / mean_lat_weight  # [512, 512]
 
-        if self.time and self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
-            inputs = torch.cat((to_cartesian(inputs[..., :2]), inputs[..., 2:]), dim=-1)
+        # Model에 들어갈 input 계산
+        if self.time :
+            if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+                inputs = torch.cat((to_cartesian(inputs[..., :2]), inputs[..., 2:]), dim=-1)
         
-        elif self.model != 'swinr_pe' and self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
-            inputs = to_cartesian(inputs)
+        else :
+            if self.model != 'swinr_pe' and self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+                inputs = to_cartesian(inputs)
 
         pred = self.forward(inputs)  # [512, 3]
         self._device=pred.device
@@ -122,6 +131,9 @@ class MODEL(pl.LightningModule):
         with torch.no_grad():      
             # if self.current_epoch % 10 ==0:
             self.metric_all(device=self._device, mode='train')
+        if self.current_epoch == self.trainer.max_epochs-1:
+            self.log("best_full_train_psnr", self.best_full_train_psnr, prog_bar=True, sync_dist=True)
+            
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
