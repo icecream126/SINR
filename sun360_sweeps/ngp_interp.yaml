@@ -4,7 +4,9 @@ entity: postech_sinr
 method: grid
 parameters:
   n_levels:
-    values: [3,5,7,9,11]
+    values: [12, 16, 20]
+  T:
+    values: [14, 10, 12]
   lr:
     values: [0.0003]
   hidden_dim:

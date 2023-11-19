@@ -30,7 +30,7 @@ model_dict = {
     "swinr_adap_sigma": swinr_adap_sigma,
     "shiren": shiren,
     "ginr": ginr,
-    "mygauss": mygauss,
+    "gauss": mygauss,
     "gauss_act":gauss_act,
     "ewinr":ewinr,
     "learnable":learnable,
