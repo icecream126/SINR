@@ -73,6 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_features_per_level", default=2, type=int)
     parser.add_argument("--resolution", default=2, type=int)
     parser.add_argument("--T", default=14, type=int)
+    parser.add_argument("--input_dim", default=3, type=int)
     
     
 
@@ -101,15 +102,17 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+    
+    # input_dim = args.input_dim
 
     args.time = True if "temporal" in args.dataset_dir else False
-    args.input_dim = 3 + (1 if args.time else 0)
+    # args.input_dim = input_dim + (1 if args.time else 0)
     args.output_dim = (
         3 if "360" in args.dataset_dir else 1
     )  # sun360, flickr360 takes 3 else 1
 
     # Log
-    logger = WandbLogger(config=args, name=args.model, project=args.project_name, log_model="all")
+    logger = WandbLogger(config=args, name=args.model, project=args.project_name, log_model="all", save_dir = "./"+args.project_name)# , mode='disabled')
 
     # Dataset
     if args.time:
@@ -215,11 +218,11 @@ if __name__ == "__main__":
             elif args.downscale_factor==4: # 1_00
                 parts[1]='spatial_1_00'
                 filename = '/'.join(parts) + '/data.nc'
-            visualize_era5('train',
+            visualize_era5(args.input_dim, 'train',
                 train_dataset, best_model, filename, logger, args
             )
             
-            visualize_era5('all',
+            visualize_era5(args.input_dim, 'all',
                 all_dataset, best_model, args.dataset_dir + "/data.nc", logger, args
             )
             # TODO : Visualize LR
@@ -228,9 +231,9 @@ if __name__ == "__main__":
             # Maybe we don't need LR visualizations. At most, we would need the ground truth.
             # i.e., we don't need error map, prediction of LR visualizations
         elif '360' in args.dataset_dir:
-            visualize_360('all',all_dataset, best_model, args, "HR", logger=logger)
-            visualize_360('train',train_dataset, best_model, args, "LR", logger=logger)
+            visualize_360(args.input_dim, 'all',all_dataset, best_model, args, "HR", logger=logger)
+            visualize_360(args.input_dim, 'train',train_dataset, best_model, args, "LR", logger=logger)
         else:
-            visualize_synthetic('all', all_dataset, best_model, args,"HR", logger=logger)
-            visualize_synthetic('train', train_dataset, best_model, args,"LR", logger=logger)
+            visualize_synthetic(args.input_dim, 'all', all_dataset, best_model, args,"HR", logger=logger)
+            visualize_synthetic(args.input_dim, 'train', train_dataset, best_model, args,"LR", logger=logger)
             

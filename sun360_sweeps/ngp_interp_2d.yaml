@@ -1,0 +1,34 @@
+program: src/main_superres.py
+name: relu
+entity: postech_sinr
+method: grid
+parameters:
+  n_levels:
+    values: [12, 16, 20]
+  T:
+    values: [14, 10, 12]
+  lr:
+    values: [0.0003]
+  hidden_dim:
+    values: [512]
+  panorama_idx:
+    values: [0,1,6,7]
+  downscale_factor:
+    values: [2,4]
+  seed:
+    values: [0, 1, 2]
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --dataset_dir=dataset/sun360
+  - --project_name=231113_sr
+  - --model=ngp_interp
+  - --input_dim=2
+  - --task=sr
+  - --skip
+  - --max_epoch=500 # depend on dataset
+  # - --panorama_idx=10
+  - --normalize
+  # - --batch_size=1 # only for temporal
+  - --plot # only for spatial

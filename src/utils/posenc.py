@@ -4,6 +4,11 @@ import torch
 from torch import nn
 import numpy as np
 import torch.nn.functional as F
+import random
+
+# torch.manual_seed(0)
+# np.random.seed(0)
+# random.seed(0)
 
 
 LAT_MIN = -90.0
@@ -14,9 +19,11 @@ LON_MAX = 360.0
 
 
 
+
+
 class NGP_INTERP_ENC(nn.Module):
     def __init__(self, geodesic_weight, F=2, L=16, T = 14, input_dim=2,  finest_resolution=512, base_resolution=16):        
-        super(NGP_INTERP_ENC, self).__init__()
+        super().__init__()
         
         self.input_dim = input_dim
         self.geodesic_weight = geodesic_weight
@@ -62,6 +69,7 @@ class NGP_INTERP_ENC(nn.Module):
         For n-D, the i-th input add the i-th "row" here and there are 2^n possible permutations
         '''
         border_adds = np.empty((self.input_dim, 2**self.input_dim), dtype=np.int64)
+
         for i in range(self.input_dim):
             pattern = np.array(
                 ([0] * (2**i) + [1] * (2**i)) * (2**(self.input_dim-i-1)),
@@ -91,7 +99,7 @@ class NGP_INTERP_ENC(nn.Module):
                                     tmp)
         return torch.remainder(tmp, 2**self.T) # mod 2^T
     
-    def normalize_x(self, x):
+    def normalize_2d_x(self, x):
         lat_min = -90
         lat_max = 90
         lon_min = 0
@@ -99,6 +107,16 @@ class NGP_INTERP_ENC(nn.Module):
         
         x[...,0] = (x[...,0]-lat_min)/(lat_max - lat_min)
         x[...,1] = (x[...,1]-lon_min)/(lon_max - lon_min)
+        
+        return x
+    def normalize_3d_x(self, x):
+        min_val = -1
+        max_val = 1
+        for i in range(3):
+            x[...,i] = (x[...,i]-min_val) / (max_val - min_val)
+        
+        # x[...,0] = (x[...,0]-lat_min)/(lat_max - lat_min)
+        # x[...,1] = (x[...,1]-lon_min)/(lon_max - lon_min)
         
         return x
         
@@ -121,7 +139,12 @@ class NGP_INTERP_ENC(nn.Module):
         '''
         elementwise multiplication of [batch_size,input_dim,1,1] and [1,1,L,1]
         '''
-        x = self.normalize_x(x)
+        # if input is {theta, phi} coordinate, normalize each into [0, 1]
+        if self.input_dim == 2:
+            x = self.normalize_2d_x(x)
+        # else:
+            # x = self.normalize_3d_x(x)
+            
         scaled_coords = torch.mul(x.unsqueeze(-1).unsqueeze(-1), self._resolutions) # shape [batch_size,input_dim,L,1]
         # compute the floor of all coordinates
         if scaled_coords.dtype in [torch.float32, torch.float64]:
@@ -129,7 +152,6 @@ class NGP_INTERP_ENC(nn.Module):
         else:
             grid_coords = scaled_coords # shape [batch_size,input_dim,L,1]
             
-        # grid_coords = scaled_coords
         '''
         add all possible permutations to each vertex
         obtain all 2^input_dim neighbor vertices at this voxel for each level
@@ -614,8 +636,12 @@ class LearnableEncoding(nn.Module):
 class myGaussEncoding(nn.Module):
     """Module to add positional encoding as in NeRF [Mildenhall et al. 2020]."""
 
-    def __init__(self, in_features, mapping_size=256, scale=10):
+    def __init__(self, in_features, mapping_size=256, scale=10, seed=None):
         super(myGaussEncoding, self).__init__()
+        
+        if seed is not None:
+            torch.manual_seed(seed)
+            np.random.seed(seed)
 
         self.in_features = in_features
         self.mapping_size = mapping_size

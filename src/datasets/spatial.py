@@ -16,6 +16,7 @@ class Dataset(Dataset):
         self,
         dataset_dir,
         dataset_type,
+        input_dim,
         output_dim,
         normalize,
         panorama_idx,
@@ -24,6 +25,7 @@ class Dataset(Dataset):
         zscore_normalize=False,
         **kwargs
     ):
+        self.input_dim = input_dim
         self.model = model
         self.downscale_factor = downscale_factor
         self.dataset_dir = dataset_dir
@@ -81,7 +83,8 @@ class Dataset(Dataset):
             
             H, W = target.shape[:2]  # H : 512, W : 1024
 
-            if self.model=='ngp_interp' or 'coolchic_interp':
+            # if self.model=='ngp_interp' or 'coolchic_interp':
+            if self.input_dim == 2:
                 lat = torch.linspace(90, -90, H)
                 lon = torch.linspace(0, 360, W)
             else:
@@ -137,7 +140,8 @@ class Dataset(Dataset):
 
         
         
-        if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+        # if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+        if self.input_dim == 3:
             lat = torch.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
             lon = torch.deg2rad(lon)  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
 

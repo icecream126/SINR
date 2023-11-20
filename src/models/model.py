@@ -8,7 +8,7 @@ from torch.optim import lr_scheduler
 
 
 class MODEL(pl.LightningModule):
-    def __init__(self, lr, lr_patience, model, normalize, zscore_normalize, all_dataset, **kwargs):
+    def __init__(self, input_dim, lr, lr_patience, model, normalize, zscore_normalize, all_dataset, **kwargs):
         super().__init__()
 
         self.lr = lr
@@ -22,6 +22,7 @@ class MODEL(pl.LightningModule):
         self.last_full_train_psnr = None
         self.last_full_train_rmse = None
         self.best_full_train_psnr = 0
+        self.input_dim = input_dim
         
     def metric_all(self, device, mode='train'):
             with torch.no_grad():
@@ -30,7 +31,8 @@ class MODEL(pl.LightningModule):
                 all_inputs, all_target = all_data["inputs"].to(device), all_data["target"].to(device)
                 mean_lat_weight = all_data["mean_lat_weight"].to(device)
                 
-                if self.model != "ginr" and self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+                # if self.model != "ginr" and self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+                if self.input_dim == 3:
                     proceed_inputs = to_cartesian(all_inputs)
                     lat = all_inputs[..., :1]
                 else:
@@ -66,7 +68,8 @@ class MODEL(pl.LightningModule):
         mean_lat_weight = data["mean_lat_weight"]  # [512] with 0.6341
         
         # Weights 먼저 구해주고
-        if self.model=='learnable' or self.model=='coolchic_interp' or self.model=='ngp_interp':
+        if self.input_dim==2:
+            # if self.model=='learnable' or self.model=='coolchic_interp' or self.model=='ngp_interp':
             rad = torch.deg2rad(inputs)
             rad_lat = rad[...,:1]
             
@@ -77,11 +80,13 @@ class MODEL(pl.LightningModule):
 
         # Model에 들어갈 input 계산
         if self.time :
-            if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+            if self.input_dim==3:
+                # if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
                 inputs = torch.cat((to_cartesian(inputs[..., :2]), inputs[..., 2:]), dim=-1)
         
         else :
-            if self.model != 'swinr_pe' and self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
+            if self.input_dim==3:
+                # if self.model != 'swinr_pe' and self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
                 inputs = to_cartesian(inputs)
 
         pred = self.forward(inputs)  # [512, 3]

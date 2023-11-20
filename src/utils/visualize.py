@@ -196,7 +196,7 @@ def visualize_synthetic(dtype, dataset, model, args, mode, logger):
         )
         
 
-def visualize_360(dtype, dataset, best_model, args, mode, logger):
+def visualize_360(input_dim, dtype, dataset, best_model, args, mode, logger):
     with torch.no_grad():
         data = dataset[:]
 
@@ -206,7 +206,8 @@ def visualize_360(dtype, dataset, best_model, args, mode, logger):
         target_shape = data["target_shape"]
         
         # Weights 먼저 구해주고
-        if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
+        if input_dim == 2:
+        # if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
             rad = torch.deg2rad(inputs)
             rad_lat = rad[...,:1]
             
@@ -217,7 +218,8 @@ def visualize_360(dtype, dataset, best_model, args, mode, logger):
         weights = weights / mean_lat_weight
             
         # Model에 들어갈 input 계산
-        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+        if input_dim == 3:
+            # if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
             model_inputs = to_cartesian(inputs)
             # lat = inputs[..., :1]
         else:
@@ -246,7 +248,8 @@ def visualize_360(dtype, dataset, best_model, args, mode, logger):
             {mode+"_full_test_psnr": w_psnr_val},
         )
 
-        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+        if input_dim == 3:
+        # if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
             deg = torch.rad2deg(inputs)
             lat = deg[...,0]  # set range [-90, 90]
             lon = deg[...,1]  # set range [-180, 180]
@@ -321,7 +324,7 @@ def visualize_360(dtype, dataset, best_model, args, mode, logger):
 
     
 
-def visualize_era5(dtype, dataset, best_model, filename, logger, args):
+def visualize_era5(input_dim, dtype, dataset, best_model, filename, logger, args):
     with torch.no_grad():
         data = dataset[:]
 
@@ -331,7 +334,8 @@ def visualize_era5(dtype, dataset, best_model, filename, logger, args):
         target_shape = data["target_shape"]
         
         # Weights 먼저 구해주고
-        if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
+        if input_dim == 2:
+        # if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
             rad = torch.deg2rad(inputs)
             rad_lat = rad[...,:1]
             
@@ -342,7 +346,8 @@ def visualize_era5(dtype, dataset, best_model, filename, logger, args):
         weights = weights / mean_lat_weight
             
         # Model에 들어갈 input 계산
-        if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+        # if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+        if input_dim ==3 :
             model_inputs = to_cartesian(inputs)
             # lat = inputs[..., :1]
         else:

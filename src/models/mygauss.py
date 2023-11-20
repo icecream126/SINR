@@ -25,22 +25,23 @@ class myGaussLayer(nn.Module):
 class INR(MODEL):
     def __init__(
         self,
-        input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
         time,
         skip,
         gauss_scale,
+        seed,
         mapping_size=256,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
+        self.input_dim = kwargs['input_dim']
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = myGaussEncoding(in_features=input_dim, mapping_size = mapping_size, scale=gauss_scale)
+        self.posenc = myGaussEncoding(in_features=self.input_dim, mapping_size = mapping_size, scale=gauss_scale,seed=seed)
         self.posenc_dim = 2 * mapping_size
 
         self.nonlin = myGaussLayer

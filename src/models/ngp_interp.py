@@ -26,6 +26,7 @@ class INR(MODEL):
     def __init__(
         self,
         output_dim,
+        # input_dim,
         hidden_dim,
         hidden_layers,
         time,
@@ -40,10 +41,11 @@ class INR(MODEL):
     ):
         super().__init__(**kwargs)
 
+        self.input_dim = kwargs['input_dim']
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = NGP_INTERP_ENC(geodesic_weight = geodesic_weight, F = n_features_per_level, L = n_levels, T = T, finest_resolution=finest_resolution, base_resolution = base_resolution)
+        self.posenc = NGP_INTERP_ENC(geodesic_weight = geodesic_weight, F = n_features_per_level,  L = n_levels, input_dim = self.input_dim, T = T, finest_resolution=finest_resolution, base_resolution = base_resolution)
         self.posenc_dim = n_levels * n_features_per_level
 
         # LearnableEncoding(self, lat_shape, lon_shape, mapping_size, resolution)
