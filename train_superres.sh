@@ -1,3 +1,95 @@
+
+# HEALPIX - WIND - 4
+CUDA_VISIBLE_DEVICES=0,1 python src/main_superres.py \
+    --dataset_dir dataset/spatial_0_25/era5_wind \
+    --max_epochs 500 \
+    --n_levels 10 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --input_dim 2 \
+    --project_name 231120_ngp_2d3d \
+    --batch_size 1024 \
+    --model healpix \
+    --normalize \
+    --skip \
+    --plot
+
+
+CUDA_VISIBLE_DEVICES=2 python src/main_superres.py \
+    --dataset_dir dataset/spatial_0_25/era5_wind \
+    --max_epochs 500 \
+    --gauss_scale 2 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --input_dim 2 \
+    --project_name 231120_ngp_2d3d \
+    --batch_size 1024 \
+    --model gauss \
+    --normalize \
+    --skip \
+    --plot
+
+CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
+    --dataset_dir dataset/spatial_0_25/era5_wind \
+    --max_epochs 500 \
+    --gauss_scale 4 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --input_dim 2 \
+    --project_name 231120_ngp_2d3d \
+    --batch_size 4096 \
+    --model gauss \
+    --normalize \
+    --skip \
+    --plot
+
+
+CUDA_VISIBLE_DEVICES=4,5 python src/main_superres.py \
+    --dataset_dir dataset/sun360 \
+    --panorama_idx 2 \
+    --max_epochs 500 \
+    --n_levels 10 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --input_dim 2 \
+    --project_name 231120_ngp_2d3d \
+    --batch_size 4096 \
+    --model healpix \
+    --normalize \
+    --skip \
+    --plot
+
+
+CUDA_VISIBLE_DEVICES=6 python src/main_superres.py \
+    --dataset_dir dataset/sun360 \
+    --panorama_idx 2 \
+    --max_epochs 500 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --input_dim 2 \
+    --project_name 231120_ngp_2d3d \
+    --batch_size 4096 \
+    --model gauss \
+    --gauss_scale 2 \
+    --normalize \
+    --skip \
+    --plot
+
+CUDA_VISIBLE_DEVICES=7 python src/main_superres.py \
+    --dataset_dir dataset/sun360 \
+    --panorama_idx 2 \
+    --max_epochs 500 \
+    --n_features_per_level 2 \
+    --downscale_factor 4 \
+    --input_dim 2 \
+    --project_name 231120_ngp_2d3d \
+    --batch_size 4096 \
+    --model gauss \
+    --gauss_scale 4 \
+    --normalize \
+    --skip \
+    --plot
+
 # NGP - WIND - 4
 CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
     --dataset_dir dataset/spatial_0_25/era5_wind \

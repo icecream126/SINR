@@ -5,6 +5,8 @@ from torch import nn
 import numpy as np
 import torch.nn.functional as F
 import random
+import healpy as hp
+# from astropy_healpix import HEALPix
 
 # torch.manual_seed(0)
 # np.random.seed(0)
@@ -18,10 +20,176 @@ LAT_MAX = 90.0
 LON_MAX = 360.0
 
 
+class HealEncoding(nn.Module):
+    def __init__(self, n_levels, F):
+        super().__init__()
+        # Healpix의 level에 따른 parameter grid 초기화
+        self.n_levels = n_levels
+        self.F = F
+        self.params = nn.ModuleList([
+            nn.Embedding(12*((2**(n_levels-1))**2+2), int(F)) for _ in range(self.n_levels)
+        ]) # initialize parameters in 2d rectangular form, with the finest resolution * feature_dim for every level
+        # self.hp_list = [HEALPix(nside=2**i, order='ring') for i in range (self.n_levels)]
+        # number of corner = (12 * n_side)**2 +2
+        # n_side = 2**level
+    
+    def get_great_circle(self, x_rads, neighbor_rads):
+        
+        # R=1.0
+        lat1 = x_rads[...,0]
+        lon1 = x_rads[...,1]
+        
+        lat2 = neighbor_rads[...,0]
+        lon2 = neighbor_rads[...,1]
+        
+        dlon = lon2-lon1
+        dlat = lat2-lat1
+        
+        # a = np.sin(dlat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2)**2
+        # c = 2 * np.atan2(np.sqrt(a), np.sqrt(1 - a))
+        
+        
+        a = np.power(np.sin(dlat / 2),2) + np.multiply(np.multiply(np.cos(lat1), np.cos(lat2)) ,np.power(np.sin(dlon / 2),2))
+        dist = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+        dist = np.array(dist)
 
+        # distance = R * c
+        
+        return dist
+        
+        
+    def get_interp_rep(self, nside, x, neighbor_coords, neighbor_reps, my_reps):
+        # interp_rep = self.interpolation(neighbor_coords, )
+        # a_dist, b_dist, c_dist, d_dist = self.get_corner_dist(neighbor_coords,x) # ?
+        # dist_sum = a_dist + b_dist + c_dist + d_dist
+        # out = a_dist/dist_sum * a + 1/b_dist * b + 1/c_dist * c + 1/d_dist * d
+        # print(neighbor_coords.shape)
+        # x.shape : [2]
+        # neighbor_reps.shape : [6,2]
+        # adjust neighbor_coords into the shape
+        '''Get interpolation feature of single point x'''
+        np_x = x# .detach().cpu().numpy()
+        x_rads = x
+        neighbor_lat = torch.tensor(neighbor_coords[0]).unsqueeze(-1) # (6) -> (6,1)
+        neighbor_lon = torch.tensor(neighbor_coords[1]).unsqueeze(-1) # (6) -> (6,1)
+        
+        neighbor_rads = torch.concat([neighbor_lat, neighbor_lon], dim=-1)
+        
+        # neighbor_vecs = hp.ang2vec(theta = neighbor_coords[...,0], phi = neighbor_coords[...,1])
+        # x_rads = hp.ang2vec(theta = np_x[...,0], phi = np_x[...,1])
+        x_rads = np.tile(x_rads, (neighbor_rads.shape[0],1))
+        
+        # distances = hp.rotator.angdist(neighbor_coords, x_rads)
+        distances = self.get_great_circle(x_rads, neighbor_rads)
+        sum_distances = np.sum(distances) + np.array(0.01)
+        weight = distances / sum_distances
+        
+        neighbor_reps = neighbor_reps.detach().cpu().numpy()
+        my_reps = my_reps.detach().cpu().numpy()
+        
+        out_reps = []
+        for i in range(neighbor_reps.shape[1]):
+            weight_mult = np.multiply(weight, neighbor_reps[...,i])
+            sum_mult = np.add(np.sum(weight_mult),my_reps[...,i])
+            out_reps.append(sum_mult)
+        
+        out_reps = np.array(out_reps)
+        return out_reps     
 
+        
+    def interpolation(self,level, nside,x, np_rad_x, neighbor_index, my_index):
+        # print('interpolation of heal encoding')
+        # all_point_interp_reps = []
+        
+        # for i in range(self.n_levels):
+        #     nside = 2**i
+        #     neighbor_index = neighbor_indices[i]
+        #     interp_reps=[]
+        
+        '''
+        # x.shape : [512, 2]
+        # np_rad_x.shape : [512, 2]
+        # neighbor_index : [8, 512]
+        '''
+        
+        # interp_reps = []
+        all_point_interp_reps = torch.zeros(np_rad_x.shape[0], self.F)
+        # my_index = hp.pix2nag(nside=nside, ipix = )
+        for point in range(neighbor_index.shape[1]):
+            point_index = my_index[...,point]
+            point_neighbor_index = neighbor_index[...,point]
+            point_neighbor_index = point_neighbor_index[point_neighbor_index!=-1] # discard invalid neighbors
+            point_neighbor_coords = hp.pix2ang(nside = nside, ipix = point_neighbor_index)
+            
+            point_reps = self.params[level](torch.tensor(point_index).to(x.device))
+            point_neighbor_reps = self.params[level](torch.tensor(point_neighbor_index).to(x.device))
+            
+            
+            interp_rep = self.get_interp_rep(nside=nside, x=np_rad_x[point], neighbor_coords=point_neighbor_coords, neighbor_reps=point_neighbor_reps, my_reps = point_reps)
+            # interp_reps.append(interp_rep)
+            # interp_reps.append(interp_rep)
+            all_point_interp_reps[point] = torch.tensor(interp_rep)
+        # all_point_interp_reps.append(torch.tensor(interp_reps))
+        # out = torch.tensor(all_point_interp_reps) 
+        out = all_point_interp_reps
+        return out
 
-class NGP_INTERP_ENC(nn.Module):
+        
+    def forward(self, x):
+        # print('forward of heal encoding')
+        
+        # Input : [batch, 2]의 lon, lat coordinate
+        # Output : 해당하는 input의 latent representation
+        # 일단 grid의 coordinate 말고, center의 representation으로 진행하기
+        
+        # 0. Healpix의 level에 따른 parameter grid 초기화
+        # 1. lon lat 이 주어졌을 때의 level별로 해당하는 parameter grid의 pixel index 알기
+        # 2. Level 별로 parameter grid의 interpolation 수행
+        # 3. Interpolation 된 grid를 concat해서 output으로 반환
+        
+        ### Pseudo Code###
+        np_x = x.detach().cpu().numpy()
+        
+        rad_x = torch.deg2rad(x)
+        rad_x[...,0] = torch.pi/2-rad_x[...,0] # adjust the range of latitude
+        np_rad_x = rad_x.detach().cpu().numpy()
+        
+        indices = []
+        # neighbor_indices = []
+        all_level_rep = torch.zeros(self.n_levels, x.shape[0],self.F)
+        all_level_rep = None
+        for i in range(self.n_levels):
+            nside = 2**i
+            index = hp.ang2pix(nside=nside, theta = np_rad_x[...,0], phi = np_rad_x[...,1],lonlat=False)
+            neighbor_index = hp.get_all_neighbours(nside=2**i, theta = np_rad_x[...,0], phi = np_rad_x[...,1],lonlat=False) # (8, 512)
+            # index = hp.ang2pix(nside=2**i, theta = np.array(90) - np_x[...,0], phi = np_x[...,1],lonlat=True)
+            # neighbor_index = hp.get_all_neighbours(nside=2**i, theta = np.pi/2 - np_x[...,0], phi = np_x[...,1],lonlat=False)
+            # neighbor_index = neighbor_index[neighbor_index!=-1]
+            # neighbor_indices.append(neighbor_index)
+            
+            # x.shape : [512, 2]
+            # np_rad_x.shape : [512, 2]
+            # neighbor_index : [8, 512]
+            level_rep = self.interpolation(i, nside, x, np_rad_x, neighbor_index, index)
+            # all_level_rep[i] = level_rep
+            if all_level_rep is None:
+                all_level_rep = level_rep
+            else:
+                all_level_rep = torch.cat((all_level_rep, level_rep), dim=-1)       
+            
+            
+            # indices.append(index)
+        # out = self.interpolation(rad_x, neighbor_indices)
+        # out = torch.tensor(all_level_rep)
+        out = all_level_rep
+        out = out.to(x.device)
+        return out
+        
+        
+        
+        
+
+class SPHERE_NGP_INTERP_ENC(nn.Module):
     def __init__(self, geodesic_weight, F=2, L=16, T = 14, input_dim=2,  finest_resolution=512, base_resolution=16):        
         super().__init__()
         
@@ -41,7 +209,7 @@ class NGP_INTERP_ENC(nn.Module):
             torch.from_numpy(
                 np.array([
                     np.floor(self.N_min * (self.b**i)) for i in range(self.L)
-        ], dtype=np.int64)).reshape(1,1,-1,1),False)
+        ], dtype=np.int64)).reshape(1,1,-1,1),False) # 
         
         # Init hash tables for all levels
         # # Each hash table shape [2^T, F]
@@ -146,6 +314,11 @@ class NGP_INTERP_ENC(nn.Module):
             # x = self.normalize_3d_x(x)
             
         scaled_coords = torch.mul(x.unsqueeze(-1).unsqueeze(-1), self._resolutions) # shape [batch_size,input_dim,L,1]
+        # N_min=16이고, b=2.0일 때
+        # L=0에서 coord * 16 * 2.0 ** 0
+        # L=1에서 coord * 16 * 2.0 ** 1
+        # ...
+        # 즉, L dim의 의미는, 각 level의 resolution 만큼 coordinate에 곱해진 값을 저장
         # compute the floor of all coordinates
         if scaled_coords.dtype in [torch.float32, torch.float64]:
             grid_coords = torch.floor(scaled_coords).type(torch.int64) # shape [batch_size,input_dim,L,1]
@@ -156,7 +329,180 @@ class NGP_INTERP_ENC(nn.Module):
         add all possible permutations to each vertex
         obtain all 2^input_dim neighbor vertices at this voxel for each level
         '''
-        grid_coords = torch.add(grid_coords, self._voxel_border_adds) # shape [batch_size,input_dim,L,2^input_dim]
+        # 
+        grid_coords = torch.add(grid_coords, self._voxel_border_adds) # shape [batch_size,input_dim,L,2^input_dim] 
+
+        # 2. Hash the grid coords
+        hashed_indices = self._fast_hash(grid_coords) # hashed shape [batch_size, L, 2^input_dim]
+
+        # 3. Look up the hashed indices
+        looked_up = torch.stack([
+            # use indexing for nn.Embedding (check pytorch doc)
+            # shape [batch_size,2^n,F] before permute
+            # shape [batch_size,F,2^n] after permute
+            self._hash_tables[i](hashed_indices[:,i]).permute(0, 2, 1)
+            for i in range(self.L)
+        ],dim=2) # shape [batch_size,F,L,2^n]
+
+        # 4. Interpolate features using multilinear interpolation
+        # 2D example: for point (x,y) in unit square (0,0)->(1,1)
+        # bilinear interpolation is (1-x)(1-y)*(0,0) + (1-x)y*(0,1) + x(1-y)*(1,0) + xy*(1,1)
+        weights = 1.0 - torch.abs(
+            torch.sub(scaled_coords, grid_coords.type(scaled_coords.dtype))) # shape [batch_size,input_dim,L,2^input_dim]
+        weights = torch.prod(weights, axis=1, keepdim=True) # shape [batch_size,1,L,2^input_dim]
+
+        # sum the weighted 2^n vertices to shape [batch_size,F,L]
+        # swap axes to shape [batch_size,L,F]
+        # final shape [batch_size,L*F]
+        output = torch.sum(torch.mul(weights, looked_up),
+                         axis=-1).swapaxes(1, 2).reshape(x.shape[0], -1)
+        return output
+
+
+
+
+class NGP_INTERP_ENC(nn.Module):
+    def __init__(self, geodesic_weight, F=2, L=16, T = 14, input_dim=2,  finest_resolution=512, base_resolution=16):        
+        super().__init__()
+        
+        self.input_dim = input_dim
+        self.geodesic_weight = geodesic_weight
+        self.T = T
+        self.L = L
+        self.N_min = base_resolution
+        self.N_max = finest_resolution
+        self._F = F
+        
+        self.b = np.exp((np.log(self.N_max)-np.log(self.N_min))/(self.L-1))
+        
+        # Integer list of each level resolution: N1, N2, ..., N_max
+        # shape [1, 1, L, 1]
+        self._resolutions = nn.Parameter(
+            torch.from_numpy(
+                np.array([
+                    np.floor(self.N_min * (self.b**i)) for i in range(self.L)
+        ], dtype=np.int64)).reshape(1,1,-1,1),False) # 
+        
+        # Init hash tables for all levels
+        # # Each hash table shape [2^T, F]
+        # self.embeddings   = nn.ModuleList([
+        #     nn.Embedding((self.lat_shape+1)*(self.lon_shape+1),
+        #                             self.n_features_per_level) for i in range(n_levels)])
+        self._hash_tables = nn.ModuleList([
+            nn.Embedding(int(2**self.T),
+                         int(self._F)) for _ in range(self.L)])
+        
+        for i in range(self.L):
+            nn.init.uniform_(self._hash_tables[i].weight,-1e-4,1e-4) # init uniform random weight
+            
+        '''from Nvidia's Tiny Cuda NN implementation'''
+        self._prime_numbers = nn.Parameter(
+            torch.tensor([1, 2654435761, 805459861, 3674653429, 2097192037, 1434869437, 2165219737]), requires_grad=False)
+        
+        '''
+        a helper tensor which generates the voxel coordinates with shape [1,input_dim,1,2^input_dim]
+        2D example: [[[[0, 1, 0, 1]],
+                      [[0, 0, 1, 1]]]]
+        3D example: [[[[0, 1, 0, 1, 0, 1, 0, 1]],  
+                      [[0, 0, 1, 1, 0, 0, 1, 1]],  
+                      [[0, 0, 0, 0, 1, 1, 1, 1]]]]
+        For n-D, the i-th input add the i-th "row" here and there are 2^n possible permutations
+        '''
+        border_adds = np.empty((self.input_dim, 2**self.input_dim), dtype=np.int64)
+
+        for i in range(self.input_dim):
+            pattern = np.array(
+                ([0] * (2**i) + [1] * (2**i)) * (2**(self.input_dim-i-1)),
+                dtype=np.int64)
+            border_adds[i, :] = pattern
+        self._voxel_border_adds = nn.Parameter(
+            torch.from_numpy(border_adds).unsqueeze(0).unsqueeze(2), False) # helper tensor of shape [1,input_dim,1,2^input_dim]
+        
+        
+
+    def _fast_hash(self, x: torch.Tensor):
+        '''
+        Implements the hash function proposed by NVIDIA.
+        Args:
+            x: A tensor of the shape [batch_size, input_dim, L, 2^input_dim].
+            This tensor should contain the vertices of the hyper cuber
+            for each level.
+        Returns:
+            A tensor of the shape [batch_size, L, 2^input_dim] containing the
+            indices into the hash table for all vertices.
+        '''
+        tmp = torch.zeros((x.shape[0], self.L, 2**self.input_dim), # shape [batch_size,L,2^input_dim]
+                        dtype=torch.int64,
+                        device=x.device)
+        for i in range(self.input_dim):
+            tmp = torch.bitwise_xor(x[:, i, :, :] * self._prime_numbers[i], # shape [batch_size,L,2^input_dim]
+                                    tmp)
+        return torch.remainder(tmp, 2**self.T) # mod 2^T
+    
+    def normalize_2d_x(self, x):
+        lat_min = -90
+        lat_max = 90
+        lon_min = 0
+        lon_max = 360
+        
+        x[...,0] = (x[...,0]-lat_min)/(lat_max - lat_min)
+        x[...,1] = (x[...,1]-lon_min)/(lon_max - lon_min)
+        
+        return x
+    def normalize_3d_x(self, x):
+        min_val = -1
+        max_val = 1
+        for i in range(3):
+            x[...,i] = (x[...,i]-min_val) / (max_val - min_val)
+        
+        # x[...,0] = (x[...,0]-lat_min)/(lat_max - lat_min)
+        # x[...,1] = (x[...,1]-lon_min)/(lon_max - lon_min)
+        
+        return x
+        
+        
+
+    
+    def forward(self, x):
+        '''
+        forward pass, takes a set of input vectors and encodes them
+        
+        Args:
+            x: A tensor of the shape [batch_size, input_dim] of all input vectors.
+
+        Returns:
+            A tensor of the shape [batch_size, L*F]
+            containing the encoded input vectors.
+        '''
+
+        # 1. Scale each input coordinate by each level's resolution
+        '''
+        elementwise multiplication of [batch_size,input_dim,1,1] and [1,1,L,1]
+        '''
+        # if input is {theta, phi} coordinate, normalize each into [0, 1]
+        if self.input_dim == 2:
+            x = self.normalize_2d_x(x)
+        # else:
+            # x = self.normalize_3d_x(x)
+            
+        scaled_coords = torch.mul(x.unsqueeze(-1).unsqueeze(-1), self._resolutions) # shape [batch_size,input_dim,L,1]
+        # N_min=16이고, b=2.0일 때
+        # L=0에서 coord * 16 * 2.0 ** 0
+        # L=1에서 coord * 16 * 2.0 ** 1
+        # ...
+        # 즉, L dim의 의미는, 각 level의 resolution 만큼 coordinate에 곱해진 값을 저장
+        # compute the floor of all coordinates
+        if scaled_coords.dtype in [torch.float32, torch.float64]:
+            grid_coords = torch.floor(scaled_coords).type(torch.int64) # shape [batch_size,input_dim,L,1]
+        else:
+            grid_coords = scaled_coords # shape [batch_size,input_dim,L,1]
+            
+        '''
+        add all possible permutations to each vertex
+        obtain all 2^input_dim neighbor vertices at this voxel for each level
+        '''
+        # 
+        grid_coords = torch.add(grid_coords, self._voxel_border_adds) # shape [batch_size,input_dim,L,2^input_dim] 
 
         # 2. Hash the grid coords
         hashed_indices = self._fast_hash(grid_coords) # hashed shape [batch_size, L, 2^input_dim]

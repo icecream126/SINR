@@ -22,6 +22,7 @@ command:
   - ${program}
   - ${args}
   - --task=reg
+  - --input_dim=3
   - --project_name=231118_sr
   - --model=gauss
   - --skip

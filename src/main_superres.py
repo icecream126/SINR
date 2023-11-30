@@ -15,7 +15,7 @@ import os
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 from datasets import spatial, temporal, temporal_ginr, spatial_ginr
-from models import ngp_interp, coolchic_interp, learnable, relu, siren, wire, shinr, swinr, shiren, ginr, swinr_learn_all, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, mygauss, gauss_act, ewinr, swinr_pe
+from models import healpix, ngp_interp, coolchic_interp, learnable, relu, siren, wire, shinr, swinr, shiren, ginr, swinr_learn_all, swinr_adap_all, swinr_adap_omega, swinr_adap_sigma, mygauss, gauss_act, ewinr, swinr_pe, sphere_ngp_interp
 
 model_dict = {
     "relu": relu,
@@ -36,6 +36,8 @@ model_dict = {
     "learnable":learnable,
     "coolchic_interp":coolchic_interp,
     "ngp_interp":ngp_interp,
+    "sphere_ngp_interp":sphere_ngp_interp,
+    'healpix': healpix,
 }
 
 if __name__ == "__main__":
