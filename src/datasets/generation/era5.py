@@ -1,8 +1,9 @@
 import cdsapi
 import argparse
 import os
-URL = 'https://cds.climate.copernicus.eu/api/v2'
-KEY = '243554:3dc5cf51-eeb5-4de2-a8d9-d6f46dc39565'
+
+URL = "https://cds.climate.copernicus.eu/api/v2"
+KEY = "243554:3dc5cf51-eeb5-4de2-a8d9-d6f46dc39565"
 all_years = [
     "1979",
     "1980",
@@ -135,7 +136,7 @@ def download_single_file(
 
     fn = custom_fn or ("_".join(variable + pressure_level + year) + "_raw.nc")
 
-    c = cdsapi.Client(url = URL, key = KEY)
+    c = cdsapi.Client(url=URL, key=KEY)
 
     request_parameters = {
         "product_type": "reanalysis",

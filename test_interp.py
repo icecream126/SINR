@@ -7,49 +7,51 @@ import torch.nn.functional as F
 
 class LearnableEncoding(nn.Module):
     def __init__(self, lat_shape, lon_shape, level, resolution):
-        super(LearnableEncoding, self).__init__() 
+        super(LearnableEncoding, self).__init__()
         self.lat_shape = lat_shape
         self.lon_shape = lon_shape
         self.level = level
         self.resolution = resolution
-        
+
         self.latent_grids = nn.ParameterList()
         for i in range(self.level):
-            h_grid = int(math.ceil(lat_shape / (2 ** i)))
-            w_grid = int(math.ceil(lon_shape / (2 ** i)))
+            h_grid = int(math.ceil(lat_shape / (2**i)))
+            w_grid = int(math.ceil(lon_shape / (2**i)))
 
-            param = (
-                nn.Parameter(
-                    torch.empty((1, 1, h_grid, w_grid)), requires_grad=True
-                )
+            param = nn.Parameter(
+                torch.empty((1, 1, h_grid, w_grid)), requires_grad=True
             )
             nn.init.uniform_(param)
             self.latent_grids.append(param)
-            
+
     def coord2index(self, x):
-        
-        lat = x[...,0:1]
-        lon = x[...,1:2]
-        
+        lat = x[..., 0:1]
+        lon = x[..., 1:2]
+
         # lat_min = -90.0
         lon_min = 0.0
         lat_max = 90.0
-        # lon_max 
+        # lon_max
         lat_idx = ((lat_max - lat) / self.resolution).round().long()
         lon_idx = ((lon - lon_min) / self.resolution).round().long()
-        
+
         idx = torch.cat((lat_idx, lon_idx), dim=-1).squeeze(0)
-    
+
         return idx
-        
+
     def forward(self, x):
         # Assume that x has \theta, \phi information
         # Assume that x is [128, 2]
-        
+
         # Upsample latent grids
         upsampled_grids = []
         for i in range(self.level):
-            upsampled_grid = F.interpolate(self.latent_grids[i], size=(self.lat_shape, self.lon_shape), mode='bilinear', align_corners=False)
+            upsampled_grid = F.interpolate(
+                self.latent_grids[i],
+                size=(self.lat_shape, self.lon_shape),
+                mode="bilinear",
+                align_corners=False,
+            )
             upsampled_grids.append(upsampled_grid.squeeze(0).squeeze(0))
         tensor_upsampled_grids = torch.stack(upsampled_grids)
 
@@ -58,8 +60,8 @@ class LearnableEncoding(nn.Module):
         lon = x[..., 1:2]
         lat_min, lon_min = -90.0, 0.0
         lat_max = 90.0
-        lat_idx = ((lat_max - lat) / self.resolution)
-        lon_idx = ((lon - lon_min) / self.resolution)
+        lat_idx = (lat_max - lat) / self.resolution
+        lon_idx = (lon - lon_min) / self.resolution
 
         # Perform bilinear interpolation
         latent_reps = []
@@ -90,7 +92,7 @@ class LearnableEncoding(nn.Module):
         # values_fc (floor lat, ceil  lon): lower-right corner
         # values_cf (ceil  lat, floor lon): upper-left corner
         # values_cc (ceil  lat, ceil  lon): upper-right corner
-        
+
         values_ff = grid[lat_floor, lon_floor]
         values_fc = grid[lat_floor, lon_ceil]
         values_cf = grid[lat_ceil, lon_floor]
@@ -112,7 +114,7 @@ class LearnableEncoding(nn.Module):
         interpolated_values = values_f + lat_frac * (values_c - values_f)
 
         return interpolated_values
-    
+
 
 def test_learnable_encoding():
     # Initialize the LearnableEncoding instance
@@ -121,17 +123,34 @@ def test_learnable_encoding():
     # longitude = 0, 360 (except 360)
     # latitude : [-90, -45, 0, 45, 90]
     # longitude : [0, 45, 90, 135, 180, 225, 270, 315]
-    
-    
+
     model = LearnableEncoding(lat_shape, lon_shape, level, resolution)
 
     # Generate random latitude and longitude values considering the resolution
     # num_samples = 5  # Number of samples to test
     # latitudes = np.random.uniform(-90, 90) / resolution
     # longitudes = np.random.uniform(0, 359) / resolution
-    latitudes = torch.tensor([-90.0, -67.5, -45.0, -22.5,  0.0, 22.5, 45.0, 67.5, 90.0])
-    longitudes = torch.tensor([0.0, 22.5, 45.0, 67.5, 90.0, 112.5, 135.0, 157.5, 180.0, 202.5, 225.0, 247.5, 270.0, 292.5, 315.0])
-    
+    latitudes = torch.tensor([-90.0, -67.5, -45.0, -22.5, 0.0, 22.5, 45.0, 67.5, 90.0])
+    longitudes = torch.tensor(
+        [
+            0.0,
+            22.5,
+            45.0,
+            67.5,
+            90.0,
+            112.5,
+            135.0,
+            157.5,
+            180.0,
+            202.5,
+            225.0,
+            247.5,
+            270.0,
+            292.5,
+            315.0,
+        ]
+    )
+
     latitudes, longitudes = torch.meshgrid(latitudes, longitudes)
     latitudes, longitudes = latitudes.flatten(), longitudes.flatten()
 
@@ -140,13 +159,16 @@ def test_learnable_encoding():
     # longitudes = np.round(longitudes) * resolution
 
     # Convert to a PyTorch tensor
-    coordinates = torch.tensor(torch.stack([latitudes, longitudes], dim=1), dtype=torch.float32)
+    coordinates = torch.tensor(
+        torch.stack([latitudes, longitudes], dim=1), dtype=torch.float32
+    )
 
     # Pass the coordinates through the model
     output = model(coordinates)
 
     print("Input Coordinates:\n", coordinates)
     print("Output from LearnableEncoding:\n", output)
+
 
 # Run the test
 test_learnable_encoding()

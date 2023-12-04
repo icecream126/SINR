@@ -3,10 +3,10 @@ from torch import nn
 from math import ceil
 
 from .model import MODEL, DENOISING_MODEL
-from utils.posenc import SwaveletEncoding
+from utils.posenc import RotateHealEncoding
 
 
-class SWINR_PE(nn.Module):
+class RotateHealLayer(nn.Module):
     def __init__(
         self,
         input_dim,
@@ -25,35 +25,26 @@ class SWINR_PE(nn.Module):
 class INR(MODEL):
     def __init__(
         self,
-        batch_size,
-        input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
         time,
         skip,
-        tau_0,
-        omega_0,
-        sigma_0,
+        n_levels,
+        n_features_per_level,
         mapping_size=256,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
+        self.input_dim = kwargs["input_dim"]
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = SwaveletEncoding(
-            in_features=input_dim,
-            batch_size=batch_size,
-            mapping_size=mapping_size,
-            tau_0=tau_0,
-            omega_0=omega_0,
-            sigma_0=sigma_0,
-        )
-        self.posenc_dim = mapping_size * 3
+        self.posenc = RotateHealEncoding(n_levels=n_levels, F=n_features_per_level)
+        self.posenc_dim = n_features_per_level * n_levels
 
-        self.nonlin = SWINR_PE
+        self.nonlin = RotateHealLayer
 
         self.net = nn.ModuleList()
         self.net.append(self.nonlin(self.posenc_dim, hidden_dim))

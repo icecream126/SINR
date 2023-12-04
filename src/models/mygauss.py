@@ -37,11 +37,16 @@ class INR(MODEL):
     ):
         super().__init__(**kwargs)
 
-        self.input_dim = kwargs['input_dim']
+        self.input_dim = kwargs["input_dim"]
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = myGaussEncoding(in_features=self.input_dim, mapping_size = mapping_size, scale=gauss_scale,seed=seed)
+        self.posenc = myGaussEncoding(
+            in_features=self.input_dim,
+            mapping_size=mapping_size,
+            scale=gauss_scale,
+            seed=seed,
+        )
         self.posenc_dim = 2 * mapping_size
 
         self.nonlin = myGaussLayer

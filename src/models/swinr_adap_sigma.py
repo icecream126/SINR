@@ -25,8 +25,8 @@ class SphericalGaborLayer(nn.Module):
         #         nn.Linear(256, 1),
         #     ]
         # )
-        self.omega = omega # omega constant 
-        self.sigma = nn.Sequential( # sigma learnable
+        self.omega = omega  # omega constant
+        self.sigma = nn.Sequential(  # sigma learnable
             *[
                 nn.Linear(3, 256),
                 nn.ReLU(),
@@ -119,10 +119,10 @@ class SphericalGaborLayer(nn.Module):
             freq_arg = freq_arg + lin
             gauss_arg = gauss_arg + lin * lin
 
-        sigma = self.sigma(input[:, :3]) # sigma learnable
+        sigma = self.sigma(input[:, :3])  # sigma learnable
         # sigma = self.sigma # sigma constant
         # freq_term = torch.cos(self.omega(input[:, :3]) * freq_arg) # omega learable
-        freq_term = torch.cos(self.omega * freq_arg) # omega constant
+        freq_term = torch.cos(self.omega * freq_arg)  # omega constant
         gauss_term = torch.exp(-sigma * sigma * gauss_arg)
         return freq_term * gauss_term
 

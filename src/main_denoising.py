@@ -57,7 +57,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr_patience", type=int, default=1000)
 
     parser.add_argument("--project_name", type=str, default="new_denoising")
-    
+
     parser.add_argument("--plot", default=False, action="store_true")
     args = parser.parse_args()
 

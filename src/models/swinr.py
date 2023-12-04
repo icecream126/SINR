@@ -23,11 +23,13 @@ class SphericalGaborLayer(nn.Module):
         self.omega = omega
         self.sigma = sigma
         self.output_dim = output_dim
-        
-        print('stop_rotate : ',stop_rotate)
-        print('stop_dilate : ',stop_dilate)
-        
-        self.dilate = nn.Parameter(torch.empty(1, output_dim), requires_grad=stop_rotate)
+
+        print("stop_rotate : ", stop_rotate)
+        print("stop_dilate : ", stop_dilate)
+
+        self.dilate = nn.Parameter(
+            torch.empty(1, output_dim), requires_grad=stop_rotate
+        )
         nn.init.normal_(self.dilate)
 
         self.u = nn.Parameter(torch.empty(output_dim), requires_grad=stop_dilate)
@@ -133,7 +135,11 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma, learn_rotate, learn_dilate))
+        self.net.append(
+            self.first_nonlin(
+                hidden_dim, time, omega, sigma, learn_rotate, learn_dilate
+            )
+        )
 
         self.nonlin = ReLULayer
 

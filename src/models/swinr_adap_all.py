@@ -21,15 +21,15 @@ class SphericalGaborLayer(nn.Module):
         self.time = time
         self.omega_0 = omega_0
         self.sigma_0 = sigma_0
-        self.omega = nn.Sequential( #omega learnable
+        self.omega = nn.Sequential(  # omega learnable
             *[
                 nn.Linear(3, 256),
                 nn.ReLU(),
                 nn.Linear(256, 1),
             ]
         )
-        # self.omega = omega # omega constant 
-        self.sigma = nn.Sequential( # sigma learnable
+        # self.omega = omega # omega constant
+        self.sigma = nn.Sequential(  # sigma learnable
             *[
                 nn.Linear(3, 256),
                 nn.ReLU(),
@@ -127,9 +127,11 @@ class SphericalGaborLayer(nn.Module):
         # import pdb
 
         # pdb.set_trace()
-        sigma = self.sigma(input[:, :3]) # sigma learnable
+        sigma = self.sigma(input[:, :3])  # sigma learnable
         # sigma = self.sigma # sigma constant
-        freq_term = torch.cos(self.omega_0 * self.omega(input[:, :3]) * freq_arg) # omega learable
+        freq_term = torch.cos(
+            self.omega_0 * self.omega(input[:, :3]) * freq_arg
+        )  # omega learable
         # freq_term = torch.cos(self.omega * freq_arg) # omega constant
         gauss_term = torch.exp(-sigma * sigma * self.sigma_0 * self.sigma_0 * gauss_arg)
         out = freq_term * gauss_term
@@ -159,7 +161,7 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega,sigma))
+        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega, sigma))
 
         self.nonlin = ReLULayer
 

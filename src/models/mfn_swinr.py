@@ -6,12 +6,11 @@ from .model import MODEL, DENOISING_MODEL
 from .relu import ReLULayer
 
 
-
 class INR(MODEL):
     def __init__(
         self,
         input_dim,
-        output_dim, 
+        output_dim,
         wavelet_dim,
         hidden_dim,
         hidden_layers,
@@ -30,16 +29,27 @@ class INR(MODEL):
         self.skip = skip
         self.hidden_layers = hidden_layers
 
-        self.first_nonlin = 'hi'# SphericalGaborLayer
+        self.first_nonlin = "hi"  # SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega_0, sigma_0, freq_enc_type, alpha, beta))
+        self.net.append(
+            self.first_nonlin(
+                hidden_dim,
+                wavelet_dim,
+                time,
+                omega_0,
+                sigma_0,
+                freq_enc_type,
+                alpha,
+                beta,
+            )
+        )
 
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
             # if i==0:
-                # self.net.append(self.nonlin(wavelet_dim, hidden_dim))
+            # self.net.append(self.nonlin(wavelet_dim, hidden_dim))
             if skip and i == ceil(hidden_layers / 2):
                 self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:
@@ -78,7 +88,7 @@ class DENOISING_INR(DENOISING_MODEL):
         self.skip = skip
         self.hidden_layers = hidden_layers
 
-        self.first_nonlin = 'hi'# SphericalGaborLayer
+        self.first_nonlin = "hi"  # SphericalGaborLayer
 
         self.net = nn.ModuleList()
         self.net.append(self.first_nonlin(hidden_dim, time, omega, sigma))

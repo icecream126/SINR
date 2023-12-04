@@ -37,11 +37,11 @@ class INR(MODEL):
     ):
         super().__init__(**kwargs)
 
-        self.input_dim = kwargs['input_dim']
+        self.input_dim = kwargs["input_dim"]
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = HealEncoding(n_levels = n_levels, F = n_features_per_level)
+        self.posenc = HealEncoding(n_levels=n_levels, F=n_features_per_level)
         self.posenc_dim = n_features_per_level * n_levels
 
         self.nonlin = HealLayer

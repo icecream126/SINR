@@ -8,7 +8,6 @@ from .relu import ReLULayer
 from utils.spherical_harmonics import components_from_spherical_harmonics
 
 
-
 class SphericalHarmonicsLayer(nn.Module):
     def __init__(
         self,
@@ -28,20 +27,20 @@ class SphericalHarmonicsLayer(nn.Module):
         self.out_linear = nn.Linear(levels**2, self.hidden_dim)
 
         if time:
-            self.linear = nn.Linear(1, self.levels ** 2)
+            self.linear = nn.Linear(1, self.levels**2)
             with torch.no_grad():
                 self.linear.weight.uniform_(-1, 1)
 
     def forward(self, input):
         out = components_from_spherical_harmonics(self.levels, input[..., :3])
-        
+
         if self.time:
             time = input[..., 3:]
             lin = self.linear(time)
             omega = self.omega * lin
             out = out * torch.sin(omega)
         out = self.out_linear(out)
-        
+
         if self.relu:
             return nn.functional.relu(out)
         else:

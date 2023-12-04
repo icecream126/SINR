@@ -32,7 +32,7 @@ class INR(MODEL):
         hidden_layers,
         time,
         skip,
-        tau_0, 
+        tau_0,
         omega_0,
         sigma_0,
         mapping_size=256,
@@ -43,7 +43,14 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = EwaveletEncoding(in_features=input_dim, batch_size=batch_size, mapping_size = mapping_size, tau_0 = tau_0, omega_0=omega_0, sigma_0=sigma_0)
+        self.posenc = EwaveletEncoding(
+            in_features=input_dim,
+            batch_size=batch_size,
+            mapping_size=mapping_size,
+            tau_0=tau_0,
+            omega_0=omega_0,
+            sigma_0=sigma_0,
+        )
         self.posenc_dim = mapping_size * 3
 
         self.nonlin = EWINR

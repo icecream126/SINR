@@ -1,4 +1,4 @@
-'''
+"""
 import healpy as hp
 import numpy as np
 
@@ -46,10 +46,11 @@ healpix_map = np.random.rand(hp.nside2npix(nside))  # Example map
 coords = [(120.0, -30.0), (130.0, -35.0)]  # Example list of coordinates
 interpolated_values = bilinear_interpolation(coords, healpix_map)
 print("Interpolated Values:", interpolated_values)
-'''
+"""
 
 import healpy as hp
 import numpy as np
+
 
 def bilinear_interpolation(coords, healpix_map):
     # Get the nside from the HEALPix map
@@ -59,7 +60,9 @@ def bilinear_interpolation(coords, healpix_map):
 
     for ra, dec in coords:
         # Convert RA, DEC to HEALPix theta and phi
-        theta = np.radians(90.0 - dec)  # Theta is 0 at the north pole and π at the south pole
+        theta = np.radians(
+            90.0 - dec
+        )  # Theta is 0 at the north pole and π at the south pole
         phi = np.radians(ra)  # Phi ranges from 0 to 2π
 
         # Find the pixels surrounding the point
@@ -91,6 +94,7 @@ def bilinear_interpolation(coords, healpix_map):
         interpolated_values.append(interpolated_value)
 
     return interpolated_values
+
 
 # Example usage
 nside = 64  # Example Nside

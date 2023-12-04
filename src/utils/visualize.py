@@ -22,6 +22,7 @@ from matplotlib import cm, colors
 
 ## Shared utilities ##
 
+
 def draw_map(x, mode, variable, colormap, rmse, logger, args):
     # Plot flat map
     title = mode + "_" + variable
@@ -61,8 +62,7 @@ def draw_map(x, mode, variable, colormap, rmse, logger, args):
 
 
 def draw_histogram(obj_type, filepath, logger):
-    
-    obj = np.load(filepath+'.npy')
+    obj = np.load(filepath + ".npy")
 
     # Flatten the 2D error array to 1D
     obj = obj.flatten()
@@ -72,36 +72,40 @@ def draw_histogram(obj_type, filepath, logger):
 
     # Create the plot
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.hist(obj, bins=50, edgecolor='black', alpha=0.7)
+    ax.hist(obj, bins=50, edgecolor="black", alpha=0.7)
     ax.set_title("Histogram of MSE Errors")
     ax.set_xlabel("Error")
     ax.set_ylabel("Number of Occurrences")
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
     plt.tight_layout()
 
     # Log the plot directly to wandb without saving
-    logger.experiment.log({obj_type+" Histogram": wandb.Image(fig)})
+    logger.experiment.log({obj_type + " Histogram": wandb.Image(fig)})
 
-def array_to_image(arr, cmap='jet'):
+
+def array_to_image(arr, cmap="jet"):
     colormap = cm.get_cmap(cmap)
     normed_arr = (arr - arr.min()) / (arr.max() - arr.min())
     colored_arr = (colormap(normed_arr) * 255).astype(np.uint8)  # RGBA image
     return colored_arr
 
-def get_fig(lon, lat, obj, cmap='jet'):
+
+def get_fig(lon, lat, obj, cmap="jet"):
     plt.rcParams["font.size"] = 50
     fig = plt.figure(figsize=(40, 20))
     plt.tricontourf(
-            lon,
-            -lat,
-            obj,
-            levels=100,
-            cmap=cmap,
-        )
+        lon,
+        -lat,
+        obj,
+        levels=100,
+        cmap=cmap,
+    )
     plt.colorbar()
     return fig
 
+
 ## Visualization for each dataset ##
+
 
 def visualize_synthetic(dtype, dataset, model, args, mode, logger):
     with torch.no_grad():
@@ -125,10 +129,10 @@ def visualize_synthetic(dtype, dataset, model, args, mode, logger):
         loss = error.mean()
         rmse = torch.sqrt(loss).item()
         logger.experiment.log(
-            {"full_test_rmse": round((rmse),4)},
+            {"full_test_rmse": round((rmse), 4)},
         )
         logger.experiment.log(
-            {"full_test_psnr": round(mse2psnr(np.array(rmse)),4)},
+            {"full_test_psnr": round(mse2psnr(np.array(rmse)), 4)},
         )
 
         lat = inputs[..., 0]
@@ -149,34 +153,33 @@ def visualize_synthetic(dtype, dataset, model, args, mode, logger):
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         error = error.squeeze(-1).detach().cpu().numpy()
-        
-        
+
         # Save target, pred, error as npy
         current_datetime = datetime.now()
-        current_datetime = current_datetime.strftime('%Y_%m_%d_%H_%M_%S')
-        
-        filepath = 'output/'+str(current_datetime)+'_'+str(logger.experiment.id)+'/'
+        current_datetime = current_datetime.strftime("%Y_%m_%d_%H_%M_%S")
+
+        filepath = (
+            "output/" + str(current_datetime) + "_" + str(logger.experiment.id) + "/"
+        )
         os.makedirs(filepath, exist_ok=True)
-        np.save(filepath+f'{dtype}_target', target)
-        np.save(filepath+f'{dtype}_pred', pred)
-        np.save(filepath+f'{dtype}_error', error)
-        np.save(filepath+f'{dtype}_lat', lat)
-        np.save(filepath+f'{dtype}_lon', lon)
+        np.save(filepath + f"{dtype}_target", target)
+        np.save(filepath + f"{dtype}_pred", pred)
+        np.save(filepath + f"{dtype}_error", error)
+        np.save(filepath + f"{dtype}_lat", lat)
+        np.save(filepath + f"{dtype}_lon", lon)
         # draw_histogram('target', filepath+'target')
         # draw_histogram('pred', filepath+'pred')
-        draw_histogram('error', filepath+f'{dtype}_error', logger)
-        
+        draw_histogram("error", filepath + f"{dtype}_error", logger)
+
         # target = (255 * target).astype(np.uint8)
         # pred = (255 * pred).astype(np.uint8)
-        
+
         # target = array_to_image(target)
         # pred = array_to_image(pred)
-        
-        error = get_fig(lon, lat, error, cmap='hot')
-        target = get_fig(lon, lat, target.flatten(), cmap='plasma')
-        pred = get_fig(lon, lat, pred.flatten(), cmap='plasma')
-        
 
+        error = get_fig(lon, lat, error, cmap="hot")
+        target = get_fig(lon, lat, target.flatten(), cmap="plasma")
+        pred = get_fig(lon, lat, pred.flatten(), cmap="plasma")
 
         logger.experiment.log(
             {
@@ -194,7 +197,7 @@ def visualize_synthetic(dtype, dataset, model, args, mode, logger):
                 ),
             }
         )
-        
+
 
 def visualize_360(input_dim, dtype, dataset, best_model, args, mode, logger):
     with torch.no_grad():
@@ -202,21 +205,21 @@ def visualize_360(input_dim, dtype, dataset, best_model, args, mode, logger):
 
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
-        
+
         target_shape = data["target_shape"]
-        
+
         # Weights 먼저 구해주고
         if input_dim == 2:
-        # if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
+            # if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
             rad = torch.deg2rad(inputs)
-            rad_lat = rad[...,:1]
-            
-            weights = torch.abs(torch.cos(rad_lat)) 
+            rad_lat = rad[..., :1]
+
+            weights = torch.abs(torch.cos(rad_lat))
         else:
-            weights = torch.abs(torch.cos(inputs[...,:1]))
-            
+            weights = torch.abs(torch.cos(inputs[..., :1]))
+
         weights = weights / mean_lat_weight
-            
+
         # Model에 들어갈 input 계산
         if input_dim == 3:
             # if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
@@ -225,47 +228,44 @@ def visualize_360(input_dim, dtype, dataset, best_model, args, mode, logger):
         else:
             model_inputs = inputs
             # lat = inputs[..., :1]
-            
-            
+
         pred = best_model(model_inputs)
 
-        error = torch.sum(
-            (pred - target) ** 2, dim=-1, keepdim=True
-        )
+        error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
         if len(error.shape) > len(weights.shape):
             error = error.squeeze(-1)
-            
+
         error = weights * error
         loss = error.mean()
-        
+
         rmse = torch.sqrt(loss).item()
         w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
-        
+
         logger.experiment.log(
-            {mode+"_full_test_rmse": round((rmse),4)},
+            {mode + "_full_test_rmse": round((rmse), 4)},
         )
         logger.experiment.log(
-            {mode+"_full_test_psnr": w_psnr_val},
+            {mode + "_full_test_psnr": w_psnr_val},
         )
 
         if input_dim == 3:
-        # if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
+            # if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
             deg = torch.rad2deg(inputs)
-            lat = deg[...,0]  # set range [-90, 90]
-            lon = deg[...,1]  # set range [-180, 180]
+            lat = deg[..., 0]  # set range [-90, 90]
+            lon = deg[..., 1]  # set range [-180, 180]
             # lat = inputs[...,0]
             # lon = inputs[...,1]
         else:
             lat = inputs[..., 0]
             lon = inputs[..., 1]
-            
+
         lat, lon = lat.detach().cpu().numpy(), lon.detach().cpu().numpy()
         # deg_lat, deg_lon = (
         #     deg_lat.detach().cpu().numpy(),
         #     deg_lon.detach().cpu().numpy(),
         # )
 
-        if not target.max().round().int()==1:
+        if not target.max().round().int() == 1:
             target_min, target_max = target.min(), target.max()
             target = (target - target_min) / (target_max - target_min)
             pred = (pred - target_min) / (target_max - target_min)
@@ -274,24 +274,26 @@ def visualize_360(input_dim, dtype, dataset, best_model, args, mode, logger):
         target = target.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         pred = pred.reshape(*target_shape).squeeze(-1).detach().cpu().numpy()
         error = error.squeeze(-1).detach().cpu().numpy()
-        
+
         # Save target, pred, error as npy
         current_datetime = datetime.now()
-        current_datetime = current_datetime.strftime('%Y_%m_%d_%H_%M_%S')
-        
-        filepath = 'output/'+str(current_datetime)+'_'+str(logger.experiment.id)+'/'
+        current_datetime = current_datetime.strftime("%Y_%m_%d_%H_%M_%S")
+
+        filepath = (
+            "output/" + str(current_datetime) + "_" + str(logger.experiment.id) + "/"
+        )
         os.makedirs(filepath, exist_ok=True)
-        
-        np.save(filepath+f'{dtype}_target', target)
-        np.save(filepath+f'{dtype}_pred', pred)
-        np.save(filepath+f'{dtype}_error', error)
-        np.save(filepath+f'{dtype}_lat', lat)
-        np.save(filepath+f'{dtype}_lon', lon)
-        
+
+        np.save(filepath + f"{dtype}_target", target)
+        np.save(filepath + f"{dtype}_pred", pred)
+        np.save(filepath + f"{dtype}_error", error)
+        np.save(filepath + f"{dtype}_lat", lat)
+        np.save(filepath + f"{dtype}_lon", lon)
+
         # draw_histogram('target', filepath+'target')
         # draw_histogram('pred', filepath+'pred')
-        draw_histogram('error', filepath+f'{dtype}_error', logger)
-        
+        draw_histogram("error", filepath + f"{dtype}_error", logger)
+
         target = (255 * target).astype(np.uint8)
         pred = (255 * pred).astype(np.uint8)
         plt.rcParams["font.size"] = 50
@@ -322,7 +324,6 @@ def visualize_360(input_dim, dtype, dataset, best_model, args, mode, logger):
             }
         )
 
-    
 
 def visualize_era5(input_dim, dtype, dataset, best_model, filename, logger, args):
     with torch.no_grad():
@@ -330,66 +331,61 @@ def visualize_era5(input_dim, dtype, dataset, best_model, filename, logger, args
 
         inputs, target = data["inputs"], data["target"]
         mean_lat_weight = data["mean_lat_weight"]
-        
+
         target_shape = data["target_shape"]
-        
+
         # Weights 먼저 구해주고
         if input_dim == 2:
-        # if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
+            # if args.model=='learnable' or args.model=='coolchic_interp' or args.model=='ngp_interp':
             rad = torch.deg2rad(inputs)
-            rad_lat = rad[...,:1]
-            
-            weights = torch.abs(torch.cos(rad_lat)) 
+            rad_lat = rad[..., :1]
+
+            weights = torch.abs(torch.cos(rad_lat))
         else:
-            weights = torch.abs(torch.cos(inputs[...,:1]))
-            
+            weights = torch.abs(torch.cos(inputs[..., :1]))
+
         weights = weights / mean_lat_weight
-            
+
         # Model에 들어갈 input 계산
         # if args.model != "ginr" and args.model!='learnable' and args.model!='coolchic_interp' and args.model!='ngp_interp':
-        if input_dim ==3 :
+        if input_dim == 3:
             model_inputs = to_cartesian(inputs)
             # lat = inputs[..., :1]
         else:
             model_inputs = inputs
             # lat = inputs[..., :1]
-            
-            
+
         pred = best_model(model_inputs)
-        
-        
+
         # if weights.shape[-1] == 1:
         #     weights = weights.squeeze(-1)
 
-        error = torch.sum(
-            (pred - target) ** 2, dim=-1, keepdim=True
-        )
+        error = torch.sum((pred - target) ** 2, dim=-1, keepdim=True)
         if len(error.shape) > len(weights.shape):
             error = error.squeeze(-1)
-            
+
         error = weights * error
         loss = error.mean()
-        
+
         rmse = torch.sqrt(loss).item()
         w_psnr_val = mse2psnr(loss.detach().cpu().numpy())
-        
-        
+
         RES = None
-        if dtype=='train':
-            RES="LR"
-        elif dtype=='all':
-            RES="HR"
+        if dtype == "train":
+            RES = "LR"
+        elif dtype == "all":
+            RES = "HR"
         else:
             raise Exception("Specify RES Type")
-        
+
         logger.experiment.log(
-            {RES+"_full_test_rmse": round((rmse),4)},
+            {RES + "_full_test_rmse": round((rmse), 4)},
         )
         logger.experiment.log(
-            {RES+"_full_test_psnr": w_psnr_val},
+            {RES + "_full_test_psnr": w_psnr_val},
         )
 
-        if not target.max().round().int()==1:
+        if not target.max().round().int() == 1:
             target_min, target_max = target.min(), target.max()
             target = (target - target_min) / (target_max - target_min)
             pred = (pred - target_min) / (target_max - target_min)
@@ -401,12 +397,13 @@ def visualize_era5(input_dim, dtype, dataset, best_model, filename, logger, args
 
         # Save target, pred, error as npy
         current_datetime = datetime.now()
-        current_datetime = current_datetime.strftime('%Y_%m_%d_%H_%M_%S')
-        
-        filepath = 'output/'+str(current_datetime)+'_'+str(logger.experiment.id)+'/'
+        current_datetime = current_datetime.strftime("%Y_%m_%d_%H_%M_%S")
+
+        filepath = (
+            "output/" + str(current_datetime) + "_" + str(logger.experiment.id) + "/"
+        )
         os.makedirs(filepath, exist_ok=True)
-        
-        
+
         dims = ("latitude", "longitude")
 
         x = xr.open_dataset(filename)
@@ -431,7 +428,6 @@ def visualize_era5(input_dim, dtype, dataset, best_model, filename, logger, args
         gt_min, gt_max = float(x[ground_truth].min()), float(x[ground_truth].max())
         x = x.assign(target=(x[ground_truth] - gt_min) / (gt_max - gt_min))
 
-            
         draw_map(x, RES, "pred", colormap, rmse, logger, args)
         draw_map(x, RES, "error", "hot", rmse, logger, args)
         draw_map(x, RES, "target", colormap, rmse, logger, args)

@@ -4,7 +4,9 @@ from math import ceil
 
 from .model import MODEL, DENOISING_MODEL
 from utils.posenc import NGP_INTERP_ENC
+
 # 없음 ㅠㅠ
+
 
 class NGP_INTERP(nn.Module):
     def __init__(
@@ -41,11 +43,19 @@ class INR(MODEL):
     ):
         super().__init__(**kwargs)
 
-        self.input_dim = kwargs['input_dim']
+        self.input_dim = kwargs["input_dim"]
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = NGP_INTERP_ENC(geodesic_weight = geodesic_weight, F = n_features_per_level,  L = n_levels, input_dim = self.input_dim, T = T, finest_resolution=finest_resolution, base_resolution = base_resolution)
+        self.posenc = NGP_INTERP_ENC(
+            geodesic_weight=geodesic_weight,
+            F=n_features_per_level,
+            L=n_levels,
+            input_dim=self.input_dim,
+            T=T,
+            finest_resolution=finest_resolution,
+            base_resolution=base_resolution,
+        )
         self.posenc_dim = n_levels * n_features_per_level
 
         # LearnableEncoding(self, lat_shape, lon_shape, mapping_size, resolution)

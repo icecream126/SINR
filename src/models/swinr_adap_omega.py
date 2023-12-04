@@ -18,14 +18,14 @@ class SphericalGaborLayer(nn.Module):
         super().__init__()
 
         self.time = time
-        self.omega = nn.Sequential( #omega learnable
+        self.omega = nn.Sequential(  # omega learnable
             *[
                 nn.Linear(3, 256),
                 nn.ReLU(),
                 nn.Linear(256, 1),
             ]
         )
-        # self.omega = omega # omega constant 
+        # self.omega = omega # omega constant
         # self.sigma = nn.Sequential( # sigma learnable
         #     *[
         #         nn.Linear(3, 256),
@@ -33,7 +33,7 @@ class SphericalGaborLayer(nn.Module):
         #         nn.Linear(256, 1),
         #     ]
         # )
-        self.sigma = sigma # sigma constant
+        self.sigma = sigma  # sigma constant
         self.output_dim = output_dim
 
         self.dilate = nn.Parameter(torch.empty(1, output_dim))
@@ -123,8 +123,8 @@ class SphericalGaborLayer(nn.Module):
 
         # pdb.set_trace()
         # sigma = self.sigma(input[:, :3]) # sigma learnable
-        sigma = self.sigma # sigma constant
-        freq_term = torch.cos(self.omega(input[:, :3]) * freq_arg) # omega learable
+        sigma = self.sigma  # sigma constant
+        freq_term = torch.cos(self.omega(input[:, :3]) * freq_arg)  # omega learable
         # freq_term = torch.cos(self.omega * freq_arg) # omega constant
         gauss_term = torch.exp(-sigma * sigma * gauss_arg)
         return freq_term * gauss_term

@@ -23,7 +23,7 @@ class Dataset(Dataset):
         model,
         downscale_factor,
         zscore_normalize=False,
-        **kwargs
+        **kwargs,
     ):
         self.input_dim = input_dim
         self.model = model
@@ -48,13 +48,19 @@ class Dataset(Dataset):
     def get_filenames(self):
         filenames = sorted(glob.glob(os.path.join(self.dataset_dir, "*")))
         if "sun360" in self.dataset_dir:
-            return [filename for filename in filenames if f'{self.panorama_idx}.jpg' in filename][0]
+            return [
+                filename
+                for filename in filenames
+                if f"{self.panorama_idx}.jpg" in filename
+            ][0]
         elif "flickr360" in self.dataset_dir:
-            return [filename for filename in filenames if f'{self.panorama_idx}.png' in filename][0]
+            return [
+                filename
+                for filename in filenames
+                if f"{self.panorama_idx}.png" in filename
+            ][0]
         else:
-            return (
-                filenames[0]
-            )
+            return filenames[0]
 
     def __getitem__(self, index):
         data_out = dict()
@@ -78,9 +84,15 @@ class Dataset(Dataset):
             # if 'flickr' in self.dataset_dir:
             #     target = cv2.resize(target, None, fx=1/2, fy=1/2, interpolation=cv2.INTER_AREA)
 
-            if self.dataset_type=='train':
-                target = cv2.resize(target, None, fx=1/self.downscale_factor, fy=1/self.downscale_factor, interpolation=cv2.INTER_AREA)
-            
+            if self.dataset_type == "train":
+                target = cv2.resize(
+                    target,
+                    None,
+                    fx=1 / self.downscale_factor,
+                    fy=1 / self.downscale_factor,
+                    interpolation=cv2.INTER_AREA,
+                )
+
             H, W = target.shape[:2]  # H : 512, W : 1024
 
             # if self.model=='ngp_interp' or 'coolchic_interp':
@@ -92,19 +104,16 @@ class Dataset(Dataset):
                 # lon = torch.linspace(-180, 180, W)  # 1024
                 lat = torch.linspace(90, -90, H)
                 lon = torch.linspace(0, 360, W)
-                
-            
 
         elif "era5" in self.dataset_dir:
-            
-            if self.dataset_type=='train':
-                parts = self.dataset_dir.split('/')
-                if self.downscale_factor==2: # 0_50
-                    parts[1]='spatial_0_50'
-                    filename = '/'.join(parts) + '/data.nc'
-                elif self.downscale_factor==4: # 1_00
-                    parts[1]='spatial_1_00'
-                    filename = '/'.join(parts) + '/data.nc'
+            if self.dataset_type == "train":
+                parts = self.dataset_dir.split("/")
+                if self.downscale_factor == 2:  # 0_50
+                    parts[1] = "spatial_0_50"
+                    filename = "/".join(parts) + "/data.nc"
+                elif self.downscale_factor == 4:  # 1_00
+                    parts[1] = "spatial_1_00"
+                    filename = "/".join(parts) + "/data.nc"
                 else:
                     raise Exception("Unsupported downscaling factor for ERA5")
             else:
@@ -118,35 +127,38 @@ class Dataset(Dataset):
                         lon = f.variables[variable][:]
                     else:
                         target = f.variables[variable][0]
-            
+
             target = torch.from_numpy(target)
             lat = torch.from_numpy(lat)
             lon = torch.from_numpy(lon)
-                        
-            
+
         else:
             data = np.load(self.filename)
 
             lat = data["latitude"]
             lon = data["longitude"]
             target = data["target"]
-            
-            if self.dataset_type=='train':
-                target = cv2.resize(target, None, fx=1/self.downscale_factor, fy=1/self.downscale_factor, interpolation=cv2.INTER_AREA)
+
+            if self.dataset_type == "train":
+                target = cv2.resize(
+                    target,
+                    None,
+                    fx=1 / self.downscale_factor,
+                    fy=1 / self.downscale_factor,
+                    interpolation=cv2.INTER_AREA,
+                )
             H, W = target.shape[:2]  # H : 512, W : 1024
 
             lat = torch.linspace(90, -90, H)
             lon = torch.linspace(0, 360, W)
 
-        
-        
         # if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
         if self.input_dim == 3:
             lat = torch.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
-            lon = torch.deg2rad(lon)  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
+            lon = torch.deg2rad(
+                lon
+            )  # 1024 (min : -3.14, max : 3.14) # ER5 (min : 0.0, max : 359.75)
 
-        
-        
         data_out["lat"] = lat
         data_out["lon"] = lon
 
@@ -158,7 +170,7 @@ class Dataset(Dataset):
         lat = lat.flatten()  # [58482]
         lon = lon.flatten()  # ""
         target = target.reshape(-1, self.output_dim)  # [58482, 3]
-        
+
         if self.zscore_normalize or self.normalize:
             self.scaler.fit(target)
             target = self.scaler.transform(target)

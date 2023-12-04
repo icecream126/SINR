@@ -8,6 +8,7 @@ from torch import nn
 import cv2
 from math import sin, cos, sqrt, atan2, radians
 
+
 def geodesic():
     # Approximate radius of earth in km
     R = 1.0
@@ -20,20 +21,19 @@ def geodesic():
     dlon = lon2 - lon1
     dlat = lat2 - lat1
 
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
     distance = R * c
-    
-    
 
 
 # https://github.com/V-Sense/360SR/blob/master/ws_ssim.py (Candidate)
 # https://github.com/Fanghua-Yu/OSRT/blob/master/odisr/metrics/odi_metric.py
-def genERP(j,N):
-    val = math.pi/N
-    w = math.cos((j - (N/2) + 0.5) * val)
+def genERP(j, N):
+    val = math.pi / N
+    w = math.cos((j - (N / 2) + 0.5) * val)
     return w
+
 
 def _ws_ssim(img, img2):
     """Calculate SSIM (structural similarity) for one channel images.
@@ -45,8 +45,8 @@ def _ws_ssim(img, img2):
         float: SSIM result.
     """
 
-    c1 = (0.01 * 255)**2
-    c2 = (0.03 * 255)**2
+    c1 = (0.01 * 255) ** 2
+    c2 = (0.03 * 255) ** 2
     kernel = cv2.getGaussianKernel(11, 1.5)
     window = np.outer(kernel, kernel.transpose())
 
@@ -59,16 +59,17 @@ def _ws_ssim(img, img2):
     sigma2_sq = cv2.filter2D(img2**2, -1, window)[5:-5, 5:-5] - mu2_sq
     sigma12 = cv2.filter2D(img * img2, -1, window)[5:-5, 5:-5] - mu1_mu2
 
-    ssim_map = ((2 * mu1_mu2 + c1) * (2 * sigma12 + c2)) / ((mu1_sq + mu2_sq + c1) * (sigma1_sq + sigma2_sq + c2))
+    ssim_map = ((2 * mu1_mu2 + c1) * (2 * sigma12 + c2)) / (
+        (mu1_sq + mu2_sq + c1) * (sigma1_sq + sigma2_sq + c2)
+    )
 
     equ = np.zeros((ssim_map.shape[0], ssim_map.shape[1]))
 
-    for i in range(0,equ.shape[0]):
-        for j in range(0,equ.shape[1]):
-                equ[i, j] = genERP(i,equ.shape[0])
+    for i in range(0, equ.shape[0]):
+        for j in range(0, equ.shape[1]):
+            equ[i, j] = genERP(i, equ.shape[0])
 
-    return np.multiply(ssim_map, equ).mean()/equ.mean()
-
+    return np.multiply(ssim_map, equ).mean() / equ.mean()
 
 
 def image_psnr(gt_image, noisy_image, weights):

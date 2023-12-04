@@ -18,21 +18,23 @@ class SphericalGaborLayer(nn.Module):
         **kwargs,
     ):
         super().__init__()
-        
-        self.freq_enc_type=freq_enc_type
+
+        self.freq_enc_type = freq_enc_type
 
         self.time = time
         self.wavelet_dim = wavelet_dim
         self.output_dim = output_dim
-        
+
         self.omega = nn.Parameter(torch.empty(1, wavelet_dim))
         self.sigma = nn.Parameter(torch.empty(1, wavelet_dim))
         nn.init.normal_(self.omega)
         nn.init.normal_(self.sigma)
         self.omega_0 = omega_0
-        self.sigma_0 = sigma_0        
+        self.sigma_0 = sigma_0
 
-        self.dilate = nn.Parameter(torch.empty(1, wavelet_dim)) # (1, wavelet_dim) : isotropic dilation (2, wavelet) : aniso
+        self.dilate = nn.Parameter(
+            torch.empty(1, wavelet_dim)
+        )  # (1, wavelet_dim) : isotropic dilation (2, wavelet) : aniso
         nn.init.normal_(self.dilate)
 
         self.u = nn.Parameter(torch.empty(wavelet_dim))
@@ -41,7 +43,7 @@ class SphericalGaborLayer(nn.Module):
         nn.init.uniform_(self.u)
         nn.init.uniform_(self.v)
         nn.init.uniform_(self.w)
-        
+
         self.out_linear = nn.Linear(wavelet_dim, output_dim)
 
         if time:
@@ -56,7 +58,7 @@ class SphericalGaborLayer(nn.Module):
     def forward(self, input):
         zeros = torch.zeros(self.wavelet_dim, device=self.u.device)
         ones = torch.ones(self.wavelet_dim, device=self.u.device)
-        
+
         alpha = 2 * pi * self.u
         beta = torch.arccos(torch.clamp(2 * self.v - 1, -1 + 1e-6, 1 - 1e-6))
         gamma = 2 * pi * self.w
@@ -105,10 +107,10 @@ class SphericalGaborLayer(nn.Module):
 
         dilate = torch.exp(self.dilate)  # isotropic dilation
         # dilate_y1, dilate_y2 = torch.exp(self.dilate) # anisotropic dilation
-        
+
         y1 = x / (1e-5 + 1 + z)
         y2 = (1 - z) / (1e-5 + 1 + z)
-        
+
         # isotropic dilation
         freq_arg = 2 * dilate * y1
         gauss_arg = 4 * dilate * dilate * y2
@@ -120,19 +122,20 @@ class SphericalGaborLayer(nn.Module):
         # without dilation
         # freq_arg = 2 *  y1
         # gauss_arg = 4 * y2
-        
+
         if self.time:
             time = input[..., 3:]
             lin = self.linear(time)
             freq_arg = freq_arg + lin
             gauss_arg = gauss_arg + lin * lin
 
-        if self.freq_enc_type=='cos':
+        if self.freq_enc_type == "cos":
             freq_term = torch.cos(self.omega_0 * self.omega * freq_arg)
         else:
             freq_term = torch.sin(self.omega_0 * self.omega * freq_arg)
-        
+
         import pdb
+
         pdb.set_trace()
         gauss_term = torch.exp(-self.sigma * self.sigma_0 * gauss_arg)
 
@@ -145,7 +148,7 @@ class INR(MODEL):
     def __init__(
         self,
         input_dim,
-        output_dim, 
+        output_dim,
         wavelet_dim,
         hidden_dim,
         hidden_layers,
@@ -165,13 +168,17 @@ class INR(MODEL):
         self.first_nonlin = SphericalGaborLayer
 
         self.net = nn.ModuleList()
-        self.net.append(self.first_nonlin(hidden_dim, wavelet_dim, time, omega_0, sigma_0, freq_enc_type))
+        self.net.append(
+            self.first_nonlin(
+                hidden_dim, wavelet_dim, time, omega_0, sigma_0, freq_enc_type
+            )
+        )
 
         self.nonlin = ReLULayer
 
         for i in range(hidden_layers):
             # if i==0:
-                # self.net.append(self.nonlin(wavelet_dim, hidden_dim))
+            # self.net.append(self.nonlin(wavelet_dim, hidden_dim))
             if skip and i == ceil(hidden_layers / 2):
                 self.net.append(self.nonlin(hidden_dim + input_dim, hidden_dim))
             else:

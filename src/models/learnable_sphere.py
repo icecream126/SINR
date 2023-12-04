@@ -4,7 +4,9 @@ from math import ceil
 
 from .model import MODEL, DENOISING_MODEL
 from utils.posenc import LearnableEncoding
+
 # 없음 ㅠㅠ
+
 
 class Learnable(nn.Module):
     def __init__(
@@ -42,7 +44,9 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = LearnableEncoding(lat_shape=lat_shape, lon_shape=lon_shape, level=level, resolution=resolution)
+        self.posenc = LearnableEncoding(
+            lat_shape=lat_shape, lon_shape=lon_shape, level=level, resolution=resolution
+        )
         self.posenc_dim = level
 
         # LearnableEncoding(self, lat_shape, lon_shape, mapping_size, resolution)
