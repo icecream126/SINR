@@ -87,6 +87,7 @@ if __name__ == "__main__":
     parser.add_argument("--posenc_freq", type=int, default=10)
     parser.add_argument("--relu", default=False, action="store_true")
     parser.add_argument("--geodesic_weight", default=False, action="store_true")
+    parser.add_argument("--great_circle", default=False, type=bool)
     parser.add_argument("--gauss_scale", type=float, default=10.0)
     parser.add_argument("--omega_0", default=10.0, type=float)
     parser.add_argument("--sigma_0", default=10.0, type=float)
@@ -101,6 +102,7 @@ if __name__ == "__main__":
     parser.add_argument("--resolution", default=2, type=int)
     parser.add_argument("--T", default=14, type=int)
     parser.add_argument("--input_dim", default=3, type=int)
+    
 
     # Learning argument
     parser.add_argument("--batch_size", type=int, default=512)
@@ -145,7 +147,7 @@ if __name__ == "__main__":
         project=args.project_name,
         log_model="all",
         save_dir="./" + args.project_name,
-        mode="disabled",
+        # mode="disabled",
     )
 
     # Dataset

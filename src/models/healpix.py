@@ -32,6 +32,7 @@ class INR(MODEL):
         skip,
         n_levels,
         n_features_per_level,
+        great_circle,
         mapping_size=256,
         **kwargs,
     ):
@@ -41,7 +42,7 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-        self.posenc = HealEncoding(n_levels=n_levels, F=n_features_per_level)
+        self.posenc = HealEncoding(n_levels=n_levels, F=n_features_per_level, great_circle=great_circle)
         self.posenc_dim = n_features_per_level * n_levels
 
         self.nonlin = HealLayer

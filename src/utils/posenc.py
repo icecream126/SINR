@@ -6,6 +6,7 @@ import numpy as np
 import torch.nn.functional as F
 import healpy as hp
 from healpy.rotator import Rotator
+import matplotlib.pyplot as plt
 
 
 LAT_MIN = -90.0
@@ -313,10 +314,11 @@ class RotateHealEncoding(nn.Module):
 
 
 class HealEncoding(nn.Module):
-    def __init__(self, n_levels, F):
+    def __init__(self, n_levels, F, great_circle):
         super().__init__()
+        self.great_circle = great_circle
         self.n_levels = n_levels
-        assert self.n_levels < 30 # healpy can deal with n_levels below than 30
+        # assert self.n_levels < 30 # healpy can deal with n_levels below than 30
         
         self.F = F
         
@@ -334,14 +336,14 @@ class HealEncoding(nn.Module):
             nn.init.uniform_(self.params[i], a=-0.0001, b=0.0001)
         
     
-    def get_all_level_pixel_index(self, np_rad_x, device):
+    def get_all_level_pixel_index(self, x, device):
         '''
         np_rad_x (torch.tensor) : [batch, 2]
         '''
         all_level_pixel_index = None
         for i in range(self.n_levels):
             nside = 2**i
-            pixel_index = hp.ang2pix(nside = nside, theta = np_rad_x[...,0], phi = np_rad_x[...,1], lonlat=False)
+            pixel_index = hp.ang2pix(nside = nside, theta = x[...,1].detach().cpu().numpy(), phi = x[...,0].detach().cpu().numpy(), lonlat=True)
             pixel_index = torch.tensor(pixel_index).unsqueeze(0).to(device)
             if all_level_pixel_index is None:
                 all_level_pixel_index = pixel_index
@@ -391,31 +393,47 @@ class HealEncoding(nn.Module):
 
         lat2 = neighbor_rads[..., 0]
         lon2 = neighbor_rads[..., 1]
-
-        # Adjust latitude from [0, pi] to [-pi/2, pi/2] for calculations
-        # lat1_adjusted = lat1 - torch.pi / 2
-        # lat2_adjusted = lat2 - torch.pi / 2
-
-        dlon = torch.pow(lon2 - lon1,2)
-        dlat = torch.pow(lat2 - lat1,2)
         
-        dist = torch.sqrt(dlon + dlat)
+
+        ## Bilinear interpolation on Euclidean
+        # dlon = torch.pow(lon2 - lon1,2)
+        # dlat = torch.pow(lat2 - lat1,2)
+        
+        # dist = torch.sqrt(dlon + dlat)
+        # dist[torch.isinf(dist)]=dist.min() # inf가 생기는 이유는 -1 neighbor를 max+1로 바꾸어놨기 때문. level 0에서 max+1의 lat, lon 값은 없을 것임.
+
+        
+        
         # dlat = lat2_adjusted - lat1_adjusted
+        
+        lat1[torch.isinf(lat1)] = lat1.min()
+        lat2[torch.isinf(lat2)] = lat2.min()
+        lon1[torch.isinf(lon1)] = lon1.min()
+        lon2[torch.isinf(lon2)] = lon2.min()
+        
+        if self.great_circle:
+        
+        ###### Great circle distance ####
+            dlat = lat2 - lat1
+            dlon = lon2 - lon1
 
-        # a = torch.pow(torch.sin(dlat / 2), 2) + torch.cos(lat1_adjusted) * torch.cos(lat2_adjusted) * torch.pow(torch.sin(dlon / 2), 2)
+            a = torch.pow(torch.sin(dlat / 2), 2) + torch.cos(lat1) * torch.cos(lat2) * torch.pow(torch.sin(dlon / 2), 2)
+            
+            # Ensure no negative values inside the square root
+            sqrt_a = torch.sqrt(torch.clamp(a, min=0))
+            
+            dist = 2 * torch.atan2(sqrt_a, torch.sqrt(torch.clamp(1 - a, min=0)))
+        ###################################       
         
-        # # Ensure no negative values inside the square root
-        # sqrt_a = torch.sqrt(torch.clamp(a, min=0))
+        else:
+        # Bilinear interpolation on Euclidean
+            dlon = torch.pow(lon2 - lon1,2)
+            dlat = torch.pow(lat2 - lat1,2)
+            
+            dist = torch.sqrt(dlon + dlat)
+        dist[torch.isinf(dist)]=dist.min() # inf가 생기는 이유는 -1 neighbor를 max+1로 바꾸어놨기 때문. level 0에서 max+1의 lat, lon 값은 없을 것임. 
+
         
-        # dist = 2 * torch.atan2(sqrt_a, torch.sqrt(torch.clamp(1 - a, min=0)))
-        # dist = 1/dist + 0.001
-        
-        # CHECK!! 
-        # 말이 안되는게 dlon, dlat 중에 minimum 값이 0인 경우도 존재한다.
-        # 이 말인 즉슨, 자기 자신의 point와 neighbor point가 동일하게 output 된 경우도 존재한다는 뜻이다...
-        # 그리고 dlon의 max 값이 38이다. radian으로 제대로 바꿨다면 dlon의 maximum 값이 저렇게 나올 수 없다.
-        
-        dist[torch.isinf(dist)]=dist.min()
         return dist # [level, 8 * batch]
     
     def interpolate(self, all_level_my_reps, all_level_neigh_reps, all_level_my_latlon, all_level_neigh_latlon, all_level_neigh_mask):
@@ -435,7 +453,8 @@ class HealEncoding(nn.Module):
         
         # Calculate distance between my coords and neigh coords
         distances = self.get_great_circle(all_level_my_latlon, all_level_neigh_latlon) # [level, neigh * batch]
-        weight = 1/distances
+        # weight = 1/distances
+        weight = distances.max() - distances
         weight = weight.reshape(weight.shape[0], 8, -1) # [level, neigh, batch]
         weight = weight.unsqueeze(-1).repeat(1,1,1,self.F) # [level, neigh, batch, 2]
         weight = weight.reshape(weight.shape[0], -1, self.F) # [level, neigh*batch, 2]
@@ -451,9 +470,9 @@ class HealEncoding(nn.Module):
         out_reps = out_reps * all_level_neigh_mask
         
         out_reps = torch.sum(out_reps, dim=1) # [level, batch, self.F]
-        out_reps = torch.add(out_reps, all_level_my_reps) # [level, batch, self.F]
+        # out_reps = torch.add(out_reps, all_level_my_reps) # [level, batch, self.F]
         
-        out_reps = out_reps.reshape(4, -1).t()
+        out_reps = out_reps.reshape(self.n_levels, -1).t()
         out_reps = out_reps.reshape(-1, self.n_levels * self.F)
         return out_reps
     
@@ -512,6 +531,46 @@ class HealEncoding(nn.Module):
     
 
 
+    def visualize_pixel(self,x, all_level_pixel_latlon, all_level_pixel_index, all_level_neigh_index):
+        print(all_level_pixel_index.shape)
+        # all_level_pixel_index  : [  4, 512     ]
+        # all_level_neigh_index  : [  4,   8, 512]
+        # x                      : [512,   2,    ]
+        # all_level_pixel_latlon : [  4, 512,   2]
+        print(x.shape)
+        
+        for i in range(self.n_levels) :
+            single_level_pixel_index = all_level_pixel_index[i] # [512,]
+            single_level_neigh_index = all_level_neigh_index[i] # [8, 512]
+            
+            for j in range(all_level_pixel_index.shape[-1]):
+                center_pixel = single_level_pixel_index[...,j] # [1,]
+                neighbor_pixels = single_level_neigh_index[...,j] # [8,]
+                
+                nside = 2**i
+                npix = hp.nside2npix(nside)
+                healpix_map = np.zeros(npix)
+                
+                healpix_map[center_pixel.detach().cpu().numpy()] = 1
+                healpix_map[neighbor_pixels.detach().cpu().numpy()] = 2
+                
+                lat = x[j][...,0]
+                lon = x[j][...,1]
+                
+                cmap = plt.cm.viridis
+                cmap.set_under('white') # bg color
+                cmap.set_over('blue') # color for neighbors
+                cmap.set_bad('red') # color for center
+                hp.mollview(healpix_map, min=0.9, max=2.1, cmap=cmap, title=f"Healpix Pixels Visualization_{lat},{lon}")
+                plt.savefig(f'level_{i}_pix_{j}.png')
+                if j==3: break
+            
+            if i==3: break
+                # plt.show()
+                
+                
+        
+    
     def forward(self, x):
         '''
         x : [batch, 2]
@@ -519,14 +578,17 @@ class HealEncoding(nn.Module):
             x[...,1] : lon : [0, 360)
         '''
         
-        rad_x = torch.deg2rad(x)  # [batch, 2] lat : [-pi/2, pi/2], lon : [0, 2*pi]
-        rad_x[..., 0] = (torch.pi / 2 + rad_x[..., 0])  # [batch, 2] adjust the range of latitude for healpix # lat : [0, pi]
-        np_rad_x = rad_x.detach().cpu().numpy()  # [batch, 2] numpy array
-        device = rad_x.device
+        # rad_x = torch.deg2rad(x)  # [batch, 2] lat : [-pi/2, pi/2], lon : [0, 2*pi]
+        # rad_x[..., 0] = (torch.pi / 2 + rad_x[..., 0])  # [batch, 2] adjust the range of latitude for healpix # lat : [0, pi]
+        # np_rad_x = rad_x.detach().cpu().numpy()  # [batch, 2] numpy array
+        device = x.device
         
-        all_level_pixel_index = self.get_all_level_pixel_index(np_rad_x, device) # [n_levels, batch]
+        all_level_pixel_index = self.get_all_level_pixel_index(x, device) # [n_levels, batch]
         all_level_neigh_index = self.get_all_level_neigh_index(all_level_pixel_index, device) # [n_levels, 8, batch] # 대부분은 맞긴한데... 맞는듯 틀리는듯..
         all_level_pixel_latlon = self.get_all_level_pixel_latlon(all_level_pixel_index, device) # [n_levels, batch, 2]
+        
+        # Check whether pixel index and neighbor pixel is well extracted
+        # self.visualize_pixel(x, all_level_pixel_latlon, all_level_pixel_index, all_level_neigh_index)
         
         all_level_rep = self.get_all_level_rep(all_level_pixel_index, all_level_neigh_index, all_level_pixel_latlon, device) # [n_levels, batch, self.F]
 
