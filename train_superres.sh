@@ -15,6 +15,23 @@ CUDA_VISIBLE_DEVICES=1 python src/main_superres.py \
     --skip \
     --plot
 
+# HEALPIX - WIND - 2x
+CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
+    --dataset_dir dataset/spatial_0_25/era5_wind \
+    --max_epochs 30 \
+    --hidden_dim 512 \
+    --hidden_layers 4 \
+    --n_levels 9 \
+    --n_features_per_level 2 \
+    --downscale_factor 2 \
+    --input_dim 2 \
+    --project_name 231120_ngp_2d3d \
+    --batch_size 1024 \
+    --model healpix \
+    --normalize \
+    --skip \
+    --plot
+
 # HEALPIX - WIND - 4
 CUDA_VISIBLE_DEVICES=0 python src/main_superres.py \
     --dataset_dir dataset/spatial_0_25/era5_wind \
@@ -49,11 +66,10 @@ CUDA_VISIBLE_DEVICES=3 python src/main_superres.py \
     --dataset_dir dataset/spatial_0_25/era5_wind \
     --max_epochs 500 \
     --gauss_scale 4 \
-    --n_features_per_level 2 \
-    --downscale_factor 4 \
-    --input_dim 2 \
+    --downscale_factor 2 \
+    --input_dim 3 \
     --project_name 231120_ngp_2d3d \
-    --batch_size 4096 \
+    --batch_size 1024 \
     --model gauss \
     --normalize \
     --skip \

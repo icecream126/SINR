@@ -1,27 +1,27 @@
 program: src/main_superres.py
-name: swinr
 entity: postech_sinr
 method: grid
 parameters:
   gauss_scale:
-    values: [2,4,6,8,10]
+    values: [6]
   lr:
     values: [0.0001]
+  hidden_layers:
+    values: [2,3,4]
   hidden_dim:
-    values: [512]
+    values: [64, 128, 256]
   batch_size:
     values: [1024]
   dataset_dir:
-    values: ['dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud','dataset/spatial_0_25/era5_geopotential']
+    values: ['dataset/spatial_0_25/era5_wind']
   downscale_factor:
-    values: [2,4]
+    values: [2]
   seed:
-    values: [0,1,2]
+    values: [0]
 command:
   - python
   - ${program}
   - ${args}
-  - --task=reg
   - --input_dim=3
   - --project_name=231118_sr
   - --model=gauss

@@ -21,6 +21,7 @@ command:
   - python
   - ${program}
   - ${args}
+  - --great_circle=True
   - --dataset_dir=dataset/sun360
   - --project_name=231204_sr
   - --model=healpix

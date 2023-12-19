@@ -9,6 +9,14 @@ import cv2
 from math import sin, cos, sqrt, atan2, radians
 
 
+def calculate_parameter_size(model):
+    total_size = 0
+    for param in model.parameters():
+        total_size += param.numel()  # numel() returns the total number of elements in the input tensor
+    return total_size
+
+
+
 def geodesic():
     # Approximate radius of earth in km
     R = 1.0

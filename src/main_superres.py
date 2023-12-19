@@ -10,6 +10,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from models import coolchic_interp
 
 from utils.visualize import visualize_era5, visualize_360, visualize_synthetic
+from utils.utils import calculate_parameter_size
 import os
 
 os.environ['CUDA_LAUNCH_BLOCKING']="1"
@@ -201,6 +202,21 @@ if __name__ == "__main__":
 
     # Model
     model = model_dict[args.model].INR(all_dataset=all_dataset, **vars(args))
+    
+    # Model parameter size
+    # total_param_size = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    # Calculate model size into MB and bit
+    size_model = 0
+    for param in model.parameters():
+        if param.data.is_floating_point():
+            size_model += param.numel() * torch.finfo(param.data.dtype).bits
+        else:
+            size_model += param.numel() * torch.iinfo(param.data.dtype).bits
+    mb_model_size = size_model / 8e6
+    print(f"model size: {size_model} / bit | {mb_model_size} / MB")
+    wandb.log({'model_size': round(mb_model_size,3)})
+    
 
     # Pass scaler from dataset to model
     model.scaler = train_dataset.scaler
