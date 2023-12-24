@@ -7,7 +7,6 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-from models import coolchic_interp
 
 from utils.visualize import visualize_era5, visualize_360, visualize_synthetic
 from utils.utils import calculate_parameter_size
@@ -21,8 +20,6 @@ from datasets import spatial, temporal, temporal_ginr, spatial_ginr
 from models import (
     healpix,
     ngp_interp,
-    coolchic_interp,
-    learnable,
     relu,
     siren,
     wire,
@@ -36,11 +33,7 @@ from models import (
     swinr_adap_sigma,
     mygauss,
     gauss_act,
-    ewinr,
     swinr_pe,
-    sphere_ngp_interp,
-    rotatehealpix,
-    onehealpix,
 )
 
 model_dict = {
@@ -58,14 +51,8 @@ model_dict = {
     "ginr": ginr,
     "gauss": mygauss,
     "gauss_act": gauss_act,
-    "ewinr": ewinr,
-    "learnable": learnable,
-    "coolchic_interp": coolchic_interp,
     "ngp_interp": ngp_interp,
-    "sphere_ngp_interp": sphere_ngp_interp,
     "healpix": healpix,
-    "rotatehealpix":rotatehealpix,
-    "onehealpix":onehealpix,
 }
 
 if __name__ == "__main__":
