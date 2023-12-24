@@ -98,7 +98,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--max_epochs", type=int, default=500)
-    parser.add_argument("--lr", type=float, default=0.0003)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--lr_patience", type=int, default=1000)
     parser.add_argument(
         "--task", type=str, default="sr", choices=["reg", "sr"]
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         project=args.project_name,
         log_model="all",
         save_dir="./" + args.project_name,
-        mode="disabled",
+        # mode="disabled",
     )
 
     # Dataset

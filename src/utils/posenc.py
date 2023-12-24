@@ -23,255 +23,43 @@ class HealEncoding(nn.Module):
         self.n_levels = n_levels
         self.n_side = 2**(n_levels-1)
         self.n_pix = hp.nside2npix(self.n_side)
-        # assert self.n_levels < 30 # healpy can deal with n_levels below than 30
         self.F = F
         
-        # sizes = [12 * ((2 ** (level - 1)) ** 2 + 2) for level in range(1, n_levels + 1)] # [36, 72, 216, 792]
-        # max_size = max(sizes)
         param_tensor = torch.randn(n_levels, self.n_pix, F)
         self.params = nn.Parameter(param_tensor)
 
         for i in range(n_levels):
             nn.init.uniform_(self.params[i], a=-0.0001, b=0.0001)
-        
-    
-    def get_all_level_pixel_index(self, x, device):
-        '''
-        np_rad_x (torch.tensor) : [batch, 2]
-        '''
-        all_level_pixel_index = None
-        for i in range(self.n_levels):
-            nside = 2**i
-            pixel_index = hp.ang2pix(nside = nside, theta = x[...,1].detach().cpu().numpy(), phi = x[...,0].detach().cpu().numpy(), lonlat=True)
-            pixel_index = torch.tensor(pixel_index).unsqueeze(0).to(device)
-            if all_level_pixel_index is None:
-                all_level_pixel_index = pixel_index
-            else:
-                all_level_pixel_index = torch.cat((all_level_pixel_index, pixel_index), dim=0)
-        return all_level_pixel_index # [n_levels, batch]
-    
-    def get_all_level_pixel_latlon(self, all_level_pixel_index, device):
-        '''
-        all_level_pixel_index (torch.tensor) : [n_levels, batch, 1]
-        '''
-        all_level_pixel_latlon = None
-        all_level_pixel_index = all_level_pixel_index.detach().cpu().numpy() # [level, batch]
-        for i in range(self.n_levels):
-            nside = 2**i
-            pixel_index = all_level_pixel_index[i]
-            pixel_latlon = hp.pix2ang(nside = nside, ipix = pixel_index , lonlat=False)
-            pixel_lat = torch.tensor(pixel_latlon[0]).unsqueeze(-1)
-            pixel_lon = torch.tensor(pixel_latlon[1]).unsqueeze(-1)
-            pixel_latlon = torch.cat((pixel_lat, pixel_lon), dim=-1).unsqueeze(0).to(device)
-            if all_level_pixel_latlon is None:
-                all_level_pixel_latlon = pixel_latlon
-            else:
-                all_level_pixel_latlon = torch.cat((all_level_pixel_latlon, pixel_latlon), dim=0)
-        return all_level_pixel_latlon # [n_levels, batch, 2]
-    
-    def get_all_level_neigh_index(self, all_level_pixel_index, device):
-        '''
-        all_level_pixel_index (torch.tensor) : [n_levels, batch, 1]
-        '''
-        all_level_neigh_index = None
-        for i in range(self.n_levels):
-            nside = 2**i
-            pixel_index = all_level_pixel_index[i]
-            neigh_index = hp.get_all_neighbours(nside, pixel_index.detach().cpu().numpy())
-            neigh_index = torch.tensor(neigh_index).to(device).unsqueeze(0)
-            if all_level_neigh_index is None:
-                all_level_neigh_index = neigh_index
-            else:
-                all_level_neigh_index = torch.cat((all_level_neigh_index, neigh_index), dim=0)
-        return all_level_neigh_index # [n_levels, 8, batch, 1]
-    
-    
-    def get_great_circle(self, x_rads, neighbor_rads):
-        lat1 = x_rads[..., 0]
-        lon1 = x_rads[..., 1]
 
-        lat2 = neighbor_rads[..., 0]
-        lon2 = neighbor_rads[..., 1]
-        
-        lat1[torch.isinf(lat1)] = lat1.min()
-        lat2[torch.isinf(lat2)] = lat2.min()
-        lon1[torch.isinf(lon1)] = lon1.min()
-        lon2[torch.isinf(lon2)] = lon2.min()
-        
-        if self.great_circle:
-        
-        ###### Great circle distance ####
-            dlat = lat2 - lat1
-            dlon = lon2 - lon1
-
-            a = torch.pow(torch.sin(dlat / 2), 2) + torch.cos(lat1) * torch.cos(lat2) * torch.pow(torch.sin(dlon / 2), 2)
-            
-            # Ensure no negative values inside the square root
-            sqrt_a = torch.sqrt(torch.clamp(a, min=0))
-            
-            dist = 2 * torch.atan2(sqrt_a, torch.sqrt(torch.clamp(1 - a, min=0)))
-        ###################################       
-        
-        else:
-        # Bilinear interpolation on Euclidean
-            dlon = torch.pow(lon2 - lon1,2)
-            dlat = torch.pow(lat2 - lat1,2)
-            
-            dist = torch.sqrt(dlon + dlat)
-        dist[torch.isinf(dist)]=dist.min() # inf가 생기는 이유는 -1 neighbor를 max+1로 바꾸어놨기 때문. level 0에서 max+1의 lat, lon 값은 없을 것임. 
-
-        
-        return dist # [level, 8 * batch]
-    
-    def interpolate(self, all_level_my_reps, all_level_neigh_reps, all_level_my_latlon, all_level_neigh_latlon, all_level_neigh_mask):
-        # Given center(my) pixel position,
-        '''
-            all_level_my_reps      : [n_levels, batch,   self.F]  ex) [4,  512, 2]
-            all_level_my_latlon    : [n_levels, batch,        2]  ex) [4,  512, 2]
-            all_level_neigh_reps   : [n_levels, 8*batch, self.F]  ex) [4, 4096, 2]
-            all_level_neigh_latlon : [n_levels, 8*batch,      2]  ex) [4, 4096, 2]
-        '''
-        
-        all_level_my_latlon = all_level_my_latlon.unsqueeze(1).repeat(1, 8, 1, 1)          # [level, neigh, batch, 2]
-        all_level_my_latlon = all_level_my_latlon.reshape(all_level_neigh_latlon.shape)          # [level, neigh*batch , 2]
-        # all_level_neigh_latlon = all_level_neigh_latlon.reshape(all_level_my_latlon.shape) # [level, neigh, batch, 2]
-        
-        distances = self.get_great_circle(all_level_my_latlon, all_level_neigh_latlon) # [level, neigh * batch]
-        # weight = 1/distances
-        weight = distances.max() - distances
-        weight = weight.reshape(weight.shape[0], 8, -1) # [level, neigh, batch]
-        weight = weight.unsqueeze(-1).repeat(1,1,1,self.F) # [level, neigh, batch, 2]
-        weight = weight.reshape(weight.shape[0], -1, self.F) # [level, neigh*batch, 2]
-        
-        # [level, neigh*batch] => [level, neigh, batch, 2]
-        all_level_neigh_mask = all_level_neigh_mask.reshape(all_level_neigh_mask.shape[0], 8, all_level_neigh_mask.shape[1]//8).unsqueeze(-1).repeat(1,1,1,self.F) 
-        
-        out_reps = torch.multiply(all_level_neigh_reps, weight)
-        out_reps = out_reps.reshape(out_reps.shape[0], 8, -1, self.F) # [level, neigh, batch, self.F]
-        
-        out_reps = out_reps * all_level_neigh_mask
-        
-        out_reps = torch.sum(out_reps, dim=1) # [level, batch, self.F]
-        # out_reps = torch.add(out_reps, all_level_my_reps) # [level, batch, self.F]
-        
-        out_reps = out_reps.reshape(self.n_levels, -1).t()
-        out_reps = out_reps.reshape(-1, self.n_levels * self.F)
-        return out_reps
-    
-    def index_preprocessing(self, index):
-        mask = index == -1 
-        index[mask] = torch.max(index)+1
-        mask = ~mask
-        return index, mask
-    
-    def get_all_level_rep(self, all_level_pixel_index, all_level_neigh_index, all_level_pixel_latlon, device):
-        '''
-        all_level_pixel_index  : [n_levels, batch]
-        all_level_neigh_index  : [n_levels, 8, batch]
-        all_level_pixel_latlon  : [n_levels, batch, 2]
-        '''
-        
-        # [n_level, 8, batch] => [n_level, 8*batch]
-        all_level_neigh_index = all_level_neigh_index.reshape(all_level_neigh_index.shape[0], all_level_neigh_index.shape[1]*all_level_neigh_index.shape[2]) # [level, 8*batch]
-        
-
-        all_level_neigh_index, all_level_neigh_mask = self.index_preprocessing(all_level_neigh_index) # [level, 8, batch], [level, 8, batch]
-        all_level_pixel_index, _ = self.index_preprocessing(all_level_pixel_index) # [level, batch]
-        
-        all_level_neigh_reps = torch.gather(self.params, 1, all_level_neigh_index.unsqueeze(-1).expand(-1, -1, self.params.size(-1))) # [4, 4096, 2] [level, 8*batch, F]
-        all_level_my_reps = torch.gather(self.params, 1, all_level_pixel_index.unsqueeze(-1).expand(-1, -1, self.params.size(-1))) # [4, 512, 2]   [level, batch, F]     
-        all_level_neigh_latlon = self.get_all_level_pixel_latlon(all_level_neigh_index, device) # [n_levels, 8*batch, 2]                        
-        
-        out = self.interpolate(all_level_my_reps, all_level_neigh_reps, all_level_pixel_latlon, all_level_neigh_latlon, all_level_neigh_mask)
-        
-        return out # [batch, n_levels * self.F]
-    
-
-
-    def visualize_pixel(self,x, all_level_pixel_latlon, all_level_pixel_index, all_level_neigh_index):
-        # all_level_pixel_index  : [  4, 512     ]
-        # all_level_neigh_index  : [  4,   8, 512]
-        # x                      : [512,   2,    ]
-        # all_level_pixel_latlon : [  4, 512,   2]
-
-        
-        for i in range(self.n_levels) :
-            single_level_pixel_index = all_level_pixel_index[i] # [512,]
-            single_level_neigh_index = all_level_neigh_index[i] # [8, 512]
-            
-            for j in range(all_level_pixel_index.shape[-1]):
-                center_pixel = single_level_pixel_index[...,j] # [1,]
-                neighbor_pixels = single_level_neigh_index[...,j] # [8,]
-                
-                nside = 2**i
-                npix = hp.nside2npix(nside)
-                healpix_map = np.zeros(npix)
-                
-                healpix_map[center_pixel.detach().cpu().numpy()] = 1
-                healpix_map[neighbor_pixels.detach().cpu().numpy()] = 2
-                
-                lat = x[j][...,0]
-                lon = x[j][...,1]
-                
-                cmap = plt.cm.viridis
-                cmap.set_under('white') # bg color
-                cmap.set_over('blue') # color for neighbors
-                cmap.set_bad('red') # color for center
-                hp.mollview(healpix_map, min=0.9, max=2.1, cmap=cmap, title=f"Healpix Pixels Visualization_{lat},{lon}")
-                plt.savefig(f'level_{i}_pix_{j}.png')
-                if j==3: break
-            
-            if i==3: break
-                # plt.show()
-                
-                
-        
-    
     def forward(self, x):
         '''
         x : [batch, 2]
             x[...,0] : lat : [-90, 90]
             x[...,1] : lon : [0, 360)
         '''
-        device = x.device
-        
-        all_level_pixel_index = self.get_all_level_pixel_index(x, device) # [n_levels, batch]
-        # all_level_neigh_index = self.get_all_level_neigh_index(all_level_pixel_index, device) # [n_levels, 8, batch] # 대부분은 맞긴한데... 맞는듯 틀리는듯..
-        # all_level_pixel_latlon = self.get_all_level_pixel_latlon(all_level_pixel_index, device) # [n_levels, batch, 2]
-        
-        # Adding  hp.get_interp_val here
         lat = x[...,0].detach().cpu().numpy()
         lon = x[...,1].detach().cpu().numpy()
-        all_level_rep = []
+        all_level_reps = []
         for i in range(self.n_levels):
-            npix = hp.nside2npix(2**i)
-            m = self.params[i][:npix,:].detach().cpu().numpy() # [1, npix, self.F] # map of specific level with corresponding npix, self.F size            
-            # lat = all_level_pixel_latlon[i][...,0].detach().cpu().numpy()
-            # lon = all_level_pixel_latlon[i][...,1].detach().cpu().numpy()
-            for j in range(self.F):
-                one_m = m[...,j]
-                # https://github.com/healpy/healpy/issues/602 (theta = lon, phi = lat)
-                interp_rep = torch.tensor(hp.get_interp_val(one_m, lon, lat, lonlat=True)) # [batch]
-                all_level_rep.append(interp_rep)
-        all_level_rep = torch.stack(all_level_rep).T.to(x.device)
-        
-        # all_level_rep = []
-        # for i in range(self.n_levels):
-        #     npix = hp.nside2npix(2**i)
-        #     m = self.params[i][:npix, :].detach().cpu().numpy()  # [1, npix, self.F]
-        #     lat = all_level_pixel_latlon[i][..., 0].detach().cpu().numpy() # [level, batch, 2] -> [1, batch, 1]
-        #     lon = all_level_pixel_latlon[i][..., 1].detach().cpu().numpy() # [level, batch, 2] -> [1, batch, 1]
-            
-        #     # Now m is [npix, self.F], you can call get_interp_val for all j at once if it supports or by using numpy vectorization
-        #     interp_reps = [torch.tensor(hp.get_interp_val(m[:, j], lat, lon), device=x.device) for j in range(self.F)]
-        #     all_level_rep.extend(interp_reps)  # Add all at once
+            center_pix = hp.ang2pix(nside=2**i, theta=lon, phi=lat, lonlat=True) # [batch]
+            center_pix = torch.tensor(center_pix, device=x.device)
+            neigh_pix, neigh_weight = hp.get_interp_weights(nside=2**i, theta = lon, phi = lat, lonlat=True) #[4, batch], [4, batch]
+            neigh_pix = torch.tensor(neigh_pix, device=x.device).flatten() # [4*batch]
+            neigh_weight = torch.tensor(neigh_weight, device=x.device)
 
-        # all_level_rep = torch.stack(all_level_rep).to(x.device).T                         
+            center_reps = torch.gather(self.params[i], 0, center_pix.unsqueeze(-1).expand(-1, self.F)) # [batch, 2] [2048, F]
+            neigh_reps = torch.gather(self.params[i], 0, neigh_pix.unsqueeze(-1).expand(-1, self.F)) # [batch*4, 2] [2048, F]
+            neigh_reps = neigh_reps.reshape(4, x.shape[0], self.F) # [batch, 4, 2]
+            neigh_weight = neigh_weight.unsqueeze(-1).repeat(1,1,self.F) # [batch, 4] ->[batch, 4, 2]
             
-            
-        # all_level_rep = self.get_all_level_rep(all_level_pixel_index, all_level_neigh_index, all_level_pixel_latlon, device) # [n_levels, batch, self.F]
+            neigh_reps = torch.multiply(neigh_reps, neigh_weight) # [batch, 4, 2]
+            neigh_reps = neigh_reps.sum(dim=0) # [batch, 2]
+            out_reps = torch.add(center_reps, neigh_reps) # [batch, 2]
+            all_level_reps.append(out_reps)
+        all_level_reps = torch.stack(all_level_reps, dim=-1) # [512, 2, 11]
+        all_level_reps = all_level_reps.reshape(x.shape[0],-1) # [512, 22]
 
-        return all_level_rep.float()
+        return all_level_reps.float()
     
 
 class NGP_INTERP_ENC(nn.Module):

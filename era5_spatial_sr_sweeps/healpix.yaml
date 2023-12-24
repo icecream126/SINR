@@ -1,18 +1,17 @@
 program: src/main_superres.py
-name: swinr
-entity: postech_sinr
+entity: icecream126
 method: grid
 parameters:
   n_levels:
-    values: [10]
+    values: [11]
   n_features_per_level:
-    values: [3]
-  lr:
-    values: [0.0001]
-  hidden_layers:
     values: [2]
+  lr:
+    values: [0.0001, 0.0003]
+  hidden_layers:
+    values: [2,4,6]
   hidden_dim:
-    values: [64]
+    values: [64, 128, 512]
   batch_size:
     values: [1024]
   dataset_dir:
@@ -20,14 +19,13 @@ parameters:
   downscale_factor:
     values: [2]
   seed:
-    values: [0]
+    values: [0, 1, 2]
 command:
   - python
   - ${program}
   - ${args}
-  - --great_circle=True
   - --task=sr
-  - --project_name=231204_sr
+  - --project_name=231224_sr
   - --model=healpix
   - --skip
   - --max_epoch=500 # depend on dataset
