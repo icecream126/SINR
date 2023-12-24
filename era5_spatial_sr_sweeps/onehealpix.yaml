@@ -4,15 +4,15 @@ entity: postech_sinr
 method: grid
 parameters:
   n_levels:
-    values: [10]
+    values: [7]
   n_features_per_level:
     values: [3]
   lr:
     values: [0.0001]
   hidden_layers:
-    values: [2]
+    values: [2,3,4]
   hidden_dim:
-    values: [64]
+    values: [64, 128, 256]
   batch_size:
     values: [1024]
   dataset_dir:
@@ -28,7 +28,7 @@ command:
   - --great_circle=True
   - --task=sr
   - --project_name=231204_sr
-  - --model=healpix
+  - --model=onehealpix
   - --skip
   - --max_epoch=500 # depend on dataset
   - --input_dim=2

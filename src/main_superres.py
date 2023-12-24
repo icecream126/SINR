@@ -40,6 +40,7 @@ from models import (
     swinr_pe,
     sphere_ngp_interp,
     rotatehealpix,
+    onehealpix,
 )
 
 model_dict = {
@@ -64,6 +65,7 @@ model_dict = {
     "sphere_ngp_interp": sphere_ngp_interp,
     "healpix": healpix,
     "rotatehealpix":rotatehealpix,
+    "onehealpix":onehealpix,
 }
 
 if __name__ == "__main__":
@@ -192,14 +194,6 @@ if __name__ == "__main__":
         shuffle=True,
         num_workers=args.num_workers,
     )
-
-    # val_loader = DataLoader(
-    #     all_dataset,
-    #     batch_size=len(all_dataset)//4,
-    #     shuffle=True,
-    #     num_workers=args.num_workers,
-    # )
-
     # Model
     model = model_dict[args.model].INR(all_dataset=all_dataset, **vars(args))
     
