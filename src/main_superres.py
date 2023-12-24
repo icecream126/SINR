@@ -111,7 +111,7 @@ if __name__ == "__main__":
     # GINR argument
     parser.add_argument("--n_fourier", type=int, default=34)
 
-    parser.add_argument("--project_name", type=str, default="fair_superres")
+    parser.add_argument("--project_name", type=str, default="test")
     parser.add_argument("--seed", type=int, default=0)
 
     parser.add_argument("--plot", default=False, action="store_true")
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         project=args.project_name,
         log_model="all",
         save_dir="./" + args.project_name,
-        # mode="disabled",
+        mode="disabled",
     )
 
     # Dataset

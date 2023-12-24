@@ -180,17 +180,7 @@ class HealEncoding(nn.Module):
         
         all_level_neigh_reps = torch.gather(self.params, 1, all_level_neigh_index.unsqueeze(-1).expand(-1, -1, self.params.size(-1))) # [4, 4096, 2] [level, 8*batch, F]
         all_level_my_reps = torch.gather(self.params, 1, all_level_pixel_index.unsqueeze(-1).expand(-1, -1, self.params.size(-1))) # [4, 512, 2]   [level, batch, F]     
-        all_level_neigh_latlon = self.get_all_level_pixel_latlon(all_level_neigh_index, device) # [n_levels, 8*batch, 2]        
-        
-        # Adding  hp.get_interp_val here
-        # for i in range(self.n_levels):
-        #     npix = hp.nside2npix(2**i)
-        #     level_m = self.params[i][:npix,:] # [1, npix, self.F] # map of specific level with corresponding npix, self.F size
-        #     # for j in range(self.F):
-        #     #     level_feature_m = level_m[j] # [1, npix, 1] # map of speicific level, self.F with corresponding npix size
-            
-        #     hp.get_interp_val(level_m, )
-                
+        all_level_neigh_latlon = self.get_all_level_pixel_latlon(all_level_neigh_index, device) # [n_levels, 8*batch, 2]                        
         
         out = self.interpolate(all_level_my_reps, all_level_neigh_reps, all_level_pixel_latlon, all_level_neigh_latlon, all_level_neigh_mask)
         
@@ -246,10 +236,40 @@ class HealEncoding(nn.Module):
         device = x.device
         
         all_level_pixel_index = self.get_all_level_pixel_index(x, device) # [n_levels, batch]
-        all_level_neigh_index = self.get_all_level_neigh_index(all_level_pixel_index, device) # [n_levels, 8, batch] # 대부분은 맞긴한데... 맞는듯 틀리는듯..
-        all_level_pixel_latlon = self.get_all_level_pixel_latlon(all_level_pixel_index, device) # [n_levels, batch, 2]
+        # all_level_neigh_index = self.get_all_level_neigh_index(all_level_pixel_index, device) # [n_levels, 8, batch] # 대부분은 맞긴한데... 맞는듯 틀리는듯..
+        # all_level_pixel_latlon = self.get_all_level_pixel_latlon(all_level_pixel_index, device) # [n_levels, batch, 2]
+        
+        # Adding  hp.get_interp_val here
+        lat = x[...,0].detach().cpu().numpy()
+        lon = x[...,1].detach().cpu().numpy()
+        all_level_rep = []
+        for i in range(self.n_levels):
+            npix = hp.nside2npix(2**i)
+            m = self.params[i][:npix,:].detach().cpu().numpy() # [1, npix, self.F] # map of specific level with corresponding npix, self.F size            
+            # lat = all_level_pixel_latlon[i][...,0].detach().cpu().numpy()
+            # lon = all_level_pixel_latlon[i][...,1].detach().cpu().numpy()
+            for j in range(self.F):
+                one_m = m[...,j]
+                # https://github.com/healpy/healpy/issues/602 (theta = lon, phi = lat)
+                interp_rep = torch.tensor(hp.get_interp_val(one_m, lon, lat, lonlat=True)) # [batch]
+                all_level_rep.append(interp_rep)
+        all_level_rep = torch.stack(all_level_rep).T.to(x.device)
+        
+        # all_level_rep = []
+        # for i in range(self.n_levels):
+        #     npix = hp.nside2npix(2**i)
+        #     m = self.params[i][:npix, :].detach().cpu().numpy()  # [1, npix, self.F]
+        #     lat = all_level_pixel_latlon[i][..., 0].detach().cpu().numpy() # [level, batch, 2] -> [1, batch, 1]
+        #     lon = all_level_pixel_latlon[i][..., 1].detach().cpu().numpy() # [level, batch, 2] -> [1, batch, 1]
+            
+        #     # Now m is [npix, self.F], you can call get_interp_val for all j at once if it supports or by using numpy vectorization
+        #     interp_reps = [torch.tensor(hp.get_interp_val(m[:, j], lat, lon), device=x.device) for j in range(self.F)]
+        #     all_level_rep.extend(interp_reps)  # Add all at once
 
-        all_level_rep = self.get_all_level_rep(all_level_pixel_index, all_level_neigh_index, all_level_pixel_latlon, device) # [n_levels, batch, self.F]
+        # all_level_rep = torch.stack(all_level_rep).to(x.device).T                         
+            
+            
+        # all_level_rep = self.get_all_level_rep(all_level_pixel_index, all_level_neigh_index, all_level_pixel_latlon, device) # [n_levels, batch, self.F]
 
         return all_level_rep.float()
     
