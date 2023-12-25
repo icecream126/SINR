@@ -41,21 +41,21 @@ class HealEncoding(nn.Module):
         lon = x[...,1].detach().cpu().numpy()
         all_level_reps = []
         for i in range(self.n_levels):
-            center_pix = hp.ang2pix(nside=2**i, theta=lon, phi=lat, lonlat=True) # [batch]
-            center_pix = torch.tensor(center_pix, device=x.device)
+            # center_pix = hp.ang2pix(nside=2**i, theta=lon, phi=lat, lonlat=True) # [batch]
+            # center_pix = torch.tensor(center_pix, device=x.device)
             neigh_pix, neigh_weight = hp.get_interp_weights(nside=2**i, theta = lon, phi = lat, lonlat=True) #[4, batch], [4, batch]
             neigh_pix = torch.tensor(neigh_pix, device=x.device).flatten() # [4*batch]
             neigh_weight = torch.tensor(neigh_weight, device=x.device)
 
-            center_reps = torch.gather(self.params[i], 0, center_pix.unsqueeze(-1).expand(-1, self.F)) # [batch, 2] [2048, F]
+            # center_reps = torch.gather(self.params[i], 0, center_pix.unsqueeze(-1).expand(-1, self.F)) # [batch, 2] [2048, F]
             neigh_reps = torch.gather(self.params[i], 0, neigh_pix.unsqueeze(-1).expand(-1, self.F)) # [batch*4, 2] [2048, F]
             neigh_reps = neigh_reps.reshape(4, x.shape[0], self.F) # [batch, 4, 2]
             neigh_weight = neigh_weight.unsqueeze(-1).repeat(1,1,self.F) # [batch, 4] ->[batch, 4, 2]
             
             neigh_reps = torch.multiply(neigh_reps, neigh_weight) # [batch, 4, 2]
             neigh_reps = neigh_reps.sum(dim=0) # [batch, 2]
-            out_reps = torch.add(center_reps, neigh_reps) # [batch, 2]
-            all_level_reps.append(out_reps)
+            # out_reps = torch.add(center_reps, neigh_reps) # [batch, 2]
+            all_level_reps.append(neigh_reps)
         all_level_reps = torch.stack(all_level_reps, dim=-1) # [512, 2, 11]
         all_level_reps = all_level_reps.reshape(x.shape[0],-1) # [512, 22]
 

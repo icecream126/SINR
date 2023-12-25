@@ -69,8 +69,8 @@ if __name__ == "__main__":
     parser.add_argument("--downscale_factor", type=int, default=2)
 
     # Model argument
-    parser.add_argument("--hidden_dim", type=int, default=512)
-    parser.add_argument("--hidden_layers", type=int, default=6)
+    parser.add_argument("--hidden_dim", type=int, default=256)
+    parser.add_argument("--hidden_layers", type=int, default=4)
     parser.add_argument("--skip", default=False, action="store_true")
     parser.add_argument("--omega", type=float, default=1.0)
     parser.add_argument("--sigma", type=float, default=1.0)

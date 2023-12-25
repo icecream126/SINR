@@ -2,13 +2,13 @@ program: src/main_superres.py
 method: grid
 parameters:
   gauss_scale:
-    values: [6]
+    values: [1, 10, 40]
   lr:
-    values: [0.0001, 0.0003]
+    values: [0.0001]
   hidden_layers:
-    values: [6]
+    values: [4]
   hidden_dim:
-    values: [512]
+    values: [256]
   batch_size:
     values: [1024]
   dataset_dir:
@@ -16,7 +16,7 @@ parameters:
   downscale_factor:
     values: [2]
   seed:
-    values: [0, 1, 2]
+    values: [0]
 command:
   - python
   - ${program}
