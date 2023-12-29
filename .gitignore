@@ -1,4 +1,7 @@
 .vscode
+check_data.py
+train_ginr_temp.sh
+train_ginr.sh
 231203.sh
 geodesic.py
 ablation.py
