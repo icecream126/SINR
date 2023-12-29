@@ -1,5 +1,5 @@
 # Dataset
-Run the following code to download datasets.
+Run the following codes to download datasets.
 ```
 # Resolution 0.25
 python src/datasets/generation/era5.py --variable=geopotential --mode=single --level_type=pressure --years=2000 --resolution=0.25 --month=01 --day=01 --time=00:00 --pressure_level=500 --custom_fn=data.nc --output_dir=dataset/spatial_0_25/era5_geopotential
@@ -28,6 +28,7 @@ python src/datasets/generation/era5.py --variable=temperature --mode=single --le
 * **seed** (int) ```[0,1,2]```
 * **model** (str) ```[healpix, gauss, relu, gauss, shinr, wire, siren]```
 
+### Example script
 ```
 # Model : HEALPix
 # Dataset : Geopotential
