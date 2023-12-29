@@ -1,5 +1,17 @@
 .vscode
 231203.sh
+geodesic.py
+ablation.py
+sweep.sh
+sweep_all.sh
+hm_healpy.yaml
+gather.ipynb
+shiren.yaml
+healpix.py
+test_interp.py
+train_denoising.sh
+visualize.ipynb
+visualize.py
 von_mises_output/
 output/
 .idea
