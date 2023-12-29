@@ -22,6 +22,7 @@ python src/datasets/generation/era5.py --variable=temperature --mode=single --le
 
 # How to run
 ## Spatial SR
+### Arguments
 * **dataset_dir** (str) ```[dataset/spatial_0_25/era5_geopotential, dataset/spatial_0_25/era5_temperature]```
 * **downscale_factor** (int) ```[2,4]```
 * **seed** (int) ```[0,1,2]```
