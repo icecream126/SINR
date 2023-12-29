@@ -3,7 +3,7 @@ entity: icecream126
 method: grid
 parameters:
   n_levels:
-    values: [4,6,8,10]
+    values: [8,9,10]
   n_features_per_level:
     values: [2]
   lr:
@@ -15,17 +15,17 @@ parameters:
   batch_size:
     values: [1024]
   dataset_dir:
-    values: ['dataset/spatial_0_25/era5_wind']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_temperature']
   downscale_factor:
-    values: [2]
+    values: [4]
   seed:
-    values: [0]
+    values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
   - --task=sr
-  - --project_name=231224_sr
+  - --project_name=231225_sr
   - --model=healpix
   - --skip
   - --max_epoch=500 # depend on dataset

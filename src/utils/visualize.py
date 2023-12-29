@@ -421,6 +421,9 @@ def visualize_era5(input_dim, dtype, dataset, best_model, filename, logger, args
         elif "cloud" in args.dataset_dir:
             ground_truth = "cc"
             colormap = "PuBu_r"
+        elif "temperature" in args.dataset_dir:
+            ground_truth = "t"
+            colormap = "PuRd_r"
 
         # FIXME: Implement saving raw data
 

@@ -16,6 +16,7 @@ LAT_MAX = 90.0
 LON_MAX = 360.0
 
 
+
 class HealEncoding(nn.Module):
     def __init__(self, n_levels, F, great_circle):
         super().__init__()
@@ -60,7 +61,6 @@ class HealEncoding(nn.Module):
         all_level_reps = all_level_reps.reshape(x.shape[0],-1) # [512, 22]
 
         return all_level_reps.float()
-    
 
 class NGP_INTERP_ENC(nn.Module):
     def __init__(

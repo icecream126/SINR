@@ -2,7 +2,7 @@ program: src/main_superres.py
 method: grid
 parameters:
   gauss_scale:
-    values: [1, 10, 40]
+    values: [2, 5, 10]
   lr:
     values: [0.0001]
   hidden_layers:
@@ -12,11 +12,11 @@ parameters:
   batch_size:
     values: [1024]
   dataset_dir:
-    values: ['dataset/spatial_0_25/era5_wind']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_temperature']
   downscale_factor:
-    values: [2]
+    values: [4]
   seed:
-    values: [0]
+    values: [0,1,2]
 command:
   - python
   - ${program}
