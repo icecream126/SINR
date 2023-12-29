@@ -1,4 +1,5 @@
 .vscode
+requirements.txt
 check_data.py
 train_ginr_temp.sh
 train_ginr.sh
