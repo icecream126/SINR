@@ -1,26 +1,26 @@
 program: src/main_superres.py
 name: wire
-entity: postech_sinr
 method: grid
 parameters:
   omega:
-    values: [0.1, 1, 10]
+    values: [0.1, 1]
   sigma:
-    values: [0.1, 1, 10]
+    values: [0.1, 1]
   lr:
     values: [0.0001]
-  hidden_dim:
-    values: [512]
+  downscale_factor:
+    values: [4]
   batch_size:
-    values: [128]
+    values: [1024]
   dataset_dir:
-    values: ['dataset/spatial_1_00/era5_geopotential','dataset/spatial_1_00/era5_wind','dataset/spatial_2_8125/era5_cloud','dataset/spatial_2_8125/era5_geopotential','dataset/spatial_2_8125/era5_wind','dataset/spatial_2_8125/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_temperature']
   seed:
-    values: [1,2]
+    values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
+  - --input_dim=3
   - --model=wire
   - --skip
   - --project_name=era5_spatial

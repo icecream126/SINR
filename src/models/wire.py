@@ -34,7 +34,7 @@ class GaborLayer(nn.Module):
 class INR(MODEL):
     def __init__(
         self,
-        input_dim,
+        # input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
@@ -51,7 +51,7 @@ class INR(MODEL):
         self.hidden_layers = hidden_layers
 
         self.nonlin = GaborLayer
-
+        input_dim=3
         self.net = nn.ModuleList()
         self.net.append(self.nonlin(input_dim, hidden_dim, omega=omega, sigma=sigma))
 

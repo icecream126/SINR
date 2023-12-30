@@ -32,6 +32,7 @@ class SineLayer(nn.Module):
 
         self.omega = omega
         self.is_first = is_first
+        # input_dim=3
 
         self.input_dim = input_dim
         self.linear = nn.Linear(input_dim, output_dim)
@@ -52,7 +53,7 @@ class SineLayer(nn.Module):
 class INR(MODEL):
     def __init__(
         self,
-        input_dim,
+        # input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
@@ -66,6 +67,7 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
+        input_dim=3
 
         self.nonlin = SineLayer
 

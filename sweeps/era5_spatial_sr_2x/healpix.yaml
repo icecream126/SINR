@@ -1,0 +1,36 @@
+program: src/main_superres.py
+entity: icecream126
+method: grid
+parameters:
+  n_levels:
+    values: [4,5,6,7]
+  n_features_per_level:
+    values: [2]
+  lr:
+    values: [0.0001]
+  hidden_layers:
+    values: [4]
+  hidden_dim:
+    values: [256]
+  batch_size:
+    values: [1024]
+  dataset_dir:
+    values: ['dataset/spatial_0_25/era5_100m_u_component_of_wind']
+  downscale_factor:
+    values: [4]
+  seed:
+    values: [0,1,2]
+command:
+  - python
+  - ${program}
+  - ${args}
+  - --task=sr
+  - --project_name=231225_sr
+  - --model=healpix
+  - --skip
+  - --max_epoch=500 # depend on dataset
+  - --input_dim=2
+  # - --panorama_idx=0
+  - --normalize
+  # - --batch_size=1 # only for temporal
+  - --plot # only for spatial

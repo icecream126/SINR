@@ -415,12 +415,18 @@ def visualize_era5(input_dim, dtype, dataset, best_model, filename, logger, args
         if "geopotential" in args.dataset_dir:
             ground_truth = "z"
             colormap = "YlOrBr_r"
-        elif "wind" in args.dataset_dir:
-            ground_truth = "u"
+        elif "high_cloud" in args.dataset_dir:
+            ground_truth = "hcc"
+            colormap = "YlGn_r"
+        elif "100m" in args.dataset_dir:
+            ground_truth = "u100"
             colormap = "Greys_r"
         elif "cloud" in args.dataset_dir:
             ground_truth = "cc"
             colormap = "PuBu_r"
+        elif "sea_temperature" in args.dataset_dir:
+            ground_truth = "sst"
+            colormap = "GnBu_r"
         elif "temperature" in args.dataset_dir:
             ground_truth = "t"
             colormap = "PuRd_r"

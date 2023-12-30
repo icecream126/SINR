@@ -88,6 +88,7 @@ if __name__ == "__main__":
     parser.add_argument("--beta", default=1.0, type=float)
     parser.add_argument("--mapping_size", default=256, type=int)
     parser.add_argument("--n_levels", default=16, type=int)
+    parser.add_argument("--levels", default=4, type=int)
     parser.add_argument("--n_features_per_level", default=2, type=int)
     parser.add_argument("--resolution", default=2, type=int)
     parser.add_argument("--T", default=14, type=int)

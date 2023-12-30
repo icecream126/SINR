@@ -1,26 +1,29 @@
 program: src/main_superres.py
-name: shinr
-entity: postech_sinr
+name: ngp_2d
 method: grid
 parameters:
-  levels:
-    values: [1,2,3,4,5]
+  n_levels:
+    values: [20, 16]
+  T:
+    values: [14, 16]
   lr:
     values: [0.0001]
-  hidden_dim:
-    values: [512]
   batch_size:
-    values: [4096]
+    values: [1024]
   dataset_dir:
-    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_temperature']
+  downscale_factor:
+    values: [4]
   seed:
-    values: [1,2]
+    values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --project_name=era5_spatial
-  - --model=shinr
+  - --task=sr
+  - --project_name=231118_sr
+  - --model=ngp_interp
+  - --input_dim=2
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=0

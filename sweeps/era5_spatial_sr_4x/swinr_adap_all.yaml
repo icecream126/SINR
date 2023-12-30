@@ -4,26 +4,25 @@ entity: postech_sinr
 method: grid
 parameters:
   omega_0:
-    values: [10.0, 5.0, 1.0, 30.0]
+    values: [10, 30, 50]
   sigma_0:
-    values: [10.0, 1.0, 0.1, 15.0]
+    values: [0.1, 1, 10]
   lr:
     values: [0.0001]
   hidden_dim:
     values: [512]
   batch_size:
-    values: [128]
+    values: [4096]
   dataset_dir:
-    values: ['dataset/spatial_1_00/era5_geopotential','dataset/spatial_1_00/era5_wind','dataset/spatial_1_00/era5_cloud','dataset/spatial_2_8125/era5_cloud','dataset/spatial_2_8125/era5_geopotential','dataset/spatial_2_8125/era5_wind','dataset/spatial_2_8125/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
   seed:
     values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --task=reg
-  - --project_name=231111_reg
-  - --model=swinr_learn_all
+  - --project_name=re_spatial
+  - --model=swinr_adap_all
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=7

@@ -3,16 +3,20 @@ name: swinr
 entity: postech_sinr
 method: grid
 parameters:
-  level:
-    values: [1,2,3,4,5]
+  n_levels:
+    values: [12, 16, 20]
+  T:
+    values: [14, 10, 12]
   lr:
     values: [0.0001]
   hidden_dim:
     values: [512]
   batch_size:
-    values: [128]
+    values: [1024]
   dataset_dir:
-    values: ['dataset/spatial_1_00/era5_geopotential','dataset/spatial_1_00/era5_wind','dataset/spatial_1_00/era5_cloud','dataset/spatial_2_8125/era5_cloud','dataset/spatial_2_8125/era5_geopotential','dataset/spatial_2_8125/era5_wind','dataset/spatial_2_8125/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud','dataset/spatial_0_25/era5_geopotential']
+  downscale_factor:
+    values: [2,4]
   seed:
     values: [0,1,2]
 command:
@@ -20,8 +24,9 @@ command:
   - ${program}
   - ${args}
   - --task=sr
-  - --project_name=our_spatial
-  - --model=coolchic_interp
+  - --project_name=231118_sr
+  - --model=ngp_interp
+  - --input_dim=3
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=0

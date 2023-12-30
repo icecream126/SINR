@@ -28,7 +28,6 @@ class INR(MODEL):
     def __init__(
         self,
         output_dim,
-        # input_dim,
         hidden_dim,
         hidden_layers,
         time,

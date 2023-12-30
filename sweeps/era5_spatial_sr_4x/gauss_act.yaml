@@ -3,25 +3,24 @@ name: swinr
 entity: postech_sinr
 method: grid
 parameters:
-  level:
-    values: [1,2,3,4,5]
+  gauss_scale:
+    values: [0.1, 0.5, 1, 10, 30]
   lr:
     values: [0.0001]
   hidden_dim:
     values: [512]
   batch_size:
-    values: [128]
+    values: [4096]
   dataset_dir:
-    values: ['dataset/spatial_1_00/era5_geopotential','dataset/spatial_1_00/era5_wind','dataset/spatial_1_00/era5_cloud','dataset/spatial_2_8125/era5_cloud','dataset/spatial_2_8125/era5_geopotential','dataset/spatial_2_8125/era5_wind','dataset/spatial_2_8125/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
   seed:
     values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --task=sr
-  - --project_name=our_spatial
-  - --model=ngp_interp
+  - --project_name=re_spatial
+  - --model=gauss_act
   - --skip
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=0

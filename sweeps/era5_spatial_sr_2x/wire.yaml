@@ -1,28 +1,29 @@
 program: src/main_superres.py
-name: swinr
-entity: postech_sinr
+name: wire
 method: grid
 parameters:
-  level:
-    values: [1,2,3,4,5]
+  omega:
+    values: [0.1, 1]
+  sigma:
+    values: [0.1, 1]
   lr:
     values: [0.0001]
-  hidden_dim:
-    values: [512]
+  downscale_factor:
+    values: [2]
   batch_size:
     values: [4096]
   dataset_dir:
-    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_wind','dataset/spatial_0_25/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_temperature']
   seed:
     values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
-  - --task=sr
-  - --project_name=our_spatial
-  - --model=coolchic_interp
+  - --input_dim=3
+  - --model=wire
   - --skip
+  - --project_name=era5_spatial
   - --max_epoch=500 # depend on dataset
   # - --panorama_idx=0
   - --normalize

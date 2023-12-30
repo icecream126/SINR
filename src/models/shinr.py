@@ -50,7 +50,7 @@ class SphericalHarmonicsLayer(nn.Module):
 class INR(MODEL):
     def __init__(
         self,
-        input_dim,
+        # input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
@@ -66,7 +66,7 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
-
+        input_dim=3
         self.first_nonlin = SphericalHarmonicsLayer
 
         self.net = nn.ModuleList()
@@ -96,7 +96,7 @@ class INR(MODEL):
 class DENOISING_INR(DENOISING_MODEL):
     def __init__(
         self,
-        input_dim,
+        # input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
@@ -108,7 +108,7 @@ class DENOISING_INR(DENOISING_MODEL):
         **kwargs,
     ):
         super().__init__(**kwargs)
-
+        input_dim=3
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers

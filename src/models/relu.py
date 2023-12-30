@@ -25,7 +25,7 @@ class ReLULayer(nn.Module):
 class INR(MODEL):
     def __init__(
         self,
-        input_dim,
+        # input_dim,
         output_dim,
         hidden_dim,
         hidden_layers,
@@ -39,6 +39,7 @@ class INR(MODEL):
         self.time = time
         self.skip = skip
         self.hidden_layers = hidden_layers
+        input_dim=3
         self.posenc = PosEncoding(in_features=input_dim, num_frequencies=posenc_freq)
         self.posenc_dim = 2 * posenc_freq * input_dim + input_dim
 

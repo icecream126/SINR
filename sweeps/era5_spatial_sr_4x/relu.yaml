@@ -1,31 +1,29 @@
 program: src/main_superres.py
 name: swinr
-entity: postech_sinr
 method: grid
 parameters:
-  omega:
+  posenc_freq:
     values: [5,7,10]
-  sigma:
-    values: [0.1, 1, 10]
   lr:
     values: [0.0001]
-  hidden_dim:
-    values: [512]
   batch_size:
-    values: [128]
+    values: [1024]
+  downscale_factor:
+    values: [4]
   dataset_dir:
-    values: ['dataset/spatial_1_00/era5_cloud']
+    values: ['dataset/spatial_0_25/era5_geopotential','dataset/spatial_0_25/era5_temperature']
   seed:
-    values: [1,2]
+    values: [0,1,2]
 command:
   - python
   - ${program}
   - ${args}
+  - --input_dim=3
   - --project_name=era5_spatial
-  - --model=swinr
+  - --model=relu
   - --skip
   - --max_epoch=500 # depend on dataset
-  # - --panorama_idx=7
+  # - --panorama_idx=0
   - --normalize
   # - --batch_size=1 # only for temporal
   - --plot # only for spatial
