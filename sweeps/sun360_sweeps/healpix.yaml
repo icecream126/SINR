@@ -3,25 +3,22 @@ name: relu
 entity: postech_sinr
 method: grid
 parameters:
-  n_levels:
-    values: [8, 9, 10, 11]
-  n_features_per_level:
-    values: [2,3,4]
   downscale_factor:
-    values: [2, 4]
-  lr:
-    values: [0.0003]
-  hidden_dim:
-    values: [512]
+    values: [2,4]
   panorama_idx:
-    values: [6,0]
+    values: [0,1,5,6]
+  n_levels:
+    values: [8, 9, 10]
+  n_features_per_level:
+    values: [2]
+  lr:
+    values: [0.0001]
   seed:
-    values: [0, 1, 2]
+    values: [0]
 command:
   - python
   - ${program}
   - ${args}
-  - --great_circle=True
   - --dataset_dir=dataset/sun360
   - --project_name=231204_sr
   - --model=healpix

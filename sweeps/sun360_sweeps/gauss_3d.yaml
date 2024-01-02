@@ -3,18 +3,16 @@ name: relu
 entity: postech_sinr
 method: grid
 parameters:
-  gauss_scale:
-    values: [2,4,6,8,10]
-  lr:
-    values: [0.0003]
-  hidden_dim:
-    values: [512]
-  panorama_idx:
-    values: [0,1,6,7]
   downscale_factor:
     values: [2,4]
+  panorama_idx:
+    values: [0,1,5,6]
+  gauss_scale:
+    values: [2,5,10]
+  lr:
+    values: [0.0001]
   seed:
-    values: [0, 1, 2]
+    values: [0]
 command:
   - python
   - ${program}

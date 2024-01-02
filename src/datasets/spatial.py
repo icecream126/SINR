@@ -6,10 +6,11 @@ import numpy as np
 import netCDF4 as nc
 from PIL import Image
 from torch.utils.data import Dataset
-
-from utils.utils import to_cartesian, StandardScalerTorch, MinMaxScalerTorch
+import healpy as hp
+import matplotlib.pyplot as plt
+from utils.utils import gethealpixmap, img2healpix_planar, to_cartesian, StandardScalerTorch, MinMaxScalerTorch
 import cv2
-
+from mhealpy import HealpixMap
 
 class Dataset(Dataset):
     def __init__(
@@ -129,9 +130,10 @@ class Dataset(Dataset):
                         target = f.variables[variable][0]
 
             target = torch.from_numpy(target)
-            lat = torch.from_numpy(lat)
+            lat = torch.from_numpy(lat) # Adjust into colatitude range (0 : North Pole, 90 : Equator, 180 : South Pole)
             lon = torch.from_numpy(lon)
-
+            
+            
         else:
             data = np.load(self.filename)
 
@@ -152,6 +154,7 @@ class Dataset(Dataset):
             lat = torch.linspace(90, -90, H)
             lon = torch.linspace(0, 360, W)
 
+            
         # if self.model!='learnable' and self.model!='coolchic_interp' and self.model!='ngp_interp':
         if self.input_dim == 3:
             lat = torch.deg2rad(lat)  # 512 (min : -1.57, max : 1.57)
@@ -166,10 +169,15 @@ class Dataset(Dataset):
         target_shape = target.shape  # [171, 342, 3]
 
         lat, lon = torch.meshgrid(lat, lon)  # [171, 342] for each
-
+            
         lat = lat.flatten()  # [58482]
         lon = lon.flatten()  # ""
         target = target.reshape(-1, self.output_dim)  # [58482, 3]
+
+        # HEALPix isn't for image
+        # TODO : Finish multi-resolution map
+        # if "360" not in self.dataset_dir:
+        #     hp_map, m_hp_map = gethealpixmap(data = np.array(target.squeeze(-1)), nside = 64, theta = np.array(torch.deg2rad(lat)), phi = np.array(torch.deg2rad(lon)))
 
         if self.zscore_normalize or self.normalize:
             self.scaler.fit(target)

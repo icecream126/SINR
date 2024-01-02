@@ -7,7 +7,112 @@ import math
 from torch import nn
 import cv2
 from math import sin, cos, sqrt, atan2, radians
+import healpy as hp
+from scipy.interpolate import griddata
+import matplotlib.pyplot as plt
+from mhealpy import HealpixMap
 
+
+# https://gist.github.com/zonca/680c68c3d60697eb0cb669cf1b41c324
+def gethealpixmap(data, nside, theta, phi):
+    '''
+    data (np.array) : flattened target value 
+    nside (int) : 2^k
+    theta (np.array) : flattened latitude (0~pi)
+    phi (np.array) : flattened longitude (0~2*pi)
+    '''
+    pixel_indices = hp.ang2pix(nside, theta, phi)
+    
+    # Single resolution map
+    m = np.zeros(hp.nside2npix(nside))
+    m[pixel_indices] = data
+    hp.mollview(m, title="My HEALPix Map", cmap='viridis')
+    plt.grid(True)  # Adds a grid to the map
+    plt.savefig("healpix_map.png", dpi=300)  
+    plt.close()
+    
+    # Multi resolution map    
+    mm = HealpixMap(nside = nside)
+    mm[pixel_indices] += data
+    mm = mm.to_moc(max_value = max(mm))
+    
+    # TODO : Visualize mm
+    
+    return m, mm
+    
+    
+
+
+# https://github.com/ai4cmb/NNhealpix/blob/master/nnhealpix/projections/__init__.py
+def img2healpix_planar(img, nside, thetac, phic, delta_theta, delta_phi, rot=None):
+    """Project a 2D image on healpix map
+
+    Args:
+        * img (array): image to project. It must have shape ``(#img,
+          M, N)``
+        * nside (int): ``NSIDE`` parameter for the output map.
+        * thetac, phic (float): coordinates (in degrees) where to
+          project the center of the image on the healpix map. They
+          must follow the HEALPix angle convention:
+            - ``0 <= thetac <= 180``, with 0 being the N and 180 the S Pole
+            - ``0 <= phic <= 360``, with 0 being at the center of the
+              map. It increases moving towards W
+        * delta_theta, delta_phi (float): angular size of the projected image
+        * rot: not implemented yet!
+
+    Returns:
+        The HEALPix map containing the projected image.
+    """
+    # img = img.unsqueeze(-1)
+    imgf = np.flip(img, axis=2)
+    imgf = np.array(imgf)
+
+    data = imgf.reshape(img.shape[0], img.shape[1] * img.shape[2])
+    xsize = img.shape[1]
+    ysize = img.shape[2]
+    theta_min = thetac - delta_theta / 2.0
+    theta_max = thetac + delta_theta / 2.0
+    phi_max = phic + delta_phi / 2.0
+    phi_min = phic - delta_phi / 2.0
+    theta_min = np.radians(theta_min)
+    theta_max = np.radians(theta_max)
+    phi_min = np.radians(phi_min)
+    phi_max = np.radians(phi_max)
+    img_theta_temp = np.linspace(theta_min, theta_max, ysize)
+    img_phi_temp = np.linspace(phi_min, phi_max, xsize)
+    ipix = np.arange(hp.nside2npix(nside))
+    if rot == None:
+        theta_r, phi_r = hp.pix2ang(nside, ipix)
+    theta1 = theta_min
+    theta2 = theta_max
+    flg = np.where(theta_r < theta1, 0, 1)
+    flg *= np.where(theta_r > theta2, 0, 1)
+    if phi_min >= 0:
+        phi1 = phi_min
+        phi2 = phi_max
+        flg *= np.where(phi_r < phi1, 0, 1)
+        flg *= np.where(phi_r > phi2, 0, 1)
+    else:
+        phi1 = 2.0 * np.pi + phi_min
+        phi2 = phi_max
+        flg *= np.where((phi2 < phi_r) & (phi_r < phi1), 0, 1)
+        img_phi_temp[img_phi_temp < 0] = 2 * np.pi + img_phi_temp[img_phi_temp < 0]
+    img_phi, img_theta = np.meshgrid(img_phi_temp, img_theta_temp)
+    img_phi = img_phi.flatten()
+    img_theta = img_theta.flatten()
+    ipix = np.compress(flg, ipix)
+    pl_theta = np.compress(flg, theta_r)
+    pl_phi = np.compress(flg, phi_r)
+    points = np.zeros((len(img_theta), 2), "d")
+    points[:, 0] = img_theta
+    points[:, 1] = img_phi
+    npix = hp.nside2npix(nside)
+    hp_map = np.zeros((data.shape[0], npix), "d")
+    for i in range(data.shape[0]):
+        hp_map[i, ipix] = griddata(
+            points, data[i, :], (pl_theta, pl_phi), method="nearest"
+        )
+    return hp_map
 
 def calculate_parameter_size(model):
     total_size = 0

@@ -1,4 +1,9 @@
+MNIST_DATASET/MNIST/raw/
+grid_count.npy
+grid_count_histo.py
+sweeps/sun360_sweeps/
 .vscode
+healpix_test.py
 requirements.txt
 check_data.py
 train_ginr_temp.sh

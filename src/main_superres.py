@@ -227,6 +227,7 @@ if __name__ == "__main__":
     )
 
     trainer.fit(model, train_loader)
+    
     # model.to('cpu')
     # val_loader = val_loader.to('cpu')
     # trainer.validate(model, val_loader)

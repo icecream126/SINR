@@ -6,6 +6,9 @@ import pytorch_lightning as pl
 from utils.utils import to_cartesian, mse2psnr, _ws_ssim
 from torch.optim import lr_scheduler
 
+import healpy as hp
+import matplotlib.pyplot as plt
+import numpy as np
 
 class MODEL(pl.LightningModule):
     def __init__(
@@ -155,7 +158,24 @@ class MODEL(pl.LightningModule):
 
         return {"loss": loss, "train_psnr": w_psnr_val.item()}
 
+
     def on_train_epoch_end(self):
+        '''
+        # Uncomment this if you want to visualize grid count
+        grid_count = np.save('./grid_count', self.posenc.grid_count)
+        grid_count = np.load('./grid_count.npy')
+        n_levels = grid_count.shape[0]-1
+
+        def visualize_and_save_healpix_maps(grid_count, n_levels):
+            for i in range(n_levels):
+                nside = 2**i
+                npix = int(hp.nside2npix(nside))
+                # For each level, visualize the grid count as a HEALPix map
+                hp.mollview(grid_count[i][:npix], title=f"Level {i+1} Grid Count", cmap='viridis')
+                plt.savefig(f"./image/healpix_level_{i+1}.png")  # Save the figure
+                plt.close()  #       
+        visualize_and_save_healpix_maps(grid_count, n_levels)
+        '''
         self.eval()
         with torch.no_grad():
             # if self.current_epoch % 10 ==0:
